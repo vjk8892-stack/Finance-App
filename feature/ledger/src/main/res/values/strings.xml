@@ -11,6 +11,20 @@
     <string name="ledger_cancel">Cancel</string>
     <string name="ledger_review_chip">%1$d to review</string>
 
+    <string name="query_hint">Ask or search — \"dining last month\"</string>
+    <string name="query_answer_sum">Across %1$d transactions</string>
+    <string name="query_answer_avg">Average of %1$d transactions</string>
+    <string name="query_answer_max">Largest single spend</string>
+    <string name="query_answer_count">%1$d transactions</string>
+    <string name="query_answer_list">Showing %1$d transactions</string>
+    <string name="query_answer_empty">Nothing matched that.</string>
+    <string name="query_unparsed">I couldn\'t parse all of that — here\'s the filter builder with what I recognized.</string>
+    <string name="query_builder">Filter builder</string>
+    <string name="query_clear">Clear</string>
+    <string name="query_save_view">Save this view</string>
+    <string name="query_saved_views">Saved views</string>
+    <string name="query_view_name">View name</string>
+
     <string name="add_title">Add</string>
     <string name="add_tab_scan">Scan</string>
     <string name="add_tab_manual">Manual</string>

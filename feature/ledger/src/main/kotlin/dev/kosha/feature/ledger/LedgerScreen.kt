@@ -48,6 +48,8 @@ import dev.kosha.core.designsystem.component.KoshaIcons
 import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaSpacing
 import dev.kosha.core.designsystem.token.KoshaType
+import dev.kosha.feature.ledger.query.QueryAnswerCard
+import dev.kosha.feature.ledger.query.QuerySearchBar
 
 /** Source glyphs, spec G12: ⌁ SMS · ▣ photo · ✎ manual · ⟳ recurring. */
 internal fun TxnSource.glyph(): String = when (this) {
@@ -64,6 +66,7 @@ fun LedgerScreen(
     viewModel: LedgerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val queryState by viewModel.query.collectAsState()
     var recategorizing by remember { mutableStateOf<LedgerRow?>(null) }
     var acting by remember { mutableStateOf<LedgerRow?>(null) }
 
@@ -96,7 +99,36 @@ fun LedgerScreen(
             }
         }
 
-        if (state.isEmpty) {
+        // Search bar doubles as the query assistant (spec C3).
+        QuerySearchBar(
+            text = queryState.text,
+            onTextChange = viewModel::onQueryTextChange,
+            onSubmit = viewModel::submitQuery,
+            modifier = Modifier.padding(horizontal = KoshaSpacing.screenPadding),
+        )
+        if (queryState.isFiltering) {
+            Spacer(Modifier.height(KoshaSpacing.xs))
+            QueryAnswerCard(
+                state = queryState,
+                onDismiss = viewModel::clearQuery,
+                onOpenBuilder = viewModel::openBuilder,
+                modifier = Modifier.padding(horizontal = KoshaSpacing.screenPadding),
+            )
+        }
+        Spacer(Modifier.height(KoshaSpacing.xs))
+
+        if (queryState.isFiltering) {
+            // Query results replace the grouped ledger while a query is live.
+            LazyColumn(Modifier.fillMaxSize()) {
+                items(queryState.rows.size) { i ->
+                    TransactionRow(
+                        row = queryState.rows[i],
+                        onRecategorize = { recategorizing = queryState.rows[i] },
+                        onActions = { acting = queryState.rows[i] },
+                    )
+                }
+            }
+        } else if (state.isEmpty) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = stringResource(R.string.ledger_empty),

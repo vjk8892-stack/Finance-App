@@ -110,6 +110,16 @@ interface TransactionDao {
     @Query("SELECT MIN(timestampMillis) FROM transactions WHERE status = 'committed'")
     suspend fun oldestTimestamp(): Long?
 
+    /** Distinct normalized merchants — the NLU's merchant vocabulary. */
+    @Query(
+        """
+        SELECT DISTINCT merchantNormalized FROM transactions
+        WHERE merchantNormalized IS NOT NULL AND merchantNormalized != ''
+        ORDER BY merchantNormalized
+        """
+    )
+    suspend fun knownMerchants(): List<String>
+
     /** Ledger revisions that should refresh derived period/budget state. */
     @Query("SELECT COUNT(*) FROM transactions")
     fun observeTransactionCount(): Flow<Int>
