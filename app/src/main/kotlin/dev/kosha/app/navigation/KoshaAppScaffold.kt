@@ -42,6 +42,7 @@ import dev.kosha.feature.ledger.LedgerScreen
 import dev.kosha.feature.ledger.accounts.AccountsScreen
 import dev.kosha.feature.ledger.add.AddScreen
 import dev.kosha.feature.vault.VaultScreen
+import dev.kosha.feature.widgets.KoshaDeepLinks
 
 /**
  * Bottom nav per spec C1: Home · Ledger · Add (center, camera-first) ·
@@ -64,10 +65,21 @@ const val ROUTE_EXPORT = "export"
 const val ARG_QUICK_CATEGORY = "quickCategoryId"
 
 @Composable
-fun KoshaAppScaffold() {
+fun KoshaAppScaffold(startAction: String? = null) {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val currentDestination = backStack?.destination
+
+    // Widget / QS tile / icon-shortcut entry points (spec G11) land directly
+    // on their destination rather than on Home.
+    androidx.compose.runtime.LaunchedEffect(startAction) {
+        when (startAction) {
+            KoshaDeepLinks.ACTION_QUICK_ADD, KoshaDeepLinks.ACTION_SCAN ->
+                navController.navigate(KoshaDestination.ADD.route)
+            KoshaDeepLinks.ACTION_VAULT ->
+                navController.navigate(KoshaDestination.VAULT.route)
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,

@@ -9,6 +9,7 @@ import dev.kosha.core.database.repo.PeriodRepository
 import dev.kosha.core.database.settings.SettingsRepository
 import dev.kosha.feature.budget.BudgetAlertWorker
 import dev.kosha.feature.budget.recurring.RecurringWorker
+import dev.kosha.feature.widgets.WidgetRefreshWorker
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,5 +41,6 @@ class KoshaApp : Application(), Configuration.Provider {
         }
         BudgetAlertWorker.schedule(this)
         RecurringWorker.schedule(this)
+        WidgetRefreshWorker.schedule(this)
     }
 }

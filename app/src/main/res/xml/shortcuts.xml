@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App-icon long-press shortcuts, spec G11: Add expense · Scan · Vault. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="add_expense"
+        android:enabled="true"
+        android:icon="@drawable/ic_launcher_foreground"
+        android:shortcutShortLabel="@string/shortcut_add_short"
+        android:shortcutLongLabel="@string/shortcut_add_long">
+        <intent
+            android:action="dev.kosha.action.QUICK_ADD"
+            android:targetPackage="dev.kosha.app"
+            android:targetClass="dev.kosha.app.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="scan"
+        android:enabled="true"
+        android:icon="@drawable/ic_launcher_foreground"
+        android:shortcutShortLabel="@string/shortcut_scan_short"
+        android:shortcutLongLabel="@string/shortcut_scan_long">
+        <intent
+            android:action="dev.kosha.action.SCAN"
+            android:targetPackage="dev.kosha.app"
+            android:targetClass="dev.kosha.app.MainActivity" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="vault"
+        android:enabled="true"
+        android:icon="@drawable/ic_launcher_foreground"
+        android:shortcutShortLabel="@string/shortcut_vault_short"
+        android:shortcutLongLabel="@string/shortcut_vault_long">
+        <intent
+            android:action="dev.kosha.action.VAULT"
+            android:targetPackage="dev.kosha.app"
+            android:targetClass="dev.kosha.app.MainActivity" />
+    </shortcut>
+</shortcuts>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_dashboard_label">Kosha dashboard</string>
+    <string name="widget_quick_add_label">Kosha quick add</string>
+    <string name="widget_quick_add">Add expense</string>
+    <string name="widget_tile_label">Log expense</string>
+    <string name="widget_weather_ahead">Ahead this period</string>
+    <string name="widget_weather_on_track">On track</string>
+    <string name="widget_weather_heads_up">Heads-up this period</string>
+
+    <string name="shortcut_add_short">Add</string>
+    <string name="shortcut_add_long">Add expense</string>
+    <string name="shortcut_scan_short">Scan</string>
+    <string name="shortcut_scan_long">Scan a receipt</string>
+    <string name="shortcut_vault_short">Vault</string>
+    <string name="shortcut_vault_long">Open vault</string>
+</resources>

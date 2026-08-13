@@ -50,6 +50,19 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Widgets, QS tile and icon shortcuts (spec G11) -->
+            <intent-filter>
+                <action android:name="dev.kosha.action.OPEN" />
+                <action android:name="dev.kosha.action.QUICK_ADD" />
+                <action android:name="dev.kosha.action.SCAN" />
+                <action android:name="dev.kosha.action.VAULT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
     </application>
 </manifest>

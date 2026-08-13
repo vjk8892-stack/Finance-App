@@ -90,7 +90,7 @@ class MainActivity : FragmentActivity() {
 
                     !current.onboardingDone -> OnboardingScreen(onDone = {})
 
-                    else -> KoshaAppScaffold()
+                    else -> KoshaAppScaffold(startAction = intent?.action)
                 }
 
                 // First composition with lock enabled → gate render (spec B4)
