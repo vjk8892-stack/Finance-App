@@ -6,4 +6,44 @@
     <string name="nav_add">Add</string>
     <string name="nav_insights">Insights</string>
     <string name="nav_vault">Vault</string>
+
+    <string name="onb_philosophy_title">Kosha</string>
+    <string name="onb_philosophy_body">A calm ledger. Fully offline — your money data never leaves this phone.</string>
+    <string name="onb_continue">Continue</string>
+    <string name="onb_skip">Skip</string>
+
+    <string name="onb_accounts_title">Your accounts</string>
+    <string name="onb_accounts_body">Add the places your money lives — bank, cash, cards, wallets.</string>
+    <string name="onb_account_name">Account name (e.g. HDFC Savings)</string>
+    <string name="onb_account_opening">Opening balance (₹, optional)</string>
+    <string name="onb_account_add">Add account</string>
+    <string name="onb_accounts_added">%1$d added</string>
+
+    <string name="onb_income_title">Your income</string>
+    <string name="onb_income_body">Kosha measures the gap between what comes in and what goes out. What lands each month?</string>
+    <string name="onb_income_hint">Monthly income (₹)</string>
+    <string name="onb_income_day_hint">Day it usually arrives (1–28)</string>
+
+    <string name="onb_sms_title">Automatic logging from bank SMS</string>
+    <string name="onb_sms_body">Kosha can read bank alerts to log spends automatically. Only allowlisted bank senders are parsed. Only the amount, account, merchant and reference are extracted — the message text itself is not stored, and nothing ever leaves this device. OTPs and promotions are ignored. You can skip this and log manually — the app is fully functional without it.</string>
+    <string name="onb_sms_allow">Allow SMS access</string>
+    <string name="onb_sms_skip">Skip — manual only</string>
+
+    <string name="onb_import_title">Import your history</string>
+    <string name="onb_import_body">Scan past bank messages so Kosha starts with real data. Safe to re-run — duplicates merge.</string>
+    <string name="onb_import_months">Last %1$d months</string>
+    <string name="onb_import_summary">Logged %1$d transactions, %2$d waiting for review, from %3$d messages.</string>
+
+    <string name="onb_notif_title">Gentle heads-ups</string>
+    <string name="onb_notif_body">Budget heads-ups and bill reminders — at most one quiet digest a day. Everything works without them.</string>
+    <string name="onb_notif_allow">Allow notifications</string>
+
+    <string name="onb_lock_title">Lock Kosha?</string>
+    <string name="onb_lock_body">Use your fingerprint, face, or device PIN to open the app. Recovery is your device credential — Kosha never keeps its own PIN. If you remove your device lock or factory-reset, encrypted data is recoverable only from a backup file.</string>
+    <string name="onb_lock_immediate">Lock immediately when I leave</string>
+    <string name="onb_lock_1min">Lock after 1 minute</string>
+    <string name="onb_lock_skip">No lock for now</string>
+
+    <string name="lock_prompt_title">Unlock Kosha</string>
+    <string name="lock_prompt_subtitle">Your ledger stays private</string>
 </resources>

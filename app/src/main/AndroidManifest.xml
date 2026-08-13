@@ -5,7 +5,11 @@
   context (spec G9): SMS (Phase 2), POST_NOTIFICATIONS (Phase 2/3),
   CAMERA (Phase 4), location (Phase 12, only if geofence nudges enabled).
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
     <application
         android:name=".KoshaApp"
@@ -14,6 +18,18 @@
         android:allowBackup="false"
         android:supportsRtl="true"
         android:theme="@style/Theme.Kosha">
+
+        <!-- Custom WorkManager init (HiltWorkerFactory) -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
         <activity
             android:name=".MainActivity"

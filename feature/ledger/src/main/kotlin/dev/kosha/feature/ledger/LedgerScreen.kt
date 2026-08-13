@@ -60,6 +60,7 @@ internal fun TxnSource.glyph(): String = when (this) {
 @Composable
 fun LedgerScreen(
     onOpenAccounts: () -> Unit,
+    onOpenReview: () -> Unit = {},
     viewModel: LedgerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -79,6 +80,13 @@ fun LedgerScreen(
                 color = KoshaColors.OffWhite,
                 modifier = Modifier.weight(1f),
             )
+            if (state.reviewCount > 0) {
+                KoshaChip(
+                    label = stringResource(R.string.ledger_review_chip, state.reviewCount),
+                    onClick = onOpenReview,
+                    accent = KoshaColors.Amber,
+                )
+            }
             IconButton(onClick = onOpenAccounts) {
                 Icon(
                     Icons.Outlined.AccountBalanceWallet,

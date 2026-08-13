@@ -18,6 +18,9 @@ interface AccountDao {
     @Query("SELECT * FROM accounts WHERE isActive = 1 ORDER BY id")
     fun observeActive(): Flow<List<AccountEntity>>
 
+    @Query("SELECT * FROM accounts WHERE isActive = 1 ORDER BY id")
+    suspend fun activeAccounts(): List<AccountEntity>
+
     @Query("SELECT * FROM accounts ORDER BY id")
     fun observeAll(): Flow<List<AccountEntity>>
 
@@ -40,7 +43,8 @@ interface AccountDao {
         UPDATE accounts SET currentBalancePaise = openingBalancePaise + COALESCE(
             (SELECT SUM(CASE WHEN t.type = 'credit' THEN t.amountPaise ELSE -t.amountPaise END)
              FROM transactions t
-             WHERE t.accountId = accounts.id AND t.parentTransactionId IS NULL),
+             WHERE t.accountId = accounts.id AND t.parentTransactionId IS NULL
+               AND t.status = 'committed'),
             0)
         WHERE id = :accountId
         """

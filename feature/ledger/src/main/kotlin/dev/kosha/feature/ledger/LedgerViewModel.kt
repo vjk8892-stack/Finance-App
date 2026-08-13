@@ -36,11 +36,13 @@ data class LedgerUiState(
     val months: List<LedgerMonthGroup> = emptyList(),
     val categories: List<CategoryEntity> = emptyList(),
     val isEmpty: Boolean = false,
+    val reviewCount: Int = 0,
 )
 
 @HiltViewModel
 class LedgerViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
+    private val transactionDao: dev.kosha.core.database.dao.TransactionDao,
     categoryRepository: CategoryRepository,
 ) : ViewModel() {
 
@@ -51,11 +53,13 @@ class LedgerViewModel @Inject constructor(
     val uiState: StateFlow<LedgerUiState> = combine(
         transactionRepository.observeLedger(),
         categoryRepository.observeAll(),
-    ) { rows, categories ->
+        transactionDao.observeReviewCount(),
+    ) { rows, categories, reviewCount ->
         LedgerUiState(
             months = group(rows),
             categories = categories,
             isEmpty = rows.isEmpty(),
+            reviewCount = reviewCount,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LedgerUiState())
 

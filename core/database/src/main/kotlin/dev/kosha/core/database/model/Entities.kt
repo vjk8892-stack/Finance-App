@@ -98,6 +98,11 @@ data class TransactionEntity(
     val parentTransactionId: Long? = null,
     /** Bank reference / UPI UTR — strongest dedup key. */
     val reference: String? = null,
+    /** COMMITTED rows count everywhere; PENDING_REVIEW rows only in the queue. */
+    val status: TxnStatus = TxnStatus.COMMITTED,
+    val reviewReason: String? = null,
+    /** Set when the dedup engine flagged an unprovable duplicate (B3 rule 2). */
+    val possibleDuplicateOfId: Long? = null,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
 )

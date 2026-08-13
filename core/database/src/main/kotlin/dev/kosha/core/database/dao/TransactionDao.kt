@@ -43,7 +43,7 @@ interface TransactionDao {
         FROM transactions t
         LEFT JOIN categories c ON c.id = t.categoryId
         JOIN accounts a ON a.id = t.accountId
-        WHERE t.parentTransactionId IS NULL
+        WHERE t.parentTransactionId IS NULL AND t.status = 'committed'
         ORDER BY t.timestampMillis DESC
         LIMIT :limit
         """
@@ -58,6 +58,51 @@ interface TransactionDao {
         """
     )
     suspend fun inWindow(fromMillis: Long, toMillis: Long): List<TransactionEntity>
+
+    // --- Review queue (spec B3/C2) ---
+
+    @RoomTransaction
+    @Query(
+        """
+        SELECT t.*, c.name AS categoryName, c.icon AS categoryIcon,
+               a.name AS accountName, a.colorToken AS accountColorToken
+        FROM transactions t
+        LEFT JOIN categories c ON c.id = t.categoryId
+        JOIN accounts a ON a.id = t.accountId
+        WHERE t.status = 'pending_review'
+        ORDER BY t.timestampMillis ASC
+        """
+    )
+    fun observeReviewQueue(): Flow<List<LedgerRow>>
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE status = 'pending_review'")
+    fun observeReviewCount(): Flow<Int>
+
+    @Query("SELECT MIN(timestampMillis) FROM transactions WHERE status = 'pending_review'")
+    fun observeOldestReviewMillis(): Flow<Long?>
+
+    @Query(
+        """
+        UPDATE transactions SET status = 'committed', reviewReason = NULL,
+               possibleDuplicateOfId = NULL, updatedAtMillis = :now
+        WHERE id = :id
+        """
+    )
+    suspend fun approveReview(id: Long, now: Long)
+
+    /**
+     * Auto-categorization source (spec G7 rule 4): categories of the last
+     * [limit] committed txns for a normalized merchant, newest first.
+     */
+    @Query(
+        """
+        SELECT categoryId FROM transactions
+        WHERE merchantNormalized = :merchantNormalized AND status = 'committed'
+              AND categoryId IS NOT NULL
+        ORDER BY timestampMillis DESC LIMIT :limit
+        """
+    )
+    suspend fun recentCategoriesForMerchant(merchantNormalized: String, limit: Int = 4): List<Long>
 
     @Query("SELECT * FROM transactions WHERE reference = :reference LIMIT 1")
     suspend fun byReference(reference: String): TransactionEntity?

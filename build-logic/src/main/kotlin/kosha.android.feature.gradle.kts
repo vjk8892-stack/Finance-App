@@ -12,6 +12,7 @@ dependencies {
     "implementation"(project(":core:designsystem"))
     "implementation"(project(":core:database"))
 
+    "implementation"(libs.findLibrary("compose-material-icons").get())
     "implementation"(libs.findLibrary("hilt-android").get())
     "ksp"(libs.findLibrary("hilt-compiler").get())
     "implementation"(libs.findLibrary("hilt-navigation-compose").get())

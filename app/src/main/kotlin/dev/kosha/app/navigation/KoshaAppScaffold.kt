@@ -30,6 +30,7 @@ import androidx.navigation.compose.rememberNavController
 import dev.kosha.app.R
 import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaType
+import dev.kosha.feature.ingest.review.ReviewQueueScreen
 import dev.kosha.feature.ledger.LedgerScreen
 import dev.kosha.feature.ledger.accounts.AccountsScreen
 import dev.kosha.feature.ledger.add.AddScreen
@@ -94,7 +95,10 @@ fun KoshaAppScaffold() {
                 PlaceholderScreen(stringResource(KoshaDestination.HOME.labelRes))
             }
             composable(KoshaDestination.LEDGER.route) {
-                LedgerScreen(onOpenAccounts = { navController.navigate(ROUTE_ACCOUNTS) })
+                LedgerScreen(
+                    onOpenAccounts = { navController.navigate(ROUTE_ACCOUNTS) },
+                    onOpenReview = { navController.navigate(ROUTE_REVIEW) },
+                )
             }
             composable(KoshaDestination.ADD.route) {
                 AddScreen()
@@ -108,11 +112,15 @@ fun KoshaAppScaffold() {
             composable(ROUTE_ACCOUNTS) {
                 AccountsScreen(onBack = { navController.popBackStack() })
             }
+            composable(ROUTE_REVIEW) {
+                ReviewQueueScreen(onBack = { navController.popBackStack() })
+            }
         }
     }
 }
 
 const val ROUTE_ACCOUNTS = "accounts"
+const val ROUTE_REVIEW = "review"
 
 @Composable
 private fun PlaceholderScreen(title: String) {

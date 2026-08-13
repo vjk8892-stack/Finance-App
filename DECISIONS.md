@@ -28,6 +28,19 @@ Format: date · decision · alternatives · why.
   from user PIN · Background writers must work while locked (Ring 1, spec B4).
 - **2026-08-13 · Convention plugins in `build-logic/`** · per-module copy-paste
   config · 16 modules; one place to change compileSdk/JVM target.
+- **2026-08-13 · Review queue = `status` column on Transaction
+  (committed | pending_review) + reviewReason/possibleDuplicateOfId** ·
+  separate queue table · One source of truth; approving is a status flip;
+  balance/ledger/analytics queries filter `status='committed'`. Schema change
+  made in Phase 2, before the migration freeze.
+- **2026-08-13 · Discard-with-log lands in logcat for now; the B3 debug
+  screen for discards is deferred to the Phase 12 polish pass** · build it
+  now · Zero user value until there's real discard volume to inspect.
+- **2026-08-13 · SMS timestamps use receipt time, not text-parsed dates** ·
+  parse per-bank date formats · Receipt time is within seconds of the event
+  for live capture and exactly what the inbox stores for imports; per-bank
+  date parsing is a large error surface for ~no dedup gain (the ±10 min
+  window keys on receipt time on both sides).
 - **2026-08-13 · Baseline budgets (Phase 0 gate): APK size measured by CI
   artifact on every build; cold-start + SMS-receiver-under-doze + OCR spikes
   REQUIRE physical devices and cannot run in the cloud sandbox** — flagged as

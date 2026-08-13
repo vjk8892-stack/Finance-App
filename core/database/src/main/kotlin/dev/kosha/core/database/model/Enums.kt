@@ -25,5 +25,8 @@ enum class AssetLiabilityKind { ASSET, LIABILITY }
 
 enum class EvidenceKind { SMS_TEXT, PHOTO_URI, UTR }
 
+/** Pipeline outcome persisted on the transaction (spec B3). */
+enum class TxnStatus { COMMITTED, PENDING_REVIEW }
+
 /** Stable identity for the system-reserved categories (spec G2) — survives rename. */
 enum class SystemCategoryKey { TRANSFERS, CASH_WITHDRAWAL, UNCATEGORIZED }

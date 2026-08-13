@@ -9,6 +9,7 @@
     <string name="ledger_delete_confirm">Delete this entry?</string>
     <string name="ledger_delete_confirm_body">This removes the transaction and its split lines. There is no undo.</string>
     <string name="ledger_cancel">Cancel</string>
+    <string name="ledger_review_chip">%1$d to review</string>
 
     <string name="add_title">Add</string>
     <string name="add_tab_scan">Scan</string>

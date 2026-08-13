@@ -42,4 +42,7 @@ class Converters {
 
     @TypeConverter fun sysKeyToDb(v: SystemCategoryKey?): String? = v?.name?.lowercase()
     @TypeConverter fun sysKeyFromDb(v: String?): SystemCategoryKey? = v?.let { SystemCategoryKey.valueOf(it.uppercase()) }
+
+    @TypeConverter fun txnStatusToDb(v: TxnStatus?): String? = v?.name?.lowercase()
+    @TypeConverter fun txnStatusFromDb(v: String?): TxnStatus? = v?.let { TxnStatus.valueOf(it.uppercase()) }
 }

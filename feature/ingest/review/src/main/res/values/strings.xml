@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="review_title">Review</string>
+    <string name="review_empty">Nothing waiting for review.</string>
+    <string name="review_approve">Looks right</string>
+    <string name="review_discard">Not a transaction</string>
+    <string name="review_duplicate_hint">Possibly the same as an entry already in your ledger.</string>
+    <string name="review_duplicate_merge">Same — merge</string>
+    <string name="review_duplicate_keep">Different — keep both</string>
+    <string name="review_reason_low_confidence">Parsed with low confidence — check the details</string>
+</resources>

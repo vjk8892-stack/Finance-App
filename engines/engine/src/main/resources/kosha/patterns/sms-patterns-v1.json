@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "libraryVersion": 1,
+  "comment": "Kosha SMS pattern library (spec Phase 2). Patterns are data, not code: new bank formats are data PRs. Regexes use named groups: amount, last4, merchant, ref. Sender codes are DLT header cores (VM-HDFCBK-S normalizes to HDFCBK).",
+  "patterns": [
+    {
+      "id": "hdfc-upi-sent-v1",
+      "bank": "HDFC Bank",
+      "senderCodes": ["HDFCBK", "HDFCBN"],
+      "type": "debit",
+      "regex": "(?i)Sent\\s+(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+From\\s+HDFC\\s+Bank\\s+A/C\\s*[x*]*(?<last4>\\d{2,4})\\s+To\\s+(?<merchant>.+?)\\s+On\\b.*?(?:Ref\\.?\\s*(?<ref>\\d{6,}))?\\s*$",
+      "baseConfidence": 0.95
+    },
+    {
+      "id": "hdfc-debit-generic-v1",
+      "bank": "HDFC Bank",
+      "senderCodes": ["HDFCBK", "HDFCBN"],
+      "type": "debit",
+      "regex": "(?i)(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+(?:has been\\s+)?debited\\s+from\\s+(?:a/c|acct|account)\\s*[x*]*(?<last4>\\d{2,4})\\s+.*?to\\s+(?:VPA\\s+)?(?<merchant>\\S+).*?(?:UPI\\s*Ref(?:\\s*No)?\\.?:?\\s*(?<ref>\\d{6,}))?\\s*\\.?$",
+      "baseConfidence": 0.93
+    },
+    {
+      "id": "hdfc-credit-generic-v1",
+      "bank": "HDFC Bank",
+      "senderCodes": ["HDFCBK", "HDFCBN"],
+      "type": "credit",
+      "regex": "(?i)(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+(?:is\\s+)?(?:successfully\\s+)?credited\\s+to\\s+(?:your\\s+)?(?:a/c|acct|account)\\s*[x*]*(?<last4>\\d{2,4})(?:.*?by\\s+(?:a/c linked to VPA\\s+)?(?<merchant>\\S+?))?(?:.*?(?:UPI\\s*Ref(?:\\s*No)?\\.?:?\\s*(?<ref>\\d{6,})))?.*$",
+      "baseConfidence": 0.93
+    },
+    {
+      "id": "sbi-upi-debit-v1",
+      "bank": "State Bank of India",
+      "senderCodes": ["SBIUPI", "SBIINB", "SBIPSG", "CBSSBI", "SBI"],
+      "type": "debit",
+      "regex": "(?i)A/C\\s*[Xx*]*(?<last4>\\d{2,4})\\s+debited\\s+by\\s+(?:Rs\\.?|INR)?\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+date\\s+\\S+\\s+trf\\s+to\\s+(?<merchant>.+?)\\s+Refno\\s+(?<ref>\\d{6,})",
+      "baseConfidence": 0.95
+    },
+    {
+      "id": "sbi-credit-v1",
+      "bank": "State Bank of India",
+      "senderCodes": ["SBIUPI", "SBIINB", "SBIPSG", "CBSSBI", "SBI"],
+      "type": "credit",
+      "regex": "(?i)A/C\\s*[Xx*]*(?<last4>\\d{2,4})\\s+(?:has\\s+)?(?:been\\s+)?credited\\s+by\\s+(?:Rs\\.?|INR)?\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+on\\b(?:.*?(?:transfer\\s+from|from)\\s+(?<merchant>.+?))?(?:\\s+Ref(?:\\s*no)?\\.?\\s*(?<ref>\\d{6,}))?[.\\s]*(?:-SBI.*)?$",
+      "baseConfidence": 0.93
+    },
+    {
+      "id": "icici-debit-v1",
+      "bank": "ICICI Bank",
+      "senderCodes": ["ICICIB", "ICICIT"],
+      "type": "debit",
+      "regex": "(?i)ICICI\\s+Bank\\s+Acct\\s+[Xx*]*(?<last4>\\d{2,4})\\s+debited\\s+for\\s+(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+\\S+;\\s*(?<merchant>.+?)\\s+credited(?:\\.\\s*UPI:?\\s*(?<ref>\\d{6,}))?",
+      "baseConfidence": 0.95
+    },
+    {
+      "id": "icici-credit-v1",
+      "bank": "ICICI Bank",
+      "senderCodes": ["ICICIB", "ICICIT"],
+      "type": "credit",
+      "regex": "(?i)(?:Acct|Account)\\s+[Xx*]*(?<last4>\\d{2,4})\\s+(?:is\\s+)?credited\\s+with\\s+(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+on\\s+\\S+(?:\\s+from\\s+(?<merchant>.+?))?(?:\\.\\s*UPI:?\\s*(?<ref>\\d{6,}))?\\.?.*$",
+      "baseConfidence": 0.93
+    },
+    {
+      "id": "axis-upi-debit-v1",
+      "bank": "Axis Bank",
+      "senderCodes": ["AXISBK", "AXISB"],
+      "type": "debit",
+      "regex": "(?i)(?:INR|Rs\\.?)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+A/c\\s+no\\.\\s+[Xx*]*(?<last4>\\d{2,4})\\s+\\S+\\s+\\S+\\s+UPI/(?:P2M|P2A)/(?<ref>\\d{6,})/(?<merchant>[^/\\n]+?)(?:\\s+Not you.*)?$",
+      "baseConfidence": 0.95
+    },
+    {
+      "id": "axis-credit-v1",
+      "bank": "Axis Bank",
+      "senderCodes": ["AXISBK", "AXISB"],
+      "type": "credit",
+      "regex": "(?i)(?:INR|Rs\\.?)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+credited\\s+(?:to\\s+)?A/c\\s+no\\.\\s+[Xx*]*(?<last4>\\d{2,4})(?:.*?(?:from|by)\\s+(?<merchant>\\S+))?(?:.*?(?:Ref|UPI)[:/\\s]*(?<ref>\\d{6,}))?.*$",
+      "baseConfidence": 0.92
+    },
+    {
+      "id": "kotak-upi-debit-v1",
+      "bank": "Kotak Mahindra Bank",
+      "senderCodes": ["KOTAKB", "KOTAK"],
+      "type": "debit",
+      "regex": "(?i)Sent\\s+(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+from\\s+Kotak\\s+Bank\\s+AC\\s+[Xx*]*(?<last4>\\d{2,4})\\s+to\\s+(?<merchant>\\S+)\\s+on\\s+\\S+\\s*\\.?\\s*(?:UPI\\s+Ref\\s+(?<ref>\\d{6,}))?.*$",
+      "baseConfidence": 0.95
+    },
+    {
+      "id": "kotak-credit-v1",
+      "bank": "Kotak Mahindra Bank",
+      "senderCodes": ["KOTAKB", "KOTAK"],
+      "type": "credit",
+      "regex": "(?i)Received\\s+(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+in\\s+your\\s+Kotak\\s+Bank\\s+AC\\s+[Xx*]*(?<last4>\\d{2,4})\\s+from\\s+(?<merchant>\\S+?)(?:\\s+on\\s+\\S+)?\\s*\\.?\\s*(?:UPI\\s*Ref:?\\s*(?<ref>\\d{6,}))?.*$",
+      "baseConfidence": 0.95
+    },
+    {
+      "id": "pnb-debit-v1",
+      "bank": "Punjab National Bank",
+      "senderCodes": ["PNBSMS", "PUNBNK"],
+      "type": "debit",
+      "regex": "(?i)(?:A/c|Ac)\\s+[Xx*]*(?<last4>\\d{2,4})\\s+debited\\s+(?:with|by|for)\\s+(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)(?:.*?(?:to|towards)\\s+(?<merchant>\\S+))?(?:.*?Ref\\s*(?<ref>\\d{6,}))?.*$",
+      "baseConfidence": 0.9
+    },
+    {
+      "id": "bob-debit-v1",
+      "bank": "Bank of Baroda",
+      "senderCodes": ["BOBTXN", "BOBSMS"],
+      "type": "debit",
+      "regex": "(?i)(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+(?:debited from|Dr\\.? from)\\s+A/c\\s+[Xx*]*(?<last4>\\d{2,4})(?:.*?(?:to|towards|at)\\s+(?<merchant>\\S+))?(?:.*?(?:Ref|UPI)[:\\s]*(?<ref>\\d{6,}))?.*$",
+      "baseConfidence": 0.9
+    },
+    {
+      "id": "canara-debit-v1",
+      "bank": "Canara Bank",
+      "senderCodes": ["CANBNK", "CANARA"],
+      "type": "debit",
+      "regex": "(?i)(?:An amount of\\s+)?(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+(?:has been\\s+)?debited\\s+(?:from|to)\\s+(?:your\\s+)?(?:a/c|account)\\s*(?:no\\.?)?\\s*[Xx*]*(?<last4>\\d{2,4})(?:.*?(?:towards|to)\\s+(?<merchant>\\S+))?(?:.*?ref\\s*no\\.?\\s*(?<ref>\\d{6,}))?.*$",
+      "baseConfidence": 0.9
+    },
+    {
+      "id": "union-debit-v1",
+      "bank": "Union Bank of India",
+      "senderCodes": ["UNIONB", "UBOI"],
+      "type": "debit",
+      "regex": "(?i)A/c\\s+[Xx*]*(?<last4>\\d{2,4})\\s+Debited\\s+(?:for\\s+)?(?:Rs|INR)[:.\\s]*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)(?:.*?(?:towards|to|by)\\s+(?<merchant>\\S+))?(?:.*?(?:Ref|RRN)[:\\s]*(?<ref>\\d{6,}))?.*$",
+      "baseConfidence": 0.9
+    },
+    {
+      "id": "idfc-debit-v1",
+      "bank": "IDFC FIRST Bank",
+      "senderCodes": ["IDFCFB", "IDFCBK"],
+      "type": "debit",
+      "regex": "(?i)(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+(?:is\\s+)?debited\\s+from\\s+(?:your\\s+)?A/C\\s+[Xx*]*(?<last4>\\d{2,4})(?:\\s+(?:to|for)\\s+(?<merchant>.+?))?(?:\\s+on\\s+\\S+)?\\s*\\.?\\s*(?:Ref(?:erence)?[:\\s]*(?<ref>\\d{6,}))?.*$",
+      "baseConfidence": 0.9
+    },
+    {
+      "id": "indusind-debit-v1",
+      "bank": "IndusInd Bank",
+      "senderCodes": ["INDUSB", "INDBNK"],
+      "type": "debit",
+      "regex": "(?i)(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+from\\s+A/c\\s+[Xx*]*(?<last4>\\d{2,4})(?:.*?(?:for|to|towards)\\s+(?<merchant>\\S+))?(?:.*?UPI:?(?<ref>\\d{6,}))?.*$",
+      "baseConfidence": 0.9
+    },
+    {
+      "id": "yes-debit-v1",
+      "bank": "YES Bank",
+      "senderCodes": ["YESBNK", "YESBK"],
+      "type": "debit",
+      "regex": "(?i)(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+(?:has been\\s+)?debited\\s+from\\s+(?:your\\s+)?A/C\\s+[Xx*]*(?<last4>\\d{2,4})(?:.*?(?:to|towards)\\s+(?<merchant>\\S+))?(?:.*?(?:Ref|UPI)\\s*(?:No)?[:.\\s]*(?<ref>\\d{6,}))?.*$",
+      "baseConfidence": 0.9
+    },
+    {
+      "id": "federal-debit-v1",
+      "bank": "Federal Bank",
+      "senderCodes": ["FEDBNK", "FEDERAL"],
+      "type": "debit",
+      "regex": "(?i)(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+debited\\s+(?:from|via)\\s+(?:your\\s+)?A/c\\s+[Xx*]*(?<last4>\\d{2,4})(?:.*?(?:to|towards)\\s+(?<merchant>\\S+))?(?:.*?Ref\\s*(?<ref>\\d{6,}))?.*$",
+      "baseConfidence": 0.9
+    },
+    {
+      "id": "hdfc-card-spent-v1",
+      "bank": "HDFC Bank Card",
+      "senderCodes": ["HDFCBK", "HDFCBN"],
+      "type": "debit",
+      "regex": "(?i)(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+on\\s+.*?Card\\s+[Xx*]*(?<last4>\\d{2,4})\\s+at\\s+(?<merchant>.+?)\\s+on\\b.*$",
+      "baseConfidence": 0.95
+    },
+    {
+      "id": "sbi-card-spent-v1",
+      "bank": "SBI Card",
+      "senderCodes": ["SBICRD", "SBICARD"],
+      "type": "debit",
+      "regex": "(?i)(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+spent\\s+on\\s+your\\s+SBI\\s+(?:Credit\\s+)?Card\\s+(?:ending\\s+)?[Xx*]*(?<last4>\\d{2,4})\\s+at\\s+(?<merchant>.+?)\\s+on\\b.*$",
+      "baseConfidence": 0.95
+    },
+    {
+      "id": "atm-withdrawal-generic-v1",
+      "bank": "Generic ATM",
+      "senderCodes": ["HDFCBK", "SBIUPI", "SBIINB", "CBSSBI", "ICICIB", "AXISBK", "KOTAKB", "PNBSMS", "BOBTXN", "CANBNK", "UNIONB", "IDFCFB", "INDUSB", "YESBNK", "FEDBNK"],
+      "type": "debit",
+      "isAtmWithdrawal": true,
+      "regex": "(?i)(?:Rs\\.?|INR)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)\\s+(?:withdrawn|w/d)\\s+(?:at|from)\\s+ATM.*?(?:a/c|acct|account)\\s*[Xx*]*(?<last4>\\d{2,4})?.*$",
+      "baseConfidence": 0.92
+    }
+  ]
+}
