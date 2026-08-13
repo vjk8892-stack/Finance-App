@@ -63,3 +63,26 @@ Format: date · decision · alternatives · why.
   REQUIRE physical devices and cannot run in the cloud sandbox** — flagged as
   owner action items; mitigations (battery-exemption prompt flow, WorkManager
   reconcile scan) are still being built into the code as specified.
+
+## Phase completion pass (2026-08-13)
+
+- **2026-08-13 · Vault exclusion from backups is enforced on a snapshot, not
+  the live DB** · filter at write time · The backup archives a database
+  *file*, so a `DELETE ... WHERE 0` against the live connection excluded
+  nothing. `VACUUM INTO` a temp copy, delete `vault_entries` from THAT copy,
+  archive it, discard it.
+- **2026-08-13 · CSV writer neutralizes leading `= + - @`** · plain RFC 4180
+  quoting · A merchant name captured from an SMS is untrusted text; without
+  the guard it executes as a formula when the export is opened in Excel.
+- **2026-08-13 · Advisor output is asserted product-free by a test** ·
+  reviewer judgement · The SEBI advisory boundary (spec F risk register) is
+  easy to erode one helpful sentence at a time; a test that fails on
+  "mutual fund", "ELSS", "SIP" etc. makes the boundary mechanical.
+- **2026-08-13 · Glance `actionStartActivity` Intent overload lives in
+  `androidx.glance.appwidget.action`** · — · The base `androidx.glance.action`
+  one only accepts a ComponentName; noted because the import is easy to get
+  wrong and the error message is unhelpful.
+- **2026-08-13 · Device-dependent exit gates are documented, not assumed** ·
+  quietly marking phases done · `docs/DEVICE_GATES.md` lists every gate that
+  needs real hardware (SMS under doze, OCR accuracy on real screenshots,
+  vault crypto, PDF viewers, backup round-trip, perf/size baselines).
