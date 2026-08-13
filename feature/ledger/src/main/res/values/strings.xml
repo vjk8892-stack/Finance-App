@@ -21,8 +21,6 @@
     <string name="add_pick_category">Pick a category to save</string>
     <string name="add_saved">Logged</string>
     <string name="add_no_account">Create an account first</string>
-    <string name="add_scan_coming">Scan arrives in Phase 4 — camera capture with on-device OCR.</string>
-    <string name="add_import_coming">Import arrives in Phase 4 — gallery screenshots via Photo Picker.</string>
     <string name="add_mood_impulse">Impulse</string>
     <string name="add_mood_planned">Planned</string>
     <string name="add_mood_necessary">Necessary</string>

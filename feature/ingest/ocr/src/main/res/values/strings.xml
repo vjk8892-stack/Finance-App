@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="scan_permission_title">Camera for receipts</string>
+    <string name="scan_permission_body">Scanning reads the receipt on this device only. Photos never leave your phone.</string>
+    <string name="scan_permission_allow">Allow camera</string>
+    <string name="scan_permission_denied">Camera is off. The Import tab still works — it uses the system photo picker.</string>
+    <string name="scan_shutter">Capture</string>
+    <string name="scan_batch">Batch</string>
+    <string name="scan_batch_on">Batch on · %1$d captured</string>
+    <string name="scan_reading">Reading…</string>
+    <string name="scan_unreadable">Could not read that one. Try again with more light, or enter it manually.</string>
+
+    <string name="import_pick">Choose screenshots</string>
+    <string name="import_body">Pick UPI screenshots from your gallery. Re-importing is safe — duplicates merge.</string>
+
+    <string name="preview_title">Check the details</string>
+    <string name="preview_amount">Amount</string>
+    <string name="preview_merchant">Paid to</string>
+    <string name="preview_reference">Reference</string>
+    <string name="preview_low_confidence">Worth a second look</string>
+    <string name="preview_confirm">Looks right — log it</string>
+    <string name="preview_discard">Discard</string>
+    <string name="preview_committed">Logged</string>
+    <string name="preview_queued">Saved to review</string>
+    <string name="preview_merged">Already logged — evidence attached</string>
+    <string name="preview_line_items">Items on this bill</string>
+
+    <string name="warranty_prompt_title">Track the warranty?</string>
+    <string name="warranty_prompt_body">%1$s — set a warranty period and Kosha will remind you before it expires.</string>
+    <string name="warranty_months">%1$d months</string>
+    <string name="warranty_skip">No thanks</string>
+</resources>

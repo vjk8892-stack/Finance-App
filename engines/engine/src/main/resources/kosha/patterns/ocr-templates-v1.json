@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "libraryVersion": 1,
+  "comment": "OCR template library (spec Phase 4). Anchor keywords identify the source app from recognized text; field heuristics live in OcrExtractor. Data, not code — new apps are data PRs.",
+  "templates": [
+    {
+      "id": "phonepe-v1",
+      "appLabel": "phonepe",
+      "anchorKeywords": ["PhonePe", "Transaction ID", "Paid to"],
+      "minAnchorHits": 2,
+      "baseConfidence": 0.93
+    },
+    {
+      "id": "gpay-v1",
+      "appLabel": "gpay",
+      "anchorKeywords": ["Google Pay", "UPI transaction ID", "to Bank"],
+      "minAnchorHits": 2,
+      "baseConfidence": 0.93
+    },
+    {
+      "id": "paytm-v1",
+      "appLabel": "paytm",
+      "anchorKeywords": ["Paytm", "Paid Successfully", "UPI Ref"],
+      "minAnchorHits": 2,
+      "baseConfidence": 0.92
+    },
+    {
+      "id": "generic-bill-v1",
+      "appLabel": "generic-bill",
+      "anchorKeywords": ["Total", "Invoice", "Bill", "GST", "Tax Invoice"],
+      "minAnchorHits": 1,
+      "baseConfidence": 0.72
+    }
+  ]
+}

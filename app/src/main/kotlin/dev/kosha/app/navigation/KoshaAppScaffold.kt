@@ -34,6 +34,8 @@ import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaType
 import dev.kosha.feature.budget.BudgetScreen
 import dev.kosha.feature.income.IncomeScreen
+import dev.kosha.feature.ingest.ocr.ImportScreen
+import dev.kosha.feature.ingest.ocr.ScanScreen
 import dev.kosha.feature.ingest.review.ReviewQueueScreen
 import dev.kosha.feature.insights.home.HomeScreen
 import dev.kosha.feature.ledger.LedgerScreen
@@ -128,7 +130,11 @@ fun KoshaAppScaffold() {
                 ),
             ) { entry ->
                 val quickCategoryId = entry.arguments?.getLong(ARG_QUICK_CATEGORY)?.takeIf { it > 0 }
-                AddScreen(quickCategoryId = quickCategoryId)
+                AddScreen(
+                    quickCategoryId = quickCategoryId,
+                    scanTab = { ScanScreen() },
+                    importTab = { ImportScreen() },
+                )
             }
             composable(KoshaDestination.INSIGHTS.route) {
                 PlaceholderScreen(stringResource(KoshaDestination.INSIGHTS.labelRes))

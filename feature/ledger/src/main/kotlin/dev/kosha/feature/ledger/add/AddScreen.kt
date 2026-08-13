@@ -49,10 +49,13 @@ import dev.kosha.feature.ledger.R
 @Composable
 fun AddScreen(
     quickCategoryId: Long? = null,
+    scanTab: @Composable () -> Unit = {},
+    importTab: @Composable () -> Unit = {},
     viewModel: AddViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    var tab by remember { mutableIntStateOf(1) } // Manual until Phase 4 flips the default to Scan
+    // Camera-first (spec C4), unless the user arrived via a quick-add chip.
+    var tab by remember { mutableIntStateOf(if (quickCategoryId != null) 1 else 0) }
     val snackbar = remember { SnackbarHostState() }
     val savedLabel = stringResource(R.string.add_saved)
 
@@ -87,30 +90,15 @@ fun AddScreen(
             }
 
             when (tab) {
+                0 -> scanTab()
                 1 -> ManualTab(state, viewModel)
-                else -> ComingSoon(
-                    if (tab == 0) stringResource(R.string.add_scan_coming)
-                    else stringResource(R.string.add_import_coming),
-                )
+                else -> importTab()
             }
         }
         SnackbarHost(
             hostState = snackbar,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
-    }
-}
-
-@Composable
-private fun ComingSoon(text: String) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(KoshaSpacing.xl),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(text, style = KoshaType.InsightSerif, color = KoshaColors.OffWhiteMuted)
     }
 }
 
