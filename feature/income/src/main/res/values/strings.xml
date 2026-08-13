@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="income_title">Income &amp; period</string>
+    <string name="income_sources">Income sources</string>
+    <string name="income_add">Add income source</string>
+    <string name="income_name">Name (e.g. Salary)</string>
+    <string name="income_amount">Amount (₹)</string>
+    <string name="income_freq_monthly">Monthly</string>
+    <string name="income_freq_once">One time</string>
+    <string name="income_freq_variable">Variable</string>
+    <string name="income_expected_day">Expected day (1–28)</string>
+    <string name="income_save">Save</string>
+    <string name="income_remove">Remove</string>
+    <string name="income_empty">No income sources yet. Kosha needs one to measure your savings gap.</string>
+
+    <string name="period_section">This period</string>
+    <string name="period_anchor">Month starts on day %1$d</string>
+    <string name="period_anchor_hint">Set this to your salary day if your month runs 5th → 4th.</string>
+    <string name="period_close">Close this period</string>
+    <string name="period_close_body">Locks an immutable summary of income, spend and savings gap. History can never be rewritten.</string>
+    <string name="period_closed">Closed periods</string>
+    <string name="period_summary_row">%1$s · gap %2$s</string>
+    <string name="period_expected">Expected</string>
+    <string name="period_actual">Actual</string>
+    <string name="period_untracked">Untracked</string>
+</resources>

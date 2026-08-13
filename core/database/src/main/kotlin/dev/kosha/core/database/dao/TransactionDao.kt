@@ -107,6 +107,13 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE reference = :reference LIMIT 1")
     suspend fun byReference(reference: String): TransactionEntity?
 
+    @Query("SELECT MIN(timestampMillis) FROM transactions WHERE status = 'committed'")
+    suspend fun oldestTimestamp(): Long?
+
+    /** Ledger revisions that should refresh derived period/budget state. */
+    @Query("SELECT COUNT(*) FROM transactions")
+    fun observeTransactionCount(): Flow<Int>
+
     @Query("UPDATE transactions SET categoryId = :categoryId, updatedAtMillis = :now WHERE id = :id")
     suspend fun recategorize(id: Long, categoryId: Long?, now: Long)
 

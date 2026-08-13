@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Financial weather line (spec C2.1): serif, one sentence, never alarmist -->
+    <string name="weather_ahead">Calm skies — %1$s ahead this period.</string>
+    <string name="weather_on_track">Steady — income and spending are close this period.</string>
+    <string name="weather_heads_up">Heads-up — spending is %1$s past income this period.</string>
+    <string name="weather_no_data">A quiet start. Log a few entries and the picture fills in.</string>
+
+    <string name="pulse_label">Savings gap</string>
+    <string name="pulse_income">Income</string>
+    <string name="pulse_expense">Spent</string>
+    <string name="pulse_gap">Gap</string>
+    <string name="pulse_tap_hint">Tap for the breakdown</string>
+
+    <string name="home_quick_add">Quick add</string>
+    <string name="home_review_chip">%1$d to review</string>
+    <string name="home_review_chip_age">%1$d to review · oldest %2$dd</string>
+    <string name="home_budgets">Budgets</string>
+    <string name="home_budgets_empty">Set a budget</string>
+    <string name="home_income_setup">Set up income</string>
+    <string name="home_settings">Settings</string>
+    <string name="home_scan">Scan a receipt</string>
+</resources>

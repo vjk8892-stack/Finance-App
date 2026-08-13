@@ -309,6 +309,7 @@ private fun RecategorizeSheet(
 internal fun CategoryFlowGrid(
     categories: List<CategoryEntity>,
     onPick: (CategoryEntity) -> Unit,
+    selectedId: Long? = null,
 ) {
     categories.chunked(2).forEach { rowCats ->
         Row(
@@ -318,6 +319,7 @@ internal fun CategoryFlowGrid(
             rowCats.forEach { cat ->
                 KoshaChip(
                     label = cat.name,
+                    selected = cat.id == selectedId,
                     onClick = { onPick(cat) },
                     leading = {
                         Icon(

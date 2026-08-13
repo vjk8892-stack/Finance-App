@@ -1,4 +1,4 @@
-package dev.kosha.app.settings
+package dev.kosha.core.database.settings
 
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey

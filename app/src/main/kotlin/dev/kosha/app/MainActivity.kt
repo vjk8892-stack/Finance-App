@@ -3,6 +3,7 @@ package dev.kosha.app
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
@@ -23,8 +24,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.kosha.app.navigation.KoshaAppScaffold
 import dev.kosha.app.onboarding.OnboardingScreen
-import dev.kosha.app.settings.KoshaSettings
-import dev.kosha.app.settings.SettingsRepository
+import dev.kosha.core.database.settings.KoshaSettings
+import dev.kosha.core.database.settings.SettingsRepository
 import dev.kosha.core.designsystem.theme.KoshaTheme
 import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaType
@@ -71,7 +72,7 @@ class MainViewModel @Inject constructor(
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
-    private val viewModel: MainViewModel by androidx.activity.viewModels()
+    private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()

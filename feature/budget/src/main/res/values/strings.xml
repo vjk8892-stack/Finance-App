@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="budget_title">Budgets</string>
+    <string name="budget_empty">No budgets yet. Set a limit on a category to see a ring on Home.</string>
+    <string name="budget_add">Add budget</string>
+    <string name="budget_limit">Monthly limit (₹)</string>
+    <string name="budget_threshold">Heads-up at %1$d%%</string>
+    <string name="budget_save">Save</string>
+    <string name="budget_spent_of">%1$s of %2$s</string>
+    <string name="budget_remove">Remove</string>
+    <string name="budget_overall">Everything</string>
+
+    <string name="budget_channel_name">Budget heads-ups</string>
+    <string name="budget_channel_desc">Quiet notes when a category nears its limit</string>
+    <!-- Calm copy per spec C7: "Dining is at 80% with 9 days left" -->
+    <string name="budget_alert_title">%1$s is at %2$d%%</string>
+    <string name="budget_alert_body_days">%1$d days left in this period</string>
+    <string name="budget_alert_body_today">Last day of this period</string>
+</resources>

@@ -34,6 +34,8 @@ data class AddFormState(
     val selectedAccountId: Long? = null,
     val note: String = "",
     val moodTag: MoodTag? = null,
+    /** Pre-highlighted category when arriving from a Home quick-add chip. */
+    val presetCategoryId: Long? = null,
 ) {
     val amount: Money? get() = Money.parseOrNull(amountText)
     val canSave: Boolean get() = amount != null && amount!!.paise > 0 && selectedAccountId != null
@@ -115,6 +117,10 @@ class AddViewModel @Inject constructor(
         form.value = form.value.copy(moodTag = mood)
     }
 
+    fun presetCategory(categoryId: Long?) {
+        form.value = form.value.copy(presetCategoryId = categoryId)
+    }
+
     /** The ≤3-tap path: amount → category tap saves immediately (spec C4). */
     fun saveWithCategory(category: CategoryEntity) {
         val state = uiState.value
@@ -143,6 +149,7 @@ class AddViewModel @Inject constructor(
             form.value = AddFormState(
                 entryType = f.entryType,
                 selectedAccountId = accountId,
+                presetCategoryId = f.presetCategoryId,
             )
         }
     }

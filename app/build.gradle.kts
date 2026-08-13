@@ -76,6 +76,9 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.activity.ktx)
+    // FragmentActivity: BiometricPrompt requires it for the Ring 0 app lock.
+    implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
 

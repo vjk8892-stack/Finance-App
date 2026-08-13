@@ -13,8 +13,9 @@ ksp {
 }
 
 dependencies {
-    implementation("dev.kosha:common")
-    implementation("dev.kosha:engine")
+    // api: Money and the period engine types appear in repository signatures.
+    api("dev.kosha:common")
+    api("dev.kosha:engine")
 
     api(libs.room.runtime)
     api(libs.room.ktx)
@@ -24,6 +25,7 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.kotlinx.coroutines.android)
+    api(libs.androidx.datastore.preferences)
 
     androidTestImplementation(libs.room.testing)
     androidTestImplementation(libs.androidx.test.espresso)

@@ -1,6 +1,7 @@
 package dev.kosha.feature.ledger.add
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -46,11 +47,18 @@ import dev.kosha.feature.ledger.R
  * Scan/Import render their arrival note until Phase 4.
  */
 @Composable
-fun AddScreen(viewModel: AddViewModel = hiltViewModel()) {
+fun AddScreen(
+    quickCategoryId: Long? = null,
+    viewModel: AddViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsState()
     var tab by remember { mutableIntStateOf(1) } // Manual until Phase 4 flips the default to Scan
     val snackbar = remember { SnackbarHostState() }
     val savedLabel = stringResource(R.string.add_saved)
+
+    LaunchedEffect(quickCategoryId) {
+        viewModel.presetCategory(quickCategoryId)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.saved.collect { amount ->
@@ -58,34 +66,39 @@ fun AddScreen(viewModel: AddViewModel = hiltViewModel()) {
         }
     }
 
-    Column(Modifier.fillMaxSize()) {
-        TabRow(
-            selectedTabIndex = tab,
-            containerColor = KoshaColors.Charcoal,
-            contentColor = KoshaColors.OffWhite,
-        ) {
-            listOf(
-                stringResource(R.string.add_tab_scan),
-                stringResource(R.string.add_tab_manual),
-                stringResource(R.string.add_tab_import),
-            ).forEachIndexed { index, label ->
-                Tab(
-                    selected = tab == index,
-                    onClick = { tab = index },
-                    text = { Text(label, style = KoshaType.Label) },
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            TabRow(
+                selectedTabIndex = tab,
+                containerColor = KoshaColors.Charcoal,
+                contentColor = KoshaColors.OffWhite,
+            ) {
+                listOf(
+                    stringResource(R.string.add_tab_scan),
+                    stringResource(R.string.add_tab_manual),
+                    stringResource(R.string.add_tab_import),
+                ).forEachIndexed { index, label ->
+                    Tab(
+                        selected = tab == index,
+                        onClick = { tab = index },
+                        text = { Text(label, style = KoshaType.Label) },
+                    )
+                }
+            }
+
+            when (tab) {
+                1 -> ManualTab(state, viewModel)
+                else -> ComingSoon(
+                    if (tab == 0) stringResource(R.string.add_scan_coming)
+                    else stringResource(R.string.add_import_coming),
                 )
             }
         }
-
-        when (tab) {
-            1 -> ManualTab(state, viewModel)
-            else -> ComingSoon(
-                if (tab == 0) stringResource(R.string.add_scan_coming)
-                else stringResource(R.string.add_import_coming),
-            )
-        }
+        SnackbarHost(
+            hostState = snackbar,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
-    SnackbarHost(hostState = snackbar)
 }
 
 @Composable
@@ -202,6 +215,7 @@ private fun ManualTab(state: AddUiState, viewModel: AddViewModel) {
         )
         CategoryFlowGrid(
             categories = state.categories,
+            selectedId = state.form.presetCategoryId,
             onPick = { if (state.form.canSave) viewModel.saveWithCategory(it) },
         )
         Spacer(Modifier.height(KoshaSpacing.xxl))

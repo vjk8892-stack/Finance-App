@@ -3,7 +3,7 @@ package dev.kosha.app.onboarding
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.kosha.app.settings.SettingsRepository
+import dev.kosha.core.database.settings.SettingsRepository
 import dev.kosha.core.common.Money
 import dev.kosha.core.database.dao.PlanningDao
 import dev.kosha.core.database.model.AccountType

@@ -41,6 +41,12 @@ interface PlanningDao {
     @Query("SELECT * FROM income_sources WHERE isActive = 1 ORDER BY id")
     fun observeIncomeSources(): Flow<List<IncomeSourceEntity>>
 
+    @Query("SELECT * FROM income_sources WHERE isActive = 1 ORDER BY id")
+    suspend fun incomeSourcesOnce(): List<IncomeSourceEntity>
+
+    @Query("SELECT * FROM budgets WHERE isActive = 1")
+    suspend fun budgetsOnce(): List<BudgetEntity>
+
     // Period summaries — immutable once written (spec B5)
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertPeriodSummary(summary: PeriodSummaryEntity): Long

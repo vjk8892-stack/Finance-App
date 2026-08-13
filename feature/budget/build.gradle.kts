@@ -5,3 +5,9 @@ plugins {
 android {
     namespace = "dev.kosha.feature.budget"
 }
+
+dependencies {
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+}
