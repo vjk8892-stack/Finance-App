@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vault_title">Vault</string>
+    <string name="vault_locked_title">Locked</string>
+    <string name="vault_locked_body">Your account details are sealed behind a separate key. Unlock to view them.</string>
+    <string name="vault_unlock">Unlock vault</string>
+    <string name="vault_prompt_title">Unlock the vault</string>
+    <string name="vault_prompt_subtitle">A separate key from the rest of Kosha</string>
+    <string name="vault_empty">Nothing stored yet. Add a card or account and Kosha keeps it masked.</string>
+    <string name="vault_add">Add entry</string>
+    <string name="vault_label">Label (e.g. HDFC Debit Card)</string>
+    <string name="vault_field_name">Field name (e.g. Card number)</string>
+    <string name="vault_field_value">Value</string>
+    <string name="vault_add_field">Add field</string>
+    <string name="vault_save">Save</string>
+    <string name="vault_delete">Delete</string>
+    <string name="vault_reveal">Reveal</string>
+    <string name="vault_remask">Hide</string>
+    <string name="vault_copy">Copy</string>
+    <string name="vault_copied">Copied — clears in 30s</string>
+    <string name="vault_remask_countdown">Hides in %1$ds</string>
+    <string name="vault_kind_account">Account</string>
+    <string name="vault_kind_card">Card</string>
+    <string name="vault_kind_custom">Custom</string>
+    <string name="vault_export_excluded">Vault data is excluded from every export and backup.</string>
+    <string name="vault_key_invalidated">This device\'s lock screen changed, so the vault key was invalidated. Vault entries cannot be recovered — that is by design. You can add them again.</string>
+    <string name="vault_key_warning">If you remove your device lock screen or factory-reset, vault entries are gone for good. Kosha cannot recover them, and neither can anyone else.</string>
+</resources>

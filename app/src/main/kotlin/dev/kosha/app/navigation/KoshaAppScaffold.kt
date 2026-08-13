@@ -1,7 +1,5 @@
 package dev.kosha.app.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -18,7 +16,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -43,11 +40,11 @@ import dev.kosha.feature.insights.hub.InsightsScreen
 import dev.kosha.feature.ledger.LedgerScreen
 import dev.kosha.feature.ledger.accounts.AccountsScreen
 import dev.kosha.feature.ledger.add.AddScreen
+import dev.kosha.feature.vault.VaultScreen
 
 /**
  * Bottom nav per spec C1: Home · Ledger · Add (center, camera-first) ·
- * Insights · Vault. Budgets and Income are reached from Home; Vault and the
- * Insights hub land in Phases 8 and 6.
+ * Insights · Vault. Budgets, Income and Recurring are reached from Home.
  */
 enum class KoshaDestination(val route: String, val labelRes: Int, val icon: ImageVector) {
     HOME("home", R.string.nav_home, Icons.Outlined.Home),
@@ -144,7 +141,7 @@ fun KoshaAppScaffold() {
                 InsightsScreen()
             }
             composable(KoshaDestination.VAULT.route) {
-                PlaceholderScreen(stringResource(KoshaDestination.VAULT.labelRes))
+                VaultScreen()
             }
             composable(ROUTE_ACCOUNTS) {
                 AccountsScreen(onBack = { navController.popBackStack() })
@@ -162,16 +159,5 @@ fun KoshaAppScaffold() {
                 RecurringScreen(onBack = { navController.popBackStack() })
             }
         }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen(title: String) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(
-            text = title,
-            style = KoshaType.InsightSerif,
-            color = KoshaColors.OffWhiteMuted,
-        )
     }
 }
