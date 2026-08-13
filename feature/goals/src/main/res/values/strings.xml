@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="goals_title">Goals &amp; net worth</string>
+    <string name="goals_section">Sinking funds</string>
+    <string name="goals_empty">No goals yet. An emergency fund is the usual first one.</string>
+    <string name="goals_add">Add goal</string>
+    <string name="goals_name">Goal name</string>
+    <string name="goals_target">Target (₹)</string>
+    <string name="goals_allocated">Set aside (₹)</string>
+    <string name="goals_emergency">Emergency fund</string>
+    <string name="goals_sinking">Sinking fund</string>
+    <string name="goals_save">Save</string>
+    <string name="goals_months_covered">%1$d months of expenses covered</string>
+    <string name="goals_progress">%1$s of %2$s</string>
+
+    <string name="debt_section">Debts</string>
+    <string name="debt_empty">No debts tracked. Add a loan or EMI to compare payoff strategies.</string>
+    <string name="debt_add">Add debt</string>
+    <string name="debt_name">Name (e.g. Car loan)</string>
+    <string name="debt_principal">Outstanding (₹)</string>
+    <string name="debt_rate">Interest rate (%)</string>
+    <string name="debt_emi">Monthly EMI (₹)</string>
+    <string name="debt_tenure">Tenure (months)</string>
+    <string name="debt_avalanche">Avalanche</string>
+    <string name="debt_snowball">Snowball</string>
+    <string name="debt_payoff_months">Debt-free in %1$d months</string>
+    <string name="debt_total_interest">Total interest %1$s</string>
+    <string name="debt_avalanche_saves">Avalanche saves %1$s and %2$d months</string>
+    <string name="debt_same_either_way">Both strategies land in the same place here.</string>
+
+    <string name="networth_section">Net worth</string>
+    <string name="networth_assets">Assets</string>
+    <string name="networth_liabilities">Liabilities</string>
+    <string name="networth_net">Net worth</string>
+    <string name="networth_add_asset">Add asset</string>
+    <string name="networth_add_liability">Add liability</string>
+    <string name="networth_item_name">Name</string>
+    <string name="networth_value">Value (₹)</string>
+    <string name="networth_loan_hint">Has an EMI? Add it as a debt instead — Kosha counts tracked loans automatically so nothing gets entered twice.</string>
+
+    <string name="tax_section">Tax tags (FY %1$s)</string>
+    <string name="tax_empty">No tax-tagged transactions this financial year.</string>
+    <string name="tax_total">%1$s tagged</string>
+</resources>

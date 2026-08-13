@@ -58,6 +58,7 @@ fun HomeScreen(
     onOpenReview: () -> Unit,
     onOpenRecurring: () -> Unit = {},
     onOpenExport: () -> Unit = {},
+    onOpenGoals: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -121,6 +122,10 @@ fun HomeScreen(
             KoshaChip(
                 label = stringResource(R.string.home_recurring),
                 onClick = onOpenRecurring,
+            )
+            KoshaChip(
+                label = stringResource(R.string.home_goals),
+                onClick = onOpenGoals,
             )
             KoshaChip(
                 label = stringResource(R.string.home_export),

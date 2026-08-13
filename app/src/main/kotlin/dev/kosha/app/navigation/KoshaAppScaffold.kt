@@ -32,6 +32,7 @@ import dev.kosha.core.designsystem.token.KoshaType
 import dev.kosha.feature.budget.BudgetScreen
 import dev.kosha.feature.budget.recurring.RecurringScreen
 import dev.kosha.feature.export.ExportScreen
+import dev.kosha.feature.goals.GoalsScreen
 import dev.kosha.feature.income.IncomeScreen
 import dev.kosha.feature.ingest.ocr.ImportScreen
 import dev.kosha.feature.ingest.ocr.ScanScreen
@@ -62,6 +63,7 @@ const val ROUTE_BUDGETS = "budgets"
 const val ROUTE_INCOME = "income"
 const val ROUTE_RECURRING = "recurring"
 const val ROUTE_EXPORT = "export"
+const val ROUTE_GOALS = "goals"
 const val ARG_QUICK_CATEGORY = "quickCategoryId"
 
 @Composable
@@ -124,6 +126,7 @@ fun KoshaAppScaffold(startAction: String? = null) {
                     onOpenIncome = { navController.navigate(ROUTE_INCOME) },
                     onOpenRecurring = { navController.navigate(ROUTE_RECURRING) },
                     onOpenExport = { navController.navigate(ROUTE_EXPORT) },
+                    onOpenGoals = { navController.navigate(ROUTE_GOALS) },
                     onQuickAdd = { categoryId ->
                         navController.navigate("${KoshaDestination.ADD.route}?$ARG_QUICK_CATEGORY=$categoryId")
                     },
@@ -175,6 +178,9 @@ fun KoshaAppScaffold(startAction: String? = null) {
             }
             composable(ROUTE_EXPORT) {
                 ExportScreen(onBack = { navController.popBackStack() })
+            }
+            composable(ROUTE_GOALS) {
+                GoalsScreen(onBack = { navController.popBackStack() })
             }
         }
     }

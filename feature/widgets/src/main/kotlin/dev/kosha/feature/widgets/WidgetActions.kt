@@ -4,7 +4,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.glance.action.Action
-import androidx.glance.action.actionStartActivity
+// The Intent-taking overload lives in the appwidget action package; the base
+// androidx.glance.action one only accepts a ComponentName or Activity class.
+import androidx.glance.appwidget.action.actionStartActivity
 
 /** Deep links used by widgets, the QS tile and app-icon shortcuts (G11). */
 object KoshaDeepLinks {
