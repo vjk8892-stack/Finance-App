@@ -57,6 +57,7 @@ fun HomeScreen(
     onQuickAdd: (categoryId: Long) -> Unit,
     onOpenReview: () -> Unit,
     onOpenRecurring: () -> Unit = {},
+    onOpenExport: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -116,10 +117,16 @@ fun HomeScreen(
         Spacer(Modifier.height(KoshaSpacing.l))
         ForecastStrip(state.forecast)
         Spacer(Modifier.height(KoshaSpacing.s))
-        KoshaChip(
-            label = stringResource(R.string.home_recurring),
-            onClick = onOpenRecurring,
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs)) {
+            KoshaChip(
+                label = stringResource(R.string.home_recurring),
+                onClick = onOpenRecurring,
+            )
+            KoshaChip(
+                label = stringResource(R.string.home_export),
+                onClick = onOpenExport,
+            )
+        }
         Spacer(Modifier.height(KoshaSpacing.xxl))
     }
 }

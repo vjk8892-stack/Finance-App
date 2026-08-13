@@ -21,6 +21,7 @@
     <string name="home_settings">Settings</string>
     <string name="home_scan">Scan a receipt</string>
     <string name="home_recurring">Recurring</string>
+    <string name="home_export">Export</string>
 
     <string name="forecast_title">Next 30 days</string>
     <string name="forecast_early_estimate">Next 30 days · early estimate</string>

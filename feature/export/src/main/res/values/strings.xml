@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="export_title">Export &amp; backup</string>
+    <string name="export_csv">Export CSV</string>
+    <string name="export_csv_sub">Spreadsheet of this period\'s transactions</string>
+    <string name="export_pdf">Export PDF statement</string>
+    <string name="export_pdf_sub">Financial-statement style summary</string>
+    <string name="export_share">Share</string>
+    <string name="export_done">Ready to share</string>
+    <string name="export_failed">Could not create that file</string>
+
+    <string name="backup_title">Encrypted backup</string>
+    <string name="backup_body">One .kosha file, encrypted with a passphrase you choose. Kosha cannot recover it for you.</string>
+    <string name="backup_create">Create backup</string>
+    <string name="backup_restore">Restore from backup</string>
+    <string name="backup_passphrase">Backup passphrase</string>
+    <string name="backup_passphrase_confirm">Repeat passphrase</string>
+    <string name="backup_passphrase_mismatch">Those do not match.</string>
+    <string name="backup_write_it_down">Write this passphrase down somewhere safe. It is not your app lock, and there is no way to reset it — without it the backup cannot be opened.</string>
+    <string name="backup_include_vault">Include vault entries</string>
+    <string name="backup_vault_warning">Vault entries are excluded by default. Including them puts your saved account and card details in the backup file.</string>
+    <string name="backup_success">Backup written</string>
+    <string name="backup_restored">Restored — reopen Kosha to see your data</string>
+    <string name="backup_failed">%1$s</string>
+</resources>
