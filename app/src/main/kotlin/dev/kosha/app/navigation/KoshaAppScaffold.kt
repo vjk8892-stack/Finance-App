@@ -30,6 +30,9 @@ import androidx.navigation.compose.rememberNavController
 import dev.kosha.app.R
 import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaType
+import dev.kosha.feature.ledger.LedgerScreen
+import dev.kosha.feature.ledger.accounts.AccountsScreen
+import dev.kosha.feature.ledger.add.AddScreen
 
 /**
  * Bottom nav per spec C1: Home · Ledger · Add (center, camera-first) ·
@@ -87,14 +90,29 @@ fun KoshaAppScaffold() {
             startDestination = KoshaDestination.HOME.route,
             modifier = Modifier.padding(padding),
         ) {
-            KoshaDestination.entries.forEach { destination ->
-                composable(destination.route) {
-                    PlaceholderScreen(stringResource(destination.labelRes))
-                }
+            composable(KoshaDestination.HOME.route) {
+                PlaceholderScreen(stringResource(KoshaDestination.HOME.labelRes))
+            }
+            composable(KoshaDestination.LEDGER.route) {
+                LedgerScreen(onOpenAccounts = { navController.navigate(ROUTE_ACCOUNTS) })
+            }
+            composable(KoshaDestination.ADD.route) {
+                AddScreen()
+            }
+            composable(KoshaDestination.INSIGHTS.route) {
+                PlaceholderScreen(stringResource(KoshaDestination.INSIGHTS.labelRes))
+            }
+            composable(KoshaDestination.VAULT.route) {
+                PlaceholderScreen(stringResource(KoshaDestination.VAULT.labelRes))
+            }
+            composable(ROUTE_ACCOUNTS) {
+                AccountsScreen(onBack = { navController.popBackStack() })
             }
         }
     }
 }
+
+const val ROUTE_ACCOUNTS = "accounts"
 
 @Composable
 private fun PlaceholderScreen(title: String) {

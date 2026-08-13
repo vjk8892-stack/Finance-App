@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ledger_title">Ledger</string>
+    <string name="ledger_empty">Nothing here yet — add your first entry from the center tab.</string>
+    <string name="ledger_accounts">Accounts</string>
+    <string name="ledger_recategorize">Recategorize</string>
+    <string name="ledger_edit">Edit</string>
+    <string name="ledger_delete">Delete</string>
+    <string name="ledger_delete_confirm">Delete this entry?</string>
+    <string name="ledger_delete_confirm_body">This removes the transaction and its split lines. There is no undo.</string>
+    <string name="ledger_cancel">Cancel</string>
+
+    <string name="add_title">Add</string>
+    <string name="add_tab_scan">Scan</string>
+    <string name="add_tab_manual">Manual</string>
+    <string name="add_tab_import">Import</string>
+    <string name="add_expense">Spent</string>
+    <string name="add_income">Received</string>
+    <string name="add_note_hint">Note (optional)</string>
+    <string name="add_pick_category">Pick a category to save</string>
+    <string name="add_saved">Logged</string>
+    <string name="add_no_account">Create an account first</string>
+    <string name="add_scan_coming">Scan arrives in Phase 4 — camera capture with on-device OCR.</string>
+    <string name="add_import_coming">Import arrives in Phase 4 — gallery screenshots via Photo Picker.</string>
+    <string name="add_mood_impulse">Impulse</string>
+    <string name="add_mood_planned">Planned</string>
+    <string name="add_mood_necessary">Necessary</string>
+
+    <string name="accounts_title">Accounts</string>
+    <string name="accounts_add">Add account</string>
+    <string name="accounts_name">Name</string>
+    <string name="accounts_last4">Last 4 digits (optional)</string>
+    <string name="accounts_opening_balance">Opening balance (₹)</string>
+    <string name="accounts_save">Save</string>
+    <string name="accounts_empty">No accounts yet. Add your bank, cash, cards and wallets.</string>
+    <string name="accounts_type_bank">Bank</string>
+    <string name="accounts_type_cash">Cash</string>
+    <string name="accounts_type_card">Card</string>
+    <string name="accounts_type_wallet">Wallet</string>
+    <string name="accounts_type_mealcard">Meal card</string>
+</resources>

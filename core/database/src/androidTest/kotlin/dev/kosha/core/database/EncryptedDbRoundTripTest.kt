@@ -4,24 +4,28 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import dev.kosha.core.database.model.AccountEntity
+import dev.kosha.core.database.model.AccountType
+import dev.kosha.core.database.seed.CategorySeeder
 import dev.kosha.core.database.security.DbKeyManager
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Phase-0 exit gate: encrypted DB round-trips, and the file on disk is not
- * plaintext SQLite (no "SQLite format 3" magic).
+ * Phase-0/1 exit gates: encrypted DB round-trips; the file on disk is not
+ * plaintext SQLite; category seeding is idempotent and matches spec G2.
  */
 @RunWith(AndroidJUnit4::class)
 class EncryptedDbRoundTripTest {
 
     @Test
-    fun encryptedRoundTrip() = runBlocking {
+    fun encryptedRoundTripAndSeed() = runBlocking {
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
         val dbFile = context.getDatabasePath("test-kosha.db")
         dbFile.parentFile?.mkdirs()
@@ -33,8 +37,17 @@ class EncryptedDbRoundTripTest {
             .openHelperFactory(SupportOpenHelperFactory(passphrase))
             .build()
 
-        db.appMetaDao().put(AppMetaEntity("hello", "kosha"))
-        assertEquals("kosha", db.appMetaDao().get("hello"))
+        // Account round-trip
+        val id = db.accountDao().insert(
+            AccountEntity(name = "HDFC Savings", type = AccountType.BANK, last4 = "1234"),
+        )
+        assertEquals("HDFC Savings", db.accountDao().byId(id)?.name)
+
+        // Seeding: G2 = 16 expense + 3 system-reserved + 5 income = 24; idempotent
+        CategorySeeder.ensureSeeded(db.categoryDao())
+        CategorySeeder.ensureSeeded(db.categoryDao())
+        assertEquals(24, db.categoryDao().count())
+        assertNotNull(db.categoryDao().bySystemKey(dev.kosha.core.database.model.SystemCategoryKey.UNCATEGORIZED))
         db.close()
 
         val header = File(dbFile.absolutePath).inputStream().use { it.readNBytes(16) }

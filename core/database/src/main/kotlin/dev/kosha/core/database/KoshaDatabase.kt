@@ -1,41 +1,75 @@
 package dev.kosha.core.database
 
-import androidx.room.Dao
 import androidx.room.Database
-import androidx.room.Entity
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.PrimaryKey
-import androidx.room.Query
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import dev.kosha.core.database.dao.AccountDao
+import dev.kosha.core.database.dao.CategoryDao
+import dev.kosha.core.database.dao.GoalsDao
+import dev.kosha.core.database.dao.MetaDao
+import dev.kosha.core.database.dao.PlanningDao
+import dev.kosha.core.database.dao.TransactionDao
+import dev.kosha.core.database.dao.VaultDao
+import dev.kosha.core.database.model.AccountEntity
+import dev.kosha.core.database.model.AssetLiabilityEntity
+import dev.kosha.core.database.model.BudgetEntity
+import dev.kosha.core.database.model.CategoryEntity
+import dev.kosha.core.database.model.ConstitutionRuleEntity
+import dev.kosha.core.database.model.Converters
+import dev.kosha.core.database.model.DebtAccountEntity
+import dev.kosha.core.database.model.FinancialGoalEntity
+import dev.kosha.core.database.model.IncomeSourceEntity
+import dev.kosha.core.database.model.OcrTemplateEntity
+import dev.kosha.core.database.model.PeriodSummaryEntity
+import dev.kosha.core.database.model.RecurringRuleEntity
+import dev.kosha.core.database.model.RuleViolationEntity
+import dev.kosha.core.database.model.SavedQueryEntity
+import dev.kosha.core.database.model.SmsPatternEntity
+import dev.kosha.core.database.model.TransactionEntity
+import dev.kosha.core.database.model.TransactionEvidenceEntity
+import dev.kosha.core.database.model.TransferEntity
+import dev.kosha.core.database.model.VaultEntryEntity
+import dev.kosha.core.database.model.WarrantyItemEntity
 
 /**
- * Phase-0 wiring proof: a single key-value entity behind the encrypted DB.
- * The full B5 schema replaces this in Phase 1. Destructive migration is
- * allowed only until Phase 2 (spec B5 migration policy).
+ * Full B5 schema, shipped complete in Phase 1 to avoid migration churn.
+ * Migration policy (spec B5): destructive migrations FORBIDDEN after
+ * Phase 2 — every later schema change ships a tested Migration.
  */
-@Entity(tableName = "app_meta")
-data class AppMetaEntity(
-    @PrimaryKey val key: String,
-    val value: String,
-)
-
-@Dao
-interface AppMetaDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun put(entry: AppMetaEntity)
-
-    @Query("SELECT value FROM app_meta WHERE `key` = :key")
-    suspend fun get(key: String): String?
-}
-
 @Database(
-    entities = [AppMetaEntity::class],
+    entities = [
+        AccountEntity::class,
+        TransferEntity::class,
+        CategoryEntity::class,
+        TransactionEntity::class,
+        TransactionEvidenceEntity::class,
+        SmsPatternEntity::class,
+        OcrTemplateEntity::class,
+        RecurringRuleEntity::class,
+        BudgetEntity::class,
+        IncomeSourceEntity::class,
+        PeriodSummaryEntity::class,
+        FinancialGoalEntity::class,
+        DebtAccountEntity::class,
+        AssetLiabilityEntity::class,
+        VaultEntryEntity::class,
+        ConstitutionRuleEntity::class,
+        RuleViolationEntity::class,
+        WarrantyItemEntity::class,
+        SavedQueryEntity::class,
+    ],
     version = 1,
     exportSchema = true,
 )
+@TypeConverters(Converters::class)
 abstract class KoshaDatabase : RoomDatabase() {
-    abstract fun appMetaDao(): AppMetaDao
+    abstract fun accountDao(): AccountDao
+    abstract fun categoryDao(): CategoryDao
+    abstract fun transactionDao(): TransactionDao
+    abstract fun planningDao(): PlanningDao
+    abstract fun goalsDao(): GoalsDao
+    abstract fun metaDao(): MetaDao
+    abstract fun vaultDao(): VaultDao
 
     companion object {
         const val NAME = "kosha.db"

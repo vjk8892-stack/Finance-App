@@ -36,4 +36,12 @@ object DatabaseModule {
             .fallbackToDestructiveMigration()
             .build()
     }
+
+    @Provides fun provideAccountDao(db: KoshaDatabase) = db.accountDao()
+    @Provides fun provideCategoryDao(db: KoshaDatabase) = db.categoryDao()
+    @Provides fun provideTransactionDao(db: KoshaDatabase) = db.transactionDao()
+    @Provides fun providePlanningDao(db: KoshaDatabase) = db.planningDao()
+    @Provides fun provideGoalsDao(db: KoshaDatabase) = db.goalsDao()
+    @Provides fun provideMetaDao(db: KoshaDatabase) = db.metaDao()
+    @Provides fun provideVaultDao(db: KoshaDatabase) = db.vaultDao()
 }
