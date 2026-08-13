@@ -56,6 +56,7 @@ fun HomeScreen(
     onOpenIncome: () -> Unit,
     onQuickAdd: (categoryId: Long) -> Unit,
     onOpenReview: () -> Unit,
+    onOpenRecurring: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -112,6 +113,13 @@ fun HomeScreen(
         QuickAddRow(state, onQuickAdd)
         Spacer(Modifier.height(KoshaSpacing.l))
         BudgetRings(state, onOpenBudgets)
+        Spacer(Modifier.height(KoshaSpacing.l))
+        ForecastStrip(state.forecast)
+        Spacer(Modifier.height(KoshaSpacing.s))
+        KoshaChip(
+            label = stringResource(R.string.home_recurring),
+            onClick = onOpenRecurring,
+        )
         Spacer(Modifier.height(KoshaSpacing.xxl))
     }
 }

@@ -4,6 +4,7 @@ import android.net.Uri
 import dev.kosha.core.common.Money
 import dev.kosha.core.database.model.TxnSource
 import dev.kosha.core.database.repo.PipelineCommitter
+import dev.kosha.core.database.repo.RecurringRepository
 import dev.kosha.core.engine.ocr.OcrExtractor
 import dev.kosha.core.engine.pipeline.IngestionPipeline
 import dev.kosha.core.engine.pipeline.ParsedTransaction
@@ -20,6 +21,7 @@ import javax.inject.Singleton
 class IngestPhotoUseCase @Inject constructor(
     private val recognizer: OcrTextRecognizer,
     private val committer: PipelineCommitter,
+    private val recurringRepository: RecurringRepository,
 ) {
     private val extractor = OcrExtractor()
     private val pipeline = IngestionPipeline()
@@ -93,6 +95,7 @@ class IngestPhotoUseCase @Inject constructor(
             txn = txn,
             candidateAccountId = null,
             existing = existing,
+            expectedRecurring = recurringRepository.expectedRecurringWindows(),
         )
         return committer.commit(
             outcome = outcome,

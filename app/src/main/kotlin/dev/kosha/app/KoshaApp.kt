@@ -8,6 +8,7 @@ import dev.kosha.core.database.repo.CategoryRepository
 import dev.kosha.core.database.repo.PeriodRepository
 import dev.kosha.core.database.settings.SettingsRepository
 import dev.kosha.feature.budget.BudgetAlertWorker
+import dev.kosha.feature.budget.recurring.RecurringWorker
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,5 +39,6 @@ class KoshaApp : Application(), Configuration.Provider {
             periodRepository.closeElapsedPeriods(anchorDay)
         }
         BudgetAlertWorker.schedule(this)
+        RecurringWorker.schedule(this)
     }
 }

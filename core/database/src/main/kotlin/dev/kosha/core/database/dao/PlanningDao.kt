@@ -69,4 +69,13 @@ interface PlanningDao {
 
     @Query("SELECT * FROM recurring_rules WHERE isActive = 1 AND nextDueDateMillis <= :byMillis")
     suspend fun rulesDueBy(byMillis: Long): List<RecurringRuleEntity>
+
+    @Query("SELECT * FROM recurring_rules WHERE isActive = 1 ORDER BY nextDueDateMillis")
+    suspend fun activeRecurringRules(): List<RecurringRuleEntity>
+
+    @Query("UPDATE recurring_rules SET isActive = 0 WHERE id = :id")
+    suspend fun deactivateRecurringRule(id: Long)
+
+    @Query("UPDATE recurring_rules SET nextDueDateMillis = :nextDueMillis WHERE id = :id")
+    suspend fun setNextDue(id: Long, nextDueMillis: Long)
 }

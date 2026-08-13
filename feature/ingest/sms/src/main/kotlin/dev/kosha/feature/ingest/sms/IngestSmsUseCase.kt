@@ -3,6 +3,7 @@ package dev.kosha.feature.ingest.sms
 import android.util.Log
 import dev.kosha.core.database.model.TxnSource
 import dev.kosha.core.database.repo.PipelineCommitter
+import dev.kosha.core.database.repo.RecurringRepository
 import dev.kosha.core.engine.pipeline.IngestionPipeline
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -15,6 +16,7 @@ import javax.inject.Singleton
 @Singleton
 class IngestSmsUseCase @Inject constructor(
     private val committer: PipelineCommitter,
+    private val recurringRepository: RecurringRepository,
 ) {
     private val pipeline = IngestionPipeline()
 
@@ -26,6 +28,9 @@ class IngestSmsUseCase @Inject constructor(
             receivedAtMillis = receivedAtMillis,
             candidateAccountId = null,
             existing = existing,
+            // A detected EMI/bill inside a rule's due window links to the
+            // rule instead of double-counting (spec B3 rule 3).
+            expectedRecurring = recurringRepository.expectedRecurringWindows(),
         )
         val result = committer.commit(
             outcome = outcome,

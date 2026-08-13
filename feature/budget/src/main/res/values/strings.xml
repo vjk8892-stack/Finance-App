@@ -16,4 +16,29 @@
     <string name="budget_alert_title">%1$s is at %2$d%%</string>
     <string name="budget_alert_body_days">%1$d days left in this period</string>
     <string name="budget_alert_body_today">Last day of this period</string>
+
+    <string name="recurring_channel_name">Bills &amp; reminders</string>
+    <string name="recurring_channel_desc">Quiet reminders for recurring bills and card dues</string>
+    <string name="recurring_due_title">%1$s is coming up</string>
+    <string name="recurring_due_title_amount">%1$s · %2$s is coming up</string>
+    <string name="recurring_card_due_title">%1$s bill is due</string>
+    <string name="recurring_due_days">In %1$d days</string>
+    <string name="recurring_due_today">Due today</string>
+
+    <string name="recurring_title">Recurring</string>
+    <string name="recurring_empty">No recurring rules yet. Add bills, EMIs and subscriptions so they show up in your forecast.</string>
+    <string name="recurring_add">Add recurring</string>
+    <string name="recurring_label">Name (e.g. Rent, Netflix)</string>
+    <string name="recurring_amount">Amount (₹)</string>
+    <string name="recurring_auto_log">Log automatically</string>
+    <string name="recurring_remind">Just remind me</string>
+    <string name="recurring_card_due">Credit-card bill</string>
+    <string name="recurring_freq_monthly">Monthly</string>
+    <string name="recurring_freq_weekly">Weekly</string>
+    <string name="recurring_freq_quarterly">Quarterly</string>
+    <string name="recurring_freq_yearly">Yearly</string>
+    <string name="recurring_next_due">Next due in %1$d days</string>
+    <string name="recurring_due_now">Due today</string>
+    <string name="recurring_save">Save</string>
+    <string name="recurring_remove">Remove</string>
 </resources>

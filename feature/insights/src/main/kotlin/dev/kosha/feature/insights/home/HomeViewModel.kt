@@ -10,8 +10,10 @@ import dev.kosha.core.database.dao.TransactionDao
 import dev.kosha.core.database.model.CategoryEntity
 import dev.kosha.core.database.model.CategoryType
 import dev.kosha.core.database.repo.CategoryRepository
+import dev.kosha.core.database.repo.ForecastRepository
 import dev.kosha.core.database.repo.PeriodRepository
 import dev.kosha.core.database.settings.SettingsRepository
+import dev.kosha.core.engine.forecast.ForecastEngine
 import dev.kosha.core.engine.period.BudgetMath
 import dev.kosha.core.engine.period.PeriodMath
 import javax.inject.Inject
@@ -40,6 +42,7 @@ data class HomeUiState(
     val budgetRings: List<HomeBudgetRing> = emptyList(),
     /** Most-used categories for the quick-add row (spec C2.3). */
     val quickCategories: List<CategoryEntity> = emptyList(),
+    val forecast: ForecastEngine.Forecast? = null,
 ) {
     /**
      * Pulse ring fill: savings gap as a fraction of income. Negative gap
@@ -56,6 +59,7 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val periodRepository: PeriodRepository,
+    private val forecastRepository: ForecastRepository,
     private val planningDao: PlanningDao,
     transactionDao: TransactionDao,
     categoryRepository: CategoryRepository,
@@ -105,6 +109,7 @@ class HomeViewModel @Inject constructor(
             oldestReviewAgeDays = oldestAgeDays,
             budgetRings = rings,
             quickCategories = quick,
+            forecast = runCatching { forecastRepository.forecast() }.getOrNull(),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 }
