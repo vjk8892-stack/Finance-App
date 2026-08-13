@@ -39,6 +39,7 @@ import dev.kosha.feature.ingest.ocr.ImportScreen
 import dev.kosha.feature.ingest.ocr.ScanScreen
 import dev.kosha.feature.ingest.review.ReviewQueueScreen
 import dev.kosha.feature.insights.home.HomeScreen
+import dev.kosha.feature.insights.hub.InsightsScreen
 import dev.kosha.feature.ledger.LedgerScreen
 import dev.kosha.feature.ledger.accounts.AccountsScreen
 import dev.kosha.feature.ledger.add.AddScreen
@@ -140,7 +141,7 @@ fun KoshaAppScaffold() {
                 )
             }
             composable(KoshaDestination.INSIGHTS.route) {
-                PlaceholderScreen(stringResource(KoshaDestination.INSIGHTS.labelRes))
+                InsightsScreen()
             }
             composable(KoshaDestination.VAULT.route) {
                 PlaceholderScreen(stringResource(KoshaDestination.VAULT.labelRes))

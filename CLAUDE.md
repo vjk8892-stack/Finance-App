@@ -3,7 +3,10 @@
 **Spec:** `docs/koshabuildspec.md` (v1.2) is the single source of truth for
 product, design, and phasing. `DECISIONS.md` is the append-only decision log.
 
-**Current phase:** Phase 0 complete → working through Phase 1+.
+**Current phase:** Phases 0–5 shipped (app is a complete offline tracker:
+manual + SMS + photo capture, budgets, income, period close, forecast).
+Phase 7/9 analytics engines are built and tested; their Insights/Goals UI is
+in progress. Phases 6, 8, 10–12 remain.
 
 ## Stack
 Kotlin · Jetpack Compose + Material 3 (custom "Kosha DS") · Room + SQLCipher ·

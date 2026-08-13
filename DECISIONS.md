@@ -41,6 +41,23 @@ Format: date · decision · alternatives · why.
   for live capture and exactly what the inbox stores for imports; per-bank
   date parsing is a large error surface for ~no dedup gain (the ±10 min
   window keys on receipt time on both sides).
+- **2026-08-13 · OCR prefers the bank UTR over a UPI app's own transaction
+  id** · first reference wins · Only the bank reference also appears in the
+  bank's SMS, so it is the sole key that makes photo↔SMS dedup provable.
+  Caught by the Phase-4 dedup test, which merged on the weaker
+  amount/time/merchant rule until this was fixed.
+- **2026-08-13 · Gallery imports score lower on TIMESTAMP than live camera
+  captures** · treat all photos alike · A screenshot picked from the gallery
+  can be months old, so capture time is not transaction time; imports land in
+  review instead of auto-committing with a wrong date.
+- **2026-08-13 · `SettingsRepository` lives in `:core:database`, not `:app`**
+  · an interface indirection per feature · Features need the period anchor
+  directly; one shared DataStore beats a provider interface per module.
+- **2026-08-13 · Room Gradle plugin instead of a bare `room.schemaLocation`
+  KSP arg** · keep the KSP arg · The bare arg leaves the schema directory
+  untracked by Gradle, so the build cache restored a truncated schema JSON
+  and failed KSP in CI. Exported schemas are non-negotiable (B5 migration
+  tests), so the plugin is the fix.
 - **2026-08-13 · Baseline budgets (Phase 0 gate): APK size measured by CI
   artifact on every build; cold-start + SMS-receiver-under-doze + OCR spikes
   REQUIRE physical devices and cannot run in the cloud sandbox** — flagged as

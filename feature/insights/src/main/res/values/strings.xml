@@ -25,4 +25,33 @@
     <string name="forecast_title">Next 30 days</string>
     <string name="forecast_early_estimate">Next 30 days · early estimate</string>
     <string name="forecast_dips_negative">Projected to run low before your next income.</string>
+
+    <string name="insights_title">Insights</string>
+    <string name="insights_loading">Gathering your numbers…</string>
+    <string name="insights_flow">Flow</string>
+    <string name="insights_flow_sub">Where income goes</string>
+    <string name="insights_rhythm">Rhythm</string>
+    <string name="insights_rhythm_sub">Daily spending intensity</string>
+    <string name="insights_shape">Shape</string>
+    <string name="insights_shape_sub">Category mix and your spending fingerprint</string>
+    <string name="insights_trajectory">Trajectory</string>
+    <string name="insights_trajectory_sub">Twelve months of income, spending and gap</string>
+    <string name="insights_health">Health</string>
+    <string name="insights_health_collecting">Collecting data — a score appears after two closed periods.</string>
+    <string name="insights_health_active">%1$d components measured so far</string>
+    <string name="insights_advisor">Advisor</string>
+    <string name="insights_advisor_months">At this rate your emergency fund is fully funded in %1$d months.</string>
+    <string name="insights_advisor_boundary">Kosha suggests amounts only — never products or instruments.</string>
+    <string name="insights_leaks">Leaks &amp; anomalies</string>
+    <string name="insights_leaks_none">Nothing unusual, and no leaks worth naming.</string>
+    <string name="insights_leak_detail">%1$d times, about %2$s each</string>
+    <string name="insights_anomaly">Bigger than usual</string>
+    <string name="insights_whatif">What-if</string>
+    <string name="insights_whatif_cut">Cut %1$d%%</string>
+    <string name="insights_whatif_annual">Over a year that is</string>
+    <string name="insights_opportunity">Opportunity cost</string>
+    <string name="insights_opportunity_sub">Your own benchmark rate, applied to what you spent</string>
+    <string name="insights_opportunity_rate">Your assumed rate: %1$d%% a year</string>
+    <string name="insights_opportunity_would_be">Would be worth</string>
+    <string name="insights_opportunity_hypothetical">Hypothetical, based entirely on the rate you set.</string>
 </resources>
