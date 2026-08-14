@@ -98,6 +98,24 @@ fun ReviewQueueScreen(
     }
 }
 
+/**
+ * "Parsed with low confidence" for everything tells the reader nothing about
+ * what to check. The committer records WHY a row is waiting, so say it.
+ */
+@Composable
+private fun reviewReasonText(reason: String?, isPossibleDuplicate: Boolean): String = when {
+    isPossibleDuplicate -> stringResource(R.string.review_duplicate_hint)
+    reason == null -> stringResource(R.string.review_reason_low_confidence)
+    reason.startsWith(NEW_ACCOUNT_PREFIX) ->
+        stringResource(R.string.review_reason_new_account, reason.removePrefix(NEW_ACCOUNT_PREFIX))
+    reason == ACCOUNT_UNKNOWN -> stringResource(R.string.review_reason_account_unknown)
+    else -> stringResource(R.string.review_reason_low_confidence)
+}
+
+/** Kept in step with PipelineCommitter's attribution reasons. */
+private const val NEW_ACCOUNT_PREFIX = "new-account-"
+private const val ACCOUNT_UNKNOWN = "account-unknown"
+
 @Composable
 private fun ReviewCard(
     row: LedgerRow,
@@ -136,11 +154,7 @@ private fun ReviewCard(
 
         Spacer(Modifier.height(KoshaSpacing.xs))
         Text(
-            text = if (isPossibleDuplicate) {
-                stringResource(R.string.review_duplicate_hint)
-            } else {
-                stringResource(R.string.review_reason_low_confidence)
-            },
+            text = reviewReasonText(row.txn.reviewReason, isPossibleDuplicate),
             style = KoshaType.Caption,
             color = KoshaColors.Amber,
         )

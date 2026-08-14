@@ -70,10 +70,12 @@ class PipelineTest {
     }
 
     @Test
-    fun `non-bank sender is ignored, otp is discarded`() {
+    fun `personal sender is ignored, otp is discarded`() {
+        // The privacy gate is sender SHAPE, not a bank allowlist: a numeric
+        // sender is a person and is never read. An unlisted bank header is.
         assertEquals(
             Outcome.Ignore,
-            pipeline.processSms("TX-CLOTHY", "Rs.500 debited Ref 99887766", t0, null, emptyList()),
+            pipeline.processSms("+919812345678", "Rs.500 debited Ref 99887766", t0, null, emptyList()),
         )
         val otp = pipeline.processSms(
             "VM-HDFCBK",

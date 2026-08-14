@@ -21,13 +21,23 @@ connected device.
 
 Two weeks of live self-testing: zero duplicate commits, zero OTP/promo
 false-positives, unrecognized formats landing in review rather than being
-dropped. The parser corpus covers this logically (`SmsParserTest`,
-`DedupEngineTest`), but only real inbox traffic proves the sender allowlist and
-the pattern library against your banks.
+dropped. The corpus covers this logically (`TransactionClassifierTest`,
+`SmsParserTest`, `RealWorldSmsTest`, `DedupEngineTest`), but only real inbox
+traffic proves the sender gate and the extractors against your banks.
 
-If a bank's format is missed, it is a **data** change, not a code change: add a
-pattern to `engines/engine/src/main/resources/kosha/patterns/sms-patterns-v1.json`
-and a case to `SmsParserTest`.
+Detection is bank-agnostic: a message is a transaction because it has an
+amount and a direction verb, not because someone wrote a regex for that bank.
+So a missed message is a **classifier** gap — add the case to
+`TransactionClassifierTest` and widen the verb or extractor patterns. Adding a
+curated pattern to
+`engines/engine/src/main/resources/kosha/patterns/sms-patterns-v1.json` is
+still worth doing for a bank you use often: it raises confidence and names the
+bank, but it is no longer what makes capture work.
+
+Multi-account attribution is pinned by `MultiAccountAttributionTest`
+(`:core:database` androidTest, needs a device): an SMS account tail that
+matches nothing must create its own account and wait for review, never land on
+the account you did add.
 
 ## Phase 4 — OCR accuracy
 

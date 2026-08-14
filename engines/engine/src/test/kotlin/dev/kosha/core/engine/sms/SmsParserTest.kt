@@ -140,9 +140,29 @@ class SmsParserTest {
     }
 
     @Test
-    fun `non-bank sender is ignored - allowlist first`() {
-        val result = parser.parse("TX-CLOTHY", "Rs.500 debited from a/c x1234 Ref 99887766", t0)
-        assertTrue(result is SmsParser.Result.NotBankSender)
+    fun `personal senders are ignored - the privacy gate is on sender shape`() {
+        // A person texts from a phone number. Nothing numeric is ever read,
+        // which is what spec B4 is actually protecting; the old fixed bank
+        // allowlist enforced that by accident and made every unlisted bank
+        // invisible along with it.
+        listOf("+919812345678", "9812345678", "121", "+1-555-0100").forEach { sender ->
+            val result = parser.parse(sender, "Rs.500 debited from a/c x1234 Ref 99887766", t0)
+            assertTrue("personal sender was parsed: $sender → $result", result is SmsParser.Result.NotBankSender)
+        }
+    }
+
+    @Test
+    fun `a bank nobody wrote a pattern for is still read`() {
+        val p = parsed(
+            "VM-UCOBNK",
+            "Your UCO Bank A/C XX7788 is debited by Rs.1,250.00 on 04-08-26 " +
+                "towards SHOPPERS STOP. Ref No 601122334455.",
+        )
+        assertEquals(Money(125_000), p.txn.amount)
+        assertEquals(TxnType.DEBIT, p.txn.type)
+        assertEquals("7788", p.txn.accountLast4)
+        assertEquals("601122334455", p.txn.reference)
+        assertEquals("no pattern should have claimed this", null, p.patternId)
     }
 
     @Test
@@ -170,7 +190,9 @@ class SmsParserTest {
     }
 
     @Test
-    fun `unknown bank format with money verb lands in review not dropped`() {
+    fun `a message with no account tail lands in review, never silently attributed`() {
+        // With several banks in play and only one account added, "which
+        // account?" is a question for the human, not a default.
         val result = parser.parse(
             "VM-FEDBNK",
             "Alert: an amount of Rs 750.00 has been debited towards AUTOPAY MUTUALFUND from your account.",
@@ -179,10 +201,24 @@ class SmsParserTest {
         assertTrue(result is SmsParser.Result.Parsed)
         val p = result as SmsParser.Result.Parsed
         assertNotNull(p.txn.amount)
+        assertEquals(null, p.txn.accountLast4)
         val score = ConfidenceScorer.score(p.txn)
         assertTrue(
-            "unknown format should be review-bound, score=$score",
+            "missing account should be review-bound, score=$score",
             score < ConfidenceThresholds.AUTO_COMMIT && score >= ConfidenceThresholds.REVIEW,
+        )
+    }
+
+    @Test
+    fun `an ambiguous direction verb is reviewed rather than guessed`() {
+        val p = parsed(
+            "VM-UCOBNK",
+            "Rs.3,000.00 transferred, A/C XX4455, Ref 700011223344 on 04-08-26.",
+        )
+        val score = ConfidenceScorer.score(p.txn)
+        assertTrue(
+            "a bare 'transferred' should not auto-commit, score=$score",
+            score < ConfidenceThresholds.AUTO_COMMIT,
         )
     }
 }

@@ -1,0 +1,285 @@
+package dev.kosha.core.engine.sms
+
+import dev.kosha.core.common.Money
+import dev.kosha.core.engine.pipeline.TxnType
+
+/**
+ * Bank-agnostic transaction detection.
+ *
+ * The original design keyed everything off per-bank regexes, which meant any
+ * bank not in the library was invisible — fatal when someone holds accounts
+ * at several banks. A transaction alert has the same skeleton everywhere:
+ *
+ *     <amount> + <direction verb> + optionally <account tail>, <counterparty>, <reference>
+ *
+ * so that skeleton is what we detect. The bank pattern library still runs
+ * first as a precision layer, but it is an optimisation, not the mechanism.
+ */
+object TransactionClassifier {
+
+    /** Why a message is not a transaction. Surfaced in the debug log. */
+    enum class Rejection {
+        NOT_BANK_SENDER,
+        OTP,
+        PROMOTIONAL,
+        BALANCE_ONLY,
+        FUTURE_OR_REQUEST,
+        FAILED_TRANSACTION,
+        NO_AMOUNT,
+        NO_DIRECTION,
+    }
+
+    data class Extraction(
+        val amount: Money,
+        val direction: TxnType,
+        val accountLast4: String?,
+        val merchant: String?,
+        val reference: String?,
+        val isAtmWithdrawal: Boolean,
+        /**
+         * True when a one-way verb ("debited", "credited") fixed the
+         * direction; false when it was inferred from a two-way verb
+         * ("transferred") and therefore deserves a human look.
+         */
+        val directionExplicit: Boolean,
+    )
+
+    sealed interface Outcome {
+        data class Transaction(val extraction: Extraction) : Outcome
+        data class NotTransaction(val reason: Rejection) : Outcome
+    }
+
+    /**
+     * Bank senders are alphanumeric DLT headers ("VM-HDFCBK", "AD-ICICIB").
+     * A person texts from a NUMBER. Filtering on that shape keeps the spec-B4
+     * privacy promise — personal messages are never parsed — while working
+     * for banks that are not in the pattern library, which a fixed allowlist
+     * cannot do.
+     */
+    fun isPlausibleBankSender(sender: String): Boolean {
+        val cleaned = sender.trim().uppercase().replace("-", "")
+        if (cleaned.isEmpty()) return false
+        // +919812345678, 9812345678, 121 (telco) → not a bank alert header.
+        val digitsOnly = cleaned.removePrefix("+").all { it.isDigit() }
+        if (digitsOnly) return false
+        return cleaned.any { it.isLetter() }
+    }
+
+    fun classify(rawBody: String, sender: String): Outcome {
+        if (!isPlausibleBankSender(sender)) {
+            return Outcome.NotTransaction(Rejection.NOT_BANK_SENDER)
+        }
+        return classifyBody(rawBody)
+    }
+
+    /**
+     * Everything after the sender gate. Split out so a caller that has its
+     * own reason to trust the sender — a code in the pattern library, say —
+     * does not have to satisfy the generic header heuristic as well.
+     */
+    fun classifyBody(rawBody: String): Outcome {
+        val text = normalize(rawBody)
+
+        // Order matters: each check below can appear alongside real
+        // transaction words, so the most decisive disqualifiers come first.
+        if (OTP.containsMatchIn(text)) return Outcome.NotTransaction(Rejection.OTP)
+        if (FAILED.containsMatchIn(text)) return Outcome.NotTransaction(Rejection.FAILED_TRANSACTION)
+        if (FUTURE_OR_REQUEST.containsMatchIn(text)) {
+            return Outcome.NotTransaction(Rejection.FUTURE_OR_REQUEST)
+        }
+
+        val direction = detectDirection(text)
+            ?: return Outcome.NotTransaction(
+                // A balance alert has no movement verb at all.
+                if (BALANCE_WORDS.containsMatchIn(text)) Rejection.BALANCE_ONLY else Rejection.NO_DIRECTION,
+            )
+
+        if (PROMOTIONAL.containsMatchIn(text)) {
+            return Outcome.NotTransaction(Rejection.PROMOTIONAL)
+        }
+
+        val amount = extractAmount(text)
+            ?: return Outcome.NotTransaction(Rejection.NO_AMOUNT)
+
+        return Outcome.Transaction(
+            Extraction(
+                amount = amount,
+                direction = direction.type,
+                accountLast4 = extractLast4(text),
+                merchant = extractMerchant(text),
+                reference = extractReference(text),
+                isAtmWithdrawal = ATM.containsMatchIn(text),
+                directionExplicit = direction.explicit,
+            ),
+        )
+    }
+
+    /** Collapses the line breaks banks use so one-line patterns can match. */
+    fun normalize(rawBody: String): String = rawBody.replace(WHITESPACE, " ").trim()
+
+    data class Direction(val type: TxnType, val explicit: Boolean)
+
+    /**
+     * Direction from the verb, never from the presence of a balance line —
+     * plenty of alerts carry no balance at all. Where a verb is directional
+     * only in context ("transferred to" vs "transferred from") the
+     * preposition decides, and the result is flagged inexplicit so the
+     * pipeline sends it to review rather than guessing silently.
+     */
+    fun detectDirection(text: String): Direction? {
+        val creditHit = CREDIT_VERBS.find(text)
+        val debitHit = DEBIT_VERBS.find(text)
+
+        return when {
+            creditHit != null && debitHit != null ->
+                // Both appear ("credited to payee, debited from your a/c"):
+                // the earlier verb describes this account's movement.
+                if (debitHit.range.first <= creditHit.range.first) {
+                    Direction(TxnType.DEBIT, explicit = true)
+                } else {
+                    Direction(TxnType.CREDIT, explicit = true)
+                }
+            creditHit != null -> Direction(TxnType.CREDIT, explicit = true)
+            debitHit != null -> Direction(TxnType.DEBIT, explicit = true)
+            else -> AMBIGUOUS_VERBS.find(text)?.let {
+                // "transferred from X to your a/c" is money in; a bare
+                // "transferred" is money out, which is the common case.
+                val credit = TRANSFER_INBOUND.containsMatchIn(text)
+                Direction(if (credit) TxnType.CREDIT else TxnType.DEBIT, explicit = false)
+            }
+        }
+    }
+
+    /**
+     * The amount that MOVED, which is not always the first figure in the
+     * message — "Avl Bal Rs.9,999 after a debit of Rs.500" leads with the
+     * balance. So skip any figure introduced by balance wording and take the
+     * first of what remains.
+     *
+     * Plenty of banks omit the currency marker entirely ("A/C X9876 debited
+     * by 120.0"), so a figure sitting right against the direction verb counts
+     * as well. That tier is deliberately second: requiring verb adjacency is
+     * what keeps a helpline number from being read as a spend.
+     */
+    fun extractAmount(text: String): Money? {
+        val marked = AMOUNT.findAll(text).toList()
+        if (marked.isNotEmpty()) {
+            val movement = marked.firstOrNull { match ->
+                val from = (match.range.first - BALANCE_LOOKBEHIND).coerceAtLeast(0)
+                !BALANCE_WORDS.containsMatchIn(text.substring(from, match.range.first))
+            }
+            val chosen = movement ?: marked.first()
+            val figure = chosen.groups["amount"]?.value ?: chosen.groups["amount2"]?.value
+            if (figure != null) return Money.parseOrNull(figure)
+        }
+        return VERB_ADJACENT_AMOUNT.find(text)
+            ?.groups?.get("amount")?.value
+            ?.let { Money.parseOrNull(it) }
+    }
+
+    fun extractLast4(text: String): String? =
+        ACCOUNT_PATTERNS.firstNotNullOfOrNull { it.find(text)?.groups?.get("last4")?.value }
+
+    fun extractReference(text: String): String? =
+        REFERENCE_PATTERNS.firstNotNullOfOrNull { pattern ->
+            pattern.find(text)?.groups?.get("ref")?.value?.takeIf { it.isNotBlank() }
+        }
+
+    fun extractMerchant(text: String): String? {
+        for (pattern in MERCHANT_PATTERNS) {
+            val candidate = pattern.find(text)?.groups?.get("merchant")?.value
+                ?.trim()
+                ?.trim('.', ',', ';', '-', ':')
+                ?.takeIf { it.isNotBlank() && it.length in 2..60 }
+                ?: continue
+            if (candidate.all { it.isDigit() }) continue
+            if (DATE_LIKE.containsMatchIn(candidate)) continue
+            if (NOISE_CAPTURE.matches(candidate)) continue
+            return candidate
+        }
+        return null
+    }
+
+    private val WHITESPACE = Regex("\\s+")
+
+    private val OTP = Regex(
+        "(?i)\\b(OTP|one[- ]time\\s*password|verification code|do not share this|" +
+            "secure code|login code)\\b",
+    )
+    private val FAILED = Regex(
+        "(?i)\\b(failed|declined|unsuccessful|could not be processed|reversed and credited)\\b",
+    )
+    /** Scheduled or requested money has not moved yet. */
+    private val FUTURE_OR_REQUEST = Regex(
+        "(?i)\\b(will be debited|will be deducted|is due|due on|due date|payment request|" +
+            "collect request|requesting|has requested|autopay.{0,20}scheduled|" +
+            "e-?mandate|statement is ready|bill generated)\\b",
+    )
+    private val PROMOTIONAL = Regex(
+        "(?i)\\b(cashback offer|apply now|pre-?approved|loan offer|limited period|" +
+            "click here|t&c apply|congratulations|win |voucher)\\b",
+    )
+    private val BALANCE_WORDS = Regex(
+        "(?i)\\b(avl bal|available balance|avg bal|min bal|closing balance|balance in)\\b",
+    )
+
+    // Closed at both ends: an unterminated "cashback of" happily matched
+    // "cashback offer" and turned a promo into a credit.
+    private val DEBIT_VERBS = Regex(
+        "(?i)\\b(?:debited|spent|withdrawn|paid to|payment of|purchase of|deducted|" +
+            "debit of|sent|w/d|dr)\\b",
+    )
+    private val CREDIT_VERBS = Regex(
+        "(?i)\\b(?:credited|received|deposited|refund(?:ed|s)?|cashback of|" +
+            "credit of|added to|cr)\\b",
+    )
+    private val AMBIGUOUS_VERBS = Regex("(?i)\\b(transferred|transfer of|txn of)\\b")
+    private val TRANSFER_INBOUND = Regex(
+        "(?i)\\bto\\s+(?:your|ur)\\s+(?:a/c|ac|acct|account|card)\\b|\\btransferred\\s+to\\s+you\\b",
+    )
+
+    private val ATM = Regex("(?i)\\b(atm|cash withdrawal|w/d)\\b")
+    private val DATE_LIKE = Regex("\\d{1,2}[-/][A-Za-z0-9]{2,4}[-/]\\d{2,4}|\\d{2}[-/]\\d{2}")
+    private val NOISE_CAPTURE = Regex("(?i)(your|the|a|an|account|a/c|bank|upi|vpa|card)")
+
+    /** How far back to look for balance wording introducing a figure. */
+    private const val BALANCE_LOOKBEHIND = 24
+
+    private val AMOUNT = Regex(
+        "(?i)(?:Rs\\.?|INR|₹)\\s*(?<amount>[\\d,]+(?:\\.\\d{1,2})?)|" +
+            "(?<amount2>[\\d,]+\\.\\d{2})\\s*(?:Rs\\.?|INR|₹)",
+    )
+
+    /** Unmarked figure hanging off the verb: "debited by 120.0", "credit of 500". */
+    private val VERB_ADJACENT_AMOUNT = Regex(
+        "(?i)\\b(?:debited|credited|withdrawn|spent|sent|received|deposited|paid|" +
+            "deducted|transferred|debit|credit)\\s*(?:by|for|of|with|amount)?\\s*" +
+            "(?<amount>\\d[\\d,]*(?:\\.\\d{1,2})?)\\b",
+    )
+
+    private val ACCOUNT_PATTERNS = listOf(
+        Regex("(?i)(?:a/c|ac|acct|account|card)\\s*(?:no\\.?|number)?\\s*[Xx*]{0,8}\\s*(?<last4>\\d{3,4})\\b"),
+        Regex("(?i)[Xx*]{2,}\\s*(?<last4>\\d{3,4})\\b"),
+    )
+
+    private val MERCHANT_PATTERNS = listOf(
+        Regex("(?i)\\bto\\s+VPA\\s+(?<merchant>[^\\s,;]+)"),
+        Regex("(?i)\\bVPA\\s+(?<merchant>[^\\s,;]+)"),
+        Regex("(?i)\\btrf\\s+to\\s+(?<merchant>.+?)\\s+(?:Refno|Ref\\b)"),
+        Regex("(?i)\\bat\\s+(?<merchant>.+?)\\s+on\\b"),
+        Regex("(?i)\\bto\\s+(?<merchant>.+?)\\s+on\\b"),
+        Regex("(?i)\\bto\\s+(?<merchant>[^.;]{2,40}?)\\s*(?:[.;]|\\bRef\\b)"),
+        Regex("(?i)\\bfrom\\s+(?<merchant>.+?)\\s+on\\b"),
+        Regex("(?i);\\s*(?<merchant>.+?)\\s+credited\\b"),
+        Regex("(?i)\\bInfo:?\\s*(?<merchant>[^.;]{2,40})"),
+    )
+
+    private val REFERENCE_PATTERNS = listOf(
+        Regex("(?i)\\bUPI\\s*Ref(?:erence)?(?:\\s*No)?\\.?:?\\s*(?<ref>\\d{6,})"),
+        Regex("(?i)\\breference\\s+(?:number|no)\\.?\\s*(?:is)?\\s*(?<ref>\\d{6,})"),
+        Regex("(?i)\\bRef(?:no|\\s*No)?\\.?:?\\s*(?<ref>\\d{6,})"),
+        Regex("(?i)\\bRRN\\.?:?\\s*(?<ref>\\d{6,})"),
+        Regex("(?i)\\bUPI:?\\s*(?<ref>\\d{9,})"),
+        Regex("(?i)\\b(?:txn|transaction)\\s*(?:id|no)\\.?:?\\s*(?<ref>[A-Z0-9]{8,25})"),
+    )
+}

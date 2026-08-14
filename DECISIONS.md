@@ -97,3 +97,53 @@ Format: date · decision · alternatives · why.
   `ACCESS_NETWORK_STATE` is left in place: it only permits *querying*
   connectivity, WorkManager needs it, and without INTERNET it grants no
   ability to transmit.
+
+## Bank-agnostic capture (2026-08-14)
+
+- **2026-08-14 · SMS classification is bank-agnostic; the pattern library is
+  demoted to a precision layer** · one curated regex per bank format (spec
+  Part E as written) · On a real phone the library approach failed the way it
+  was always going to: whether a message was a transaction depended on
+  whether someone had written a regex for that bank, so unlisted banks were
+  invisible and a bank rewording its alerts broke capture overnight. Every
+  transaction alert has the same skeleton — an amount, a direction verb, and
+  optionally an account tail, counterparty and reference — and
+  `TransactionClassifier` detects THAT. The library still runs: when a
+  curated pattern for the sender also matches, its captures win, its
+  confidence replaces the generic one, and the bank gets named. It can no
+  longer decide that a message *is* a transaction, and its absence can no
+  longer hide one.
+- **2026-08-14 · The spec-B4 sender allowlist becomes a sender-SHAPE gate** ·
+  fixed list of bank sender codes · The privacy promise B4 is protecting is
+  "personal messages are never parsed". Indian bank alerts arrive from
+  alphanumeric DLT headers (`VM-HDFCBK`, `AD-ICICIB`); people text from
+  numbers. Gating on that shape keeps the promise exactly — nothing numeric
+  is ever read — while working for banks nobody has listed. This is a
+  deliberate deviation from B4's literal wording, recorded here rather than
+  quietly made.
+- **2026-08-14 · Direction is read from the verb, never from a balance line** ·
+  inferring from balance movement · Many alerts quote no balance at all, so
+  anything keyed off "Avl Bal" simply loses those messages. Where a verb is
+  two-way ("transferred") the preposition decides AND the result is flagged
+  inexplicit, which scores it into the review queue instead of guessing
+  silently.
+- **2026-08-14 · An unmatched account tail creates its own account instead of
+  falling back to the user's first one** · the previous silent fallback ·
+  People hold accounts at several banks and typically add one. The old
+  `resolveAccountId` attributed any unmatched tail to the first bank account,
+  which folded a second bank's spending into the first account's balance —
+  data corruption that looked like a working app. Now: a matching tail wins;
+  an unrecognised tail becomes a `•• 1234` account; no tail with more than
+  one account on file stays unattributed. The last two cases are forced to
+  PENDING_REVIEW regardless of parse confidence, because unconfirmed
+  attribution is worse than a row waiting for a glance. Capped at 12
+  discovered accounts so a noisy parse cannot fill the account list.
+- **2026-08-14 · Scans accept a start date, not just "last N months"** · — ·
+  "Last N months" is the wrong frame when you know the date that matters (the
+  day the account was opened, the day you started using Kosha). The picker
+  reports UTC midnight and is re-anchored to local midnight, or an IST
+  evening message on the boundary day is silently skipped.
+- **2026-08-14 · The review queue states the actual reason a row is waiting** ·
+  one generic "low confidence" line · Every row reading "Parsed with low
+  confidence" tells the reader nothing about what to check; the committer
+  already records why, so it is now shown.

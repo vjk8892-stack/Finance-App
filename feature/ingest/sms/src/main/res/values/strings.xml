@@ -4,6 +4,11 @@
     <string name="sms_scan_body">Missed an entry? Re-read your inbox and log anything Kosha does not already have.</string>
     <string name="sms_scan_grant">Allow SMS access</string>
     <string name="sms_scan_months">Last %1$d months</string>
+    <string name="sms_scan_from_date">From a date…</string>
+    <string name="sms_scan_from_date_set">From %1$s</string>
+    <string name="sms_scan_run">Scan</string>
+    <string name="sms_scan_date_confirm">Use this date</string>
+    <string name="sms_scan_date_cancel">Cancel</string>
     <string name="sms_scan_progress">%1$d of %2$d messages</string>
     <string name="sms_scan_summary">Logged %1$d, %2$d waiting for review, %3$d already recorded — from %4$d messages.</string>
     <string name="sms_scan_idempotent">Safe to run again — anything already logged is merged, never duplicated.</string>

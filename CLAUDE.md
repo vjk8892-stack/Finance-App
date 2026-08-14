@@ -17,12 +17,19 @@ charts. `minSdk 26`, `compileSdk 35`.
 - `:core:designsystem` — tokens (`token/Kosha*.kt` — the ONLY place colors/type/motion live), theme, base components
 - `:core:database` — Room schema, DAOs, repositories, migrations, SQLCipher, DataStore settings
 - `engines/common` (`dev.kosha:common`) — **pure JVM**: Money (Long paise), Periods, Result
-- `engines/engine` (`dev.kosha:engine`) — **pure JVM**: ingestion pipeline, SMS/OCR parsing, dedup, period/budget math, forecast, insight engines, debt planner, query NLU, constitution (all exhaustively unit-tested here — 165 tests)
+- `engines/engine` (`dev.kosha:engine`) — **pure JVM**: ingestion pipeline, SMS/OCR parsing, dedup, period/budget math, forecast, insight engines, debt planner, query NLU, constitution (all exhaustively unit-tested here — 186 tests)
 - `:feature:*` — ledger, ingest/{sms,ocr,review}, budget, income, insights, goals, vault, export, widgets
 
 ## Invariants (do not break)
 - Ingest modules NEVER write to the transaction table directly — everything
   goes through the Ingestion Pipeline and `PipelineCommitter` (spec B2/B3).
+- SMS detection is **bank-agnostic** (`TransactionClassifier`): amount +
+  direction verb, no dependence on a balance line or on the bank being known.
+  `SmsPatternLibrary` may only raise confidence and name the bank — it must
+  never be what decides whether a message is a transaction.
+- A transaction is **never attributed to an account the user did not confirm**.
+  An unmatched SMS account tail creates its own account and goes to review;
+  it must not fall back to the first account (see `MultiAccountAttributionTest`).
 - **No `INTERNET` permission** in any manifest. Ever.
 - **No red anywhere** in UI. Caution = amber `KoshaColors.Amber`.
 - Amounts are `Money` (Long paise). Never floating point, never raw Long in UI.

@@ -13,13 +13,22 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -30,6 +39,11 @@ import dev.kosha.core.designsystem.component.KoshaChip
 import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaSpacing
 import dev.kosha.core.designsystem.token.KoshaType
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 /**
  * Manual inbox re-scan (spec F risk register: "WorkManager periodic
@@ -40,6 +54,7 @@ import dev.kosha.core.designsystem.token.KoshaType
  * This is that door. Re-scanning is idempotent — anything already recorded
  * merges on UTR or the amount/time window rather than duplicating.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmsScanScreen(
     onBack: () -> Unit,
@@ -48,6 +63,37 @@ fun SmsScanScreen(
     val context = LocalContext.current
     val state by viewModel.state.collectAsState()
     val supported = SmsCapability.isSupportedByBuild(context)
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = state.customStartMillis ?: System.currentTimeMillis(),
+            selectableDates = PastOnly,
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        // The picker reports UTC midnight; the user means
+                        // midnight where they are, so re-anchor to the local
+                        // day or an evening message gets missed.
+                        viewModel.setCustomStart(pickerState.selectedDateMillis?.let(::startOfLocalDay))
+                        showDatePicker = false
+                    },
+                ) {
+                    Text(stringResource(R.string.sms_scan_date_confirm), color = KoshaColors.AccentTeal)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text(stringResource(R.string.sms_scan_date_cancel), color = KoshaColors.OffWhiteMuted)
+                }
+            },
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -154,6 +200,30 @@ fun SmsScanScreen(
                                 )
                             }
                         }
+                        Spacer(Modifier.height(KoshaSpacing.xs))
+                        // "Last N months" is the wrong frame when you know the
+                        // date that matters — when the account was opened, or
+                        // when you started keeping books here.
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            KoshaChip(
+                                label = state.customStartMillis?.let {
+                                    stringResource(R.string.sms_scan_from_date_set, formatDay(it))
+                                } ?: stringResource(R.string.sms_scan_from_date),
+                                selected = state.customStartMillis != null,
+                                onClick = { showDatePicker = true },
+                                accent = KoshaColors.AccentTeal,
+                            )
+                            state.customStartMillis?.let { since ->
+                                KoshaChip(
+                                    label = stringResource(R.string.sms_scan_run),
+                                    onClick = { viewModel.scanSince(since) },
+                                    accent = KoshaColors.AccentTeal,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -208,4 +278,32 @@ fun SmsScanScreen(
             }
         }
     }
+}
+
+/**
+ * Material's date picker hands back UTC midnight for the day tapped. The user
+ * means midnight in their own zone, so re-anchor — otherwise a scan "from
+ * 1 August" silently skips messages received on the evening of 31 July in
+ * IST, which is exactly the boundary people pick.
+ */
+private fun startOfLocalDay(utcMillis: Long): Long =
+    Instant.ofEpochMilli(utcMillis)
+        .atZone(ZoneOffset.UTC)
+        .toLocalDate()
+        .atStartOfDay(ZoneId.systemDefault())
+        .toInstant()
+        .toEpochMilli()
+
+private val DAY_FORMAT = DateTimeFormatter.ofPattern("d MMM yyyy")
+
+private fun formatDay(millis: Long): String =
+    DAY_FORMAT.format(Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate())
+
+/** Nothing in the inbox was received tomorrow. */
+@OptIn(ExperimentalMaterial3Api::class)
+private object PastOnly : SelectableDates {
+    override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+        utcTimeMillis <= System.currentTimeMillis()
+
+    override fun isSelectableYear(year: Int): Boolean = year <= LocalDate.now().year
 }

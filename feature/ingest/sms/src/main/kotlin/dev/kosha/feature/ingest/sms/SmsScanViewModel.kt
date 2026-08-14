@@ -16,6 +16,8 @@ data class SmsScanUiState(
     val summary: HistoricalSmsImporter.ImportSummary? = null,
     val permissionGranted: Boolean = false,
     val retainRawSms: Boolean = false,
+    /** Start of the day chosen in the date picker, if any. */
+    val customStartMillis: Long? = null,
     val error: String? = null,
 )
 
@@ -46,11 +48,26 @@ class SmsScanViewModel @Inject constructor(
     }
 
     fun scan(monthsBack: Int) {
+        runScan { onProgress -> importer.import(monthsBack, onProgress) }
+    }
+
+    /** "From this date" scan — [sinceMillis] is the start of the chosen day. */
+    fun scanSince(sinceMillis: Long) {
+        runScan { onProgress -> importer.importSince(sinceMillis, onProgress) }
+    }
+
+    fun setCustomStart(sinceMillis: Long?) {
+        _state.value = _state.value.copy(customStartMillis = sinceMillis)
+    }
+
+    private fun runScan(
+        block: suspend (onProgress: (Int, Int) -> Unit) -> HistoricalSmsImporter.ImportSummary,
+    ) {
         if (_state.value.scanning) return
         _state.value = _state.value.copy(scanning = true, summary = null, error = null)
         viewModelScope.launch {
             val result = runCatching {
-                importer.import(monthsBack) { scanned, total ->
+                block { scanned, total ->
                     _state.value = _state.value.copy(progress = scanned to total)
                 }
             }

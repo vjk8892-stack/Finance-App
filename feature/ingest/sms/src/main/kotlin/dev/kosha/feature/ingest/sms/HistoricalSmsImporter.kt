@@ -28,11 +28,27 @@ class HistoricalSmsImporter @Inject constructor(
         val ignored: Int,
     )
 
+    /** Convenience for the "last N months" chips. */
     suspend fun import(
         monthsBack: Int,
         onProgress: (scanned: Int, total: Int) -> Unit = { _, _ -> },
+    ): ImportSummary = importSince(
+        sinceMillis = System.currentTimeMillis() - monthsBack * 30L * 24 * 60 * 60 * 1000,
+        onProgress = onProgress,
+    )
+
+    /**
+     * Scan everything received at or after [sinceMillis]. Exposed separately
+     * because "the last N months" is the wrong frame when you know the date
+     * that matters — the day you opened the account, or the day you started
+     * using Kosha. Re-running over an overlapping range is safe: dedup merges
+     * anything already recorded rather than duplicating it.
+     */
+    suspend fun importSince(
+        sinceMillis: Long,
+        onProgress: (scanned: Int, total: Int) -> Unit = { _, _ -> },
     ): ImportSummary = withContext(Dispatchers.IO) {
-        val since = System.currentTimeMillis() - monthsBack * 30L * 24 * 60 * 60 * 1000
+        val since = sinceMillis
         var scanned = 0
         var committed = 0
         var queued = 0

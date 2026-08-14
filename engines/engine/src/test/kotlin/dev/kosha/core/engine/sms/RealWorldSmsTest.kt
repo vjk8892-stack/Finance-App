@@ -137,9 +137,10 @@ class RealWorldSmsTest {
     }
 
     @Test
-    fun `unknown phrasing still yields merchant and reference via fallback`() {
-        // No library pattern for this one — the fallback must still produce
-        // usable detail rather than a bare amount.
+    fun `unknown phrasing yields full detail and is trusted on its own merits`() {
+        // No library pattern for this one. What decides the outcome is how
+        // much of the transaction skeleton came back, not whether anyone
+        // happened to write a regex for this bank.
         val p = parsed(
             "VM-FEDBNK",
             """
@@ -152,12 +153,67 @@ class RealWorldSmsTest {
         assertEquals("landlord@okhdfcbank", p.txn.merchantRaw)
         assertEquals("519012345678", p.txn.reference)
         assertEquals("1234", p.txn.accountLast4)
-        // Unknown pattern: good detail, but still reviewed rather than trusted.
+        assertEquals(null, p.patternId)
         val score = ConfidenceScorer.score(p.txn)
         assertTrue(
-            "score $score should sit in the review band",
-            score in ConfidenceThresholds.REVIEW..ConfidenceThresholds.AUTO_COMMIT,
+            "a complete extraction should auto-commit, score=$score",
+            score >= ConfidenceThresholds.AUTO_COMMIT,
         )
+    }
+
+    @Test
+    fun `a transaction with no available balance is unaffected`() {
+        // Many alerts never quote a balance. Direction comes from the verb,
+        // so their absence changes nothing.
+        val p = parsed(
+            "VM-IDFCFB",
+            """
+            INR 2,499.00 debited from IDFC FIRST Bank A/c XX3344
+            towards BIGBASKET on 04-08-26.
+            UPI Ref No 601234567890
+            """.trimIndent(),
+        )
+        assertEquals(Money(249_900), p.txn.amount)
+        assertEquals(TxnType.DEBIT, p.txn.type)
+        assertEquals("3344", p.txn.accountLast4)
+        assertEquals("601234567890", p.txn.reference)
+    }
+
+    @Test
+    fun `two accounts at two banks keep their own tails`() {
+        val a = parsed(
+            "VM-HDFCBK-S",
+            "Sent Rs.40.00\nFrom HDFC Bank A/C x1234\nTo ZOMATO\nOn 15/07/25\nRef 519612345678",
+        )
+        val b = parsed(
+            "VM-ICICIB",
+            "ICICI Bank Acct XX7788 debited for Rs 900.00 on 15-Jul-25; " +
+                "SWIGGY credited. UPI:519612345679.",
+        )
+        assertEquals("1234", a.txn.accountLast4)
+        assertEquals("7788", b.txn.accountLast4)
+    }
+
+    @Test
+    fun `money that has not moved yet is not a transaction`() {
+        listOf(
+            "Your EMI of Rs.4,500.00 is due on 05-08-26 for loan a/c XX1234.",
+            "Rs.1,200.00 will be debited from a/c XX1234 on 07-08-26 towards NETFLIX autopay.",
+            "JOHN DOE has requested Rs.500.00 via UPI. Pay by 19:00 today.",
+        ).forEach { body ->
+            val result = parser.parse("VM-HDFCBK", body, t0)
+            assertTrue("future/request leaked through: $body → $result", result is SmsParser.Result.NotTransactional)
+        }
+    }
+
+    @Test
+    fun `a failed payment is not a transaction`() {
+        val result = parser.parse(
+            "VM-HDFCBK",
+            "Your payment of Rs.2,000.00 to AMAZON from a/c XX1234 has failed. Ref 519912345678.",
+            t0,
+        )
+        assertTrue("got $result", result is SmsParser.Result.NotTransactional)
     }
 
     @Test
