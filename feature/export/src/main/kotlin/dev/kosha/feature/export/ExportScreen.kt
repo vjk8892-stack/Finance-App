@@ -32,6 +32,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.kosha.core.designsystem.component.KoshaCard
 import dev.kosha.core.designsystem.component.KoshaChip
@@ -47,9 +50,9 @@ fun ExportScreen(
     val context = LocalContext.current
     val state by viewModel.state.collectAsState()
 
-    val createBackupLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/octet-stream"),
-    ) { uri -> uri?.let(viewModel::performBackup) }
+    val pickFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri -> uri?.let(viewModel::rememberBackupFolder) }
 
     val restoreLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -124,8 +127,8 @@ fun ExportScreen(
             BackupSection(
                 state = state,
                 viewModel = viewModel,
-                onCreate = { createBackupLauncher.launch("kosha-backup.${BackupManager.FILE_EXTENSION}") },
-                onRestore = { restoreLauncher.launch(arrayOf("*/*")) },
+                onPickFolder = { pickFolderLauncher.launch(null) },
+                onRestoreFromFile = { restoreLauncher.launch(arrayOf("*/*")) },
             )
 
             state.message?.let { message ->
@@ -136,86 +139,164 @@ fun ExportScreen(
     }
 }
 
+/**
+ * Backup, reduced to the two things it has to be: one button, and a visible
+ * list of what that button has produced. Everything that used to gate it — a
+ * passphrase, typed twice, at least eight characters — is now optional and
+ * folded away, because those gates were what made the feature do nothing.
+ */
 @Composable
 private fun BackupSection(
     state: ExportUiState,
     viewModel: ExportViewModel,
-    onCreate: () -> Unit,
-    onRestore: () -> Unit,
+    onPickFolder: () -> Unit,
+    onRestoreFromFile: () -> Unit,
 ) {
-    var confirm by remember { mutableStateOf("") }
+    var showAdvanced by remember { mutableStateOf(false) }
 
     KoshaCard(modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.backup_title), style = KoshaType.Title, color = KoshaColors.OffWhite)
+        Text(stringResource(R.string.backup_title), style = KoshaType.SectionHeader, color = KoshaColors.OffWhite)
         Text(
             text = stringResource(R.string.backup_body),
             style = KoshaType.Body,
             color = KoshaColors.OffWhiteMuted,
         )
-        Spacer(Modifier.height(KoshaSpacing.xs))
-
-        TextField(
-            value = state.passphrase,
-            onValueChange = viewModel::setPassphrase,
-            placeholder = { Text(stringResource(R.string.backup_passphrase), color = KoshaColors.OffWhiteFaint) },
-            visualTransformation = PasswordVisualTransformation(),
-            colors = backupFieldColors(),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        TextField(
-            value = confirm,
-            onValueChange = { confirm = it },
-            placeholder = {
-                Text(stringResource(R.string.backup_passphrase_confirm), color = KoshaColors.OffWhiteFaint)
-            },
-            visualTransformation = PasswordVisualTransformation(),
-            colors = backupFieldColors(),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (confirm.isNotEmpty() && confirm != state.passphrase) {
-            Text(
-                text = stringResource(R.string.backup_passphrase_mismatch),
-                style = KoshaType.Caption,
-                color = KoshaColors.Amber,
-            )
-        }
 
         Spacer(Modifier.height(KoshaSpacing.xs))
         Text(
-            text = stringResource(R.string.backup_write_it_down),
+            text = if (state.backupFolderReady) {
+                stringResource(R.string.backup_folder_is, state.backupFolderName.orEmpty())
+            } else {
+                stringResource(R.string.backup_folder_none)
+            },
             style = KoshaType.Caption,
-            color = KoshaColors.OffWhiteFaint,
+            color = if (state.backupFolderReady) KoshaColors.OffWhiteFaint else KoshaColors.Amber,
         )
-
-        Spacer(Modifier.height(KoshaSpacing.xs))
-        KoshaChip(
-            label = stringResource(R.string.backup_include_vault),
-            selected = state.includeVault,
-            onClick = viewModel::toggleIncludeVault,
-            accent = KoshaColors.Amber,
-        )
-        if (state.includeVault) {
+        if (state.lastBackupAtMillis > 0) {
             Text(
-                text = stringResource(R.string.backup_vault_warning),
+                text = stringResource(
+                    R.string.backup_last_taken,
+                    STAMP_FORMAT.format(
+                        Instant.ofEpochMilli(state.lastBackupAtMillis).atZone(ZoneId.systemDefault()),
+                    ),
+                ),
                 style = KoshaType.Caption,
-                color = KoshaColors.Amber,
+                color = KoshaColors.OffWhiteFaint,
             )
         }
 
-        Spacer(Modifier.height(KoshaSpacing.xs))
+        Spacer(Modifier.height(KoshaSpacing.s))
         Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.s)) {
-            TextButton(
-                onClick = onCreate,
-                enabled = state.passphrase.length >= 8 && confirm == state.passphrase && !state.busy,
-            ) {
-                Text(stringResource(R.string.backup_create), color = KoshaColors.AccentTeal)
+            if (state.backupFolderReady) {
+                TextButton(onClick = viewModel::backupNow, enabled = !state.busy) {
+                    Text(stringResource(R.string.backup_now), color = KoshaColors.AccentTealBright)
+                }
+            } else {
+                TextButton(onClick = onPickFolder, enabled = !state.busy) {
+                    Text(stringResource(R.string.backup_choose_folder), color = KoshaColors.AccentTealBright)
+                }
             }
-            TextButton(onClick = onRestore, enabled = state.passphrase.isNotEmpty() && !state.busy) {
-                Text(stringResource(R.string.backup_restore), color = KoshaColors.OffWhiteMuted)
+            TextButton(onClick = onRestoreFromFile, enabled = !state.busy) {
+                Text(stringResource(R.string.backup_restore_from_file), color = KoshaColors.OffWhiteMuted)
+            }
+        }
+
+        if (state.backups.isNotEmpty()) {
+            Spacer(Modifier.height(KoshaSpacing.s))
+            Text(
+                text = stringResource(R.string.backup_existing),
+                style = KoshaType.Label,
+                color = KoshaColors.OffWhiteFaint,
+            )
+            state.backups.forEach { entry ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = KoshaSpacing.xxs),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(entry.name, style = KoshaType.Body, color = KoshaColors.OffWhite)
+                        Text(
+                            text = stringResource(
+                                R.string.backup_entry_meta,
+                                STAMP_FORMAT.format(
+                                    Instant.ofEpochMilli(entry.modifiedAtMillis)
+                                        .atZone(ZoneId.systemDefault()),
+                                ),
+                                entry.sizeBytes / 1_000_000.0,
+                            ),
+                            style = KoshaType.Caption,
+                            color = KoshaColors.OffWhiteFaint,
+                        )
+                    }
+                    TextButton(onClick = { viewModel.performRestore(entry.uri) }, enabled = !state.busy) {
+                        Text(stringResource(R.string.backup_restore), color = KoshaColors.AccentTeal)
+                    }
+                    TextButton(onClick = { viewModel.deleteBackup(entry.uri) }, enabled = !state.busy) {
+                        Text(stringResource(R.string.backup_delete), color = KoshaColors.OffWhiteFaint)
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(KoshaSpacing.xs))
+        TextButton(onClick = { showAdvanced = !showAdvanced }) {
+            Text(
+                text = stringResource(
+                    if (showAdvanced) R.string.backup_advanced_hide else R.string.backup_advanced_show,
+                ),
+                color = KoshaColors.OffWhiteFaint,
+            )
+        }
+
+        if (showAdvanced) {
+            Text(
+                text = stringResource(R.string.backup_encryption_note),
+                style = KoshaType.Caption,
+                color = KoshaColors.OffWhiteFaint,
+            )
+            Spacer(Modifier.height(KoshaSpacing.xs))
+            TextField(
+                value = state.passphrase,
+                onValueChange = viewModel::setPassphrase,
+                placeholder = {
+                    Text(stringResource(R.string.backup_passphrase_optional), color = KoshaColors.OffWhiteFaint)
+                },
+                visualTransformation = PasswordVisualTransformation(),
+                colors = backupFieldColors(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = stringResource(R.string.backup_write_it_down),
+                style = KoshaType.Caption,
+                color = KoshaColors.Amber,
+            )
+
+            Spacer(Modifier.height(KoshaSpacing.xs))
+            KoshaChip(
+                label = stringResource(R.string.backup_include_vault),
+                selected = state.includeVault,
+                onClick = viewModel::toggleIncludeVault,
+                accent = KoshaColors.Amber,
+            )
+            if (state.includeVault) {
+                Text(
+                    text = stringResource(R.string.backup_vault_warning),
+                    style = KoshaType.Caption,
+                    color = KoshaColors.Amber,
+                )
+            }
+            if (state.backupFolderReady) {
+                TextButton(onClick = onPickFolder, enabled = !state.busy) {
+                    Text(stringResource(R.string.backup_change_folder), color = KoshaColors.OffWhiteMuted)
+                }
             }
         }
     }
 }
+
+private val STAMP_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm")
 
 @Composable
 private fun backupFieldColors() = TextFieldDefaults.colors(

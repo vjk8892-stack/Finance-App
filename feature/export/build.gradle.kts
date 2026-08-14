@@ -11,5 +11,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.sqlcipher.android)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.documentfile)
     androidTestImplementation(libs.androidx.test.junit)
 }

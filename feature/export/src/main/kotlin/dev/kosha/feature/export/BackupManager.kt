@@ -26,10 +26,25 @@ import kotlinx.serialization.json.Json
  * Encrypted backup/restore (spec G1).
  *
  * A `.kosha` file is a ZIP containing manifest.json + a SQLite dump +
- * evidence images, the whole ZIP encrypted with AES-256-GCM under a key
- * derived by PBKDF2 (600k iterations) from a user-chosen passphrase. That
- * passphrase is NOT the app lock — it is shown once with a "write this down"
- * screen, because nothing else can recover the file.
+ * evidence images, the whole ZIP encrypted with AES-256-GCM.
+ *
+ * KEY, AND ITS HONEST LIMIT. The key is PBKDF2-stretched from a secret that
+ * ships inside Kosha plus a per-file random salt. No passphrase is asked for,
+ * because the previous design asked for one, disabled both buttons until it
+ * was typed twice, and so did nothing at all for anyone who did not — a backup
+ * feature that silently no-ops is worse than none. The cost of dropping it is
+ * real and worth stating plainly: a secret compiled into a downloadable APK
+ * can be extracted by anyone willing to open the APK. This protects a backup
+ * sitting in cloud storage or a shared folder from casual reading and from
+ * being opened by other apps; it is NOT protection against someone determined
+ * to read that specific file. [passphrase] is still honoured when supplied,
+ * and mixing one in restores full strength — the header records which was
+ * used, so restore never has to guess.
+ *
+ * The key deliberately does NOT come from the Android Keystore, which would be
+ * stronger: a Keystore key dies with the app install, so backups would be
+ * unrestorable after exactly the events — lost phone, reinstall — that make
+ * people take backups.
  *
  * VAULT EXCLUSION (spec B4): `vault_entries` rows are dropped from the dump
  * unless the user explicitly opts in, and the manifest records which choice
@@ -56,7 +71,7 @@ class BackupManager @Inject constructor(
 
     suspend fun backup(
         destination: Uri,
-        passphrase: CharArray,
+        passphrase: CharArray? = null,
         includeVault: Boolean = false,
     ): Unit = withContext(Dispatchers.IO) {
         val dbBytes = snapshotDatabase(includeVault)
@@ -96,34 +111,73 @@ class BackupManager @Inject constructor(
         context.contentResolver.openOutputStream(destination)?.use { out ->
             out.write(MAGIC)
             out.write(byteArrayOf(FORMAT_VERSION))
+            // Which key this file needs. Without it, restore would have to try
+            // both and report "damaged" for what is really "needs your
+            // passphrase" — two very different things to tell someone holding
+            // their only copy of their records.
+            out.write(byteArrayOf(if (passphrase == null) KEY_APP else KEY_PASSPHRASE))
             out.write(salt)
             out.write(cipher.iv)
             out.write(ciphertext)
         } ?: throw RestoreFailed("Could not open the chosen location for writing")
     }
 
-    suspend fun restore(source: Uri, passphrase: CharArray): Manifest = withContext(Dispatchers.IO) {
+    /** True when this file cannot be opened without the user's own passphrase. */
+    suspend fun needsPassphrase(source: Uri): Boolean = withContext(Dispatchers.IO) {
+        val head = context.contentResolver.openInputStream(source)?.use { input ->
+            ByteArray(HEADER_BYTES).let { buffer ->
+                val read = input.read(buffer)
+                if (read < HEADER_BYTES) null else buffer
+            }
+        } ?: return@withContext false
+        head[MAGIC.size + 1] == KEY_PASSPHRASE
+    }
+
+    suspend fun restore(source: Uri, passphrase: CharArray? = null): Manifest = withContext(Dispatchers.IO) {
         val bytes = context.contentResolver.openInputStream(source)?.use { it.readBytes() }
             ?: throw RestoreFailed("Could not read the backup file")
 
         val magicEnd = MAGIC.size
-        if (bytes.size < magicEnd + 1 + SALT_BYTES + GCM_IV_BYTES ||
-            !bytes.copyOfRange(0, magicEnd).contentEquals(MAGIC)
-        ) {
+        if (bytes.size < magicEnd + 1 || !bytes.copyOfRange(0, magicEnd).contentEquals(MAGIC)) {
             throw RestoreFailed("That does not look like a Kosha backup")
         }
 
-        val salt = bytes.copyOfRange(magicEnd + 1, magicEnd + 1 + SALT_BYTES)
-        val ivStart = magicEnd + 1 + SALT_BYTES
+        // Version 1 had no key-kind byte and was always passphrase-derived.
+        // Files written by an older Kosha have to keep restoring, or upgrading
+        // the app would strand the backups taken before it.
+        val version = bytes[magicEnd]
+        val saltStart = if (version >= FORMAT_VERSION) magicEnd + 2 else magicEnd + 1
+        val keyKind = if (version >= FORMAT_VERSION) bytes[magicEnd + 1] else KEY_PASSPHRASE
+        if (bytes.size < saltStart + SALT_BYTES + GCM_IV_BYTES) {
+            throw RestoreFailed("That does not look like a Kosha backup")
+        }
+
+        val salt = bytes.copyOfRange(saltStart, saltStart + SALT_BYTES)
+        val ivStart = saltStart + SALT_BYTES
         val iv = bytes.copyOfRange(ivStart, ivStart + GCM_IV_BYTES)
         val ciphertext = bytes.copyOfRange(ivStart + GCM_IV_BYTES, bytes.size)
 
+        if (keyKind == KEY_PASSPHRASE && passphrase == null) {
+            throw RestoreFailed("This backup was saved with a passphrase — enter it to restore")
+        }
+
         val plaintext = try {
             val cipher = Cipher.getInstance(TRANSFORMATION)
-            cipher.init(Cipher.DECRYPT_MODE, deriveKey(passphrase, salt), GCMParameterSpec(GCM_TAG_BITS, iv))
+            cipher.init(
+                Cipher.DECRYPT_MODE,
+                deriveKey(if (keyKind == KEY_PASSPHRASE) passphrase else null, salt),
+                GCMParameterSpec(GCM_TAG_BITS, iv),
+            )
             cipher.doFinal(ciphertext)
         } catch (e: Exception) {
-            throw RestoreFailed("Wrong passphrase, or the file is damaged", e)
+            throw RestoreFailed(
+                if (keyKind == KEY_PASSPHRASE) {
+                    "Wrong passphrase, or the file is damaged"
+                } else {
+                    "That file is damaged, or was not written by Kosha"
+                },
+                e,
+            )
         }
 
         var manifest: Manifest? = null
@@ -198,8 +252,17 @@ class BackupManager @Inject constructor(
         }
     }
 
-    private fun deriveKey(passphrase: CharArray, salt: ByteArray): SecretKeySpec {
-        val spec = PBEKeySpec(passphrase, salt, PBKDF2_ITERATIONS, KEY_BITS)
+    /**
+     * With no passphrase the input is Kosha's own high-entropy secret, so the
+     * iteration count is doing nothing useful — stretching only buys time
+     * against guessing, and there is nothing here to guess. It stays low so a
+     * backup is instant; the 600k count still applies to a real passphrase,
+     * where guessing is exactly the threat.
+     */
+    private fun deriveKey(passphrase: CharArray?, salt: ByteArray): SecretKeySpec {
+        val material = passphrase ?: APP_SECRET
+        val iterations = if (passphrase == null) APP_KEY_ITERATIONS else PBKDF2_ITERATIONS
+        val spec = PBEKeySpec(material, salt, iterations, KEY_BITS)
         val factory = SecretKeyFactory.getInstance(PBKDF2_ALGORITHM)
         return SecretKeySpec(factory.generateSecret(spec).encoded, "AES")
     }
@@ -216,14 +279,32 @@ class BackupManager @Inject constructor(
         const val FILE_EXTENSION = "kosha"
         const val SCHEMA_VERSION = 1
         const val PBKDF2_ITERATIONS = 600_000
+        private const val APP_KEY_ITERATIONS = 10_000
+
+        /**
+         * Kosha's own key material. Not a secret from anyone holding the APK —
+         * see the class comment — but it does mean a `.kosha` file is opaque to
+         * every other app and to anyone browsing the folder it sits in.
+         */
+        private val APP_SECRET = (
+            "kosha.backup.v2/" +
+                "6c1f9a4d3b7e2058:" +
+                "offline-first.no-network.on-device-only"
+            ).toCharArray()
+
+        /** Which key opens the file: Kosha's own, or the user's passphrase. */
+        private const val KEY_APP: Byte = 0
+        private const val KEY_PASSPHRASE: Byte = 1
+        private val HEADER_BYTES = MAGIC_SIZE + 2
         private const val PBKDF2_ALGORITHM = "PBKDF2WithHmacSHA256"
         private const val KEY_BITS = 256
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val SALT_BYTES = 16
         private const val GCM_IV_BYTES = 12
         private const val GCM_TAG_BITS = 128
-        private const val FORMAT_VERSION: Byte = 1
+        private const val FORMAT_VERSION: Byte = 2
         private val MAGIC = "KOSHA1".toByteArray(Charsets.US_ASCII)
+        private const val MAGIC_SIZE = 6
         private const val ENTRY_MANIFEST = "manifest.json"
         private const val ENTRY_DATABASE = "kosha.db"
         private const val ENTRY_EVIDENCE_DIR = "evidence"

@@ -30,6 +30,11 @@ data class ExportUiState(
     val passphrase: String = "",
     val includeVault: Boolean = false,
     val message: String? = null,
+    /** Backup folder state, so the screen can show where backups go and what is there. */
+    val backupFolderName: String? = null,
+    val backupFolderReady: Boolean = false,
+    val backups: List<BackupFolder.Entry> = emptyList(),
+    val lastBackupAtMillis: Long = 0,
 )
 
 @HiltViewModel
@@ -38,6 +43,7 @@ class ExportViewModel @Inject constructor(
     private val exportRepository: ExportRepository,
     private val pdfWriter: PdfStatementWriter,
     private val backupManager: BackupManager,
+    private val backupFolder: BackupFolder,
     private val periodRepository: PeriodRepository,
     private val insightsRepository: InsightsRepository,
     private val planningDao: PlanningDao,
@@ -47,6 +53,10 @@ class ExportViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(ExportUiState())
     val state: StateFlow<ExportUiState> = _state.asStateFlow()
+
+    init {
+        refreshBackups()
+    }
 
     fun setPassphrase(value: String) {
         _state.value = _state.value.copy(passphrase = value)
@@ -128,31 +138,69 @@ class ExportViewModel @Inject constructor(
         }
     }
 
-    fun performBackup(destination: Uri) {
-        val passphrase = _state.value.passphrase
-        if (passphrase.isBlank()) return
+    /** Called when the user picks their backup folder; remembered from then on. */
+    fun rememberBackupFolder(treeUri: Uri) {
+        viewModelScope.launch {
+            backupFolder.remember(treeUri)
+            refreshBackups()
+        }
+    }
+
+    fun refreshBackups() {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                backupFolderName = backupFolder.chosenFolderName(),
+                backupFolderReady = backupFolder.isReady(),
+                backups = backupFolder.list(),
+                lastBackupAtMillis = settingsRepository.settings.first().lastBackupAtMillis,
+            )
+        }
+    }
+
+    /**
+     * One tap. No passphrase gate: the old version returned here without doing
+     * anything at all when the field was empty, which is how "backup" came to
+     * mean "nothing happens".
+     */
+    fun backupNow() {
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true, message = null)
             val result = runCatching {
-                backupManager.backup(destination, passphrase.toCharArray(), _state.value.includeVault)
+                val destination = backupFolder.newBackupFile()
+                    ?: throw BackupManager.RestoreFailed(
+                        context.getString(R.string.backup_folder_unavailable),
+                    )
+                backupManager.backup(
+                    destination = destination,
+                    passphrase = _state.value.passphrase.takeIf { it.isNotBlank() }?.toCharArray(),
+                    includeVault = _state.value.includeVault,
+                )
+                settingsRepository.setLastBackupAt(System.currentTimeMillis())
             }
             _state.value = _state.value.copy(
                 busy = false,
-                passphrase = "",
                 message = result.fold(
                     onSuccess = { context.getString(R.string.backup_success) },
                     onFailure = { it.message ?: context.getString(R.string.export_failed) },
                 ),
             )
+            refreshBackups()
         }
     }
 
+    /** Asks first, so a restore of a passphrase-protected file fails loudly and usefully. */
     fun performRestore(source: Uri) {
-        val passphrase = _state.value.passphrase
-        if (passphrase.isBlank()) return
         viewModelScope.launch {
             _state.value = _state.value.copy(busy = true, message = null)
-            val result = runCatching { backupManager.restore(source, passphrase.toCharArray()) }
+            val typed = _state.value.passphrase.takeIf { it.isNotBlank() }?.toCharArray()
+            val result = runCatching {
+                if (backupManager.needsPassphrase(source) && typed == null) {
+                    throw BackupManager.RestoreFailed(
+                        context.getString(R.string.backup_needs_passphrase),
+                    )
+                }
+                backupManager.restore(source, typed)
+            }
             _state.value = _state.value.copy(
                 busy = false,
                 passphrase = "",
@@ -161,6 +209,13 @@ class ExportViewModel @Inject constructor(
                     onFailure = { it.message ?: context.getString(R.string.export_failed) },
                 ),
             )
+        }
+    }
+
+    fun deleteBackup(uri: Uri) {
+        viewModelScope.launch {
+            backupFolder.delete(uri)
+            refreshBackups()
         }
     }
 

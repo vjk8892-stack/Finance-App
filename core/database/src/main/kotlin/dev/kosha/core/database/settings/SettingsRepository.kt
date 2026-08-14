@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -26,6 +27,15 @@ data class KoshaSettings(
     val retainRawSms: Boolean = false,
     /** Emergency-fund months target, 3–12 (spec G12). */
     val emergencyFundMonths: Int = 3,
+    /**
+     * The folder the user picked for backups, as a persisted SAF tree URI.
+     * Asked for once and then reused, so backing up is a single tap and every
+     * backup lands in the same place instead of wherever the save dialog last
+     * happened to be pointing.
+     */
+    val backupFolderUri: String? = null,
+    /** When the last successful backup was written, 0 if never. */
+    val lastBackupAtMillis: Long = 0,
 )
 
 @Singleton
@@ -39,6 +49,8 @@ class SettingsRepository @Inject constructor(
         val periodAnchorDay = intPreferencesKey("period_anchor_day")
         val retainRawSms = booleanPreferencesKey("retain_raw_sms")
         val emergencyFundMonths = intPreferencesKey("emergency_fund_months")
+        val backupFolderUri = stringPreferencesKey("backup_folder_uri")
+        val lastBackupAt = longPreferencesKey("last_backup_at")
     }
 
     val settings: Flow<KoshaSettings> = context.dataStore.data.map { p ->
@@ -49,7 +61,17 @@ class SettingsRepository @Inject constructor(
             periodAnchorDay = (p[Keys.periodAnchorDay] ?: 1).coerceIn(1, 28),
             retainRawSms = p[Keys.retainRawSms] ?: false,
             emergencyFundMonths = (p[Keys.emergencyFundMonths] ?: 3).coerceIn(3, 12),
+            backupFolderUri = p[Keys.backupFolderUri],
+            lastBackupAtMillis = p[Keys.lastBackupAt] ?: 0,
         )
+    }
+
+    suspend fun setBackupFolderUri(uri: String) = context.dataStore.edit {
+        it[Keys.backupFolderUri] = uri
+    }
+
+    suspend fun setLastBackupAt(millis: Long) = context.dataStore.edit {
+        it[Keys.lastBackupAt] = millis
     }
 
     suspend fun setOnboardingDone() = context.dataStore.edit { it[Keys.onboardingDone] = true }
