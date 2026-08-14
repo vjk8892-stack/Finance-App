@@ -37,6 +37,13 @@ object TransactionClassifier {
         val reference: String?,
         val isAtmWithdrawal: Boolean,
         /**
+         * Money moving between the user's OWN accounts — a credit card bill
+         * paid, a self transfer. It is a real movement but it is neither
+         * income nor spending, and counting it as either makes every total
+         * wrong in both directions.
+         */
+        val isSelfTransfer: Boolean,
+        /**
          * True when a one-way verb ("debited", "credited") fixed the
          * direction; false when it was inferred from a two-way verb
          * ("transferred") and therefore deserves a human look.
@@ -109,10 +116,29 @@ object TransactionClassifier {
                 merchant = extractMerchant(text, direction.type),
                 reference = extractReference(text),
                 isAtmWithdrawal = ATM.containsMatchIn(text),
+                isSelfTransfer = isSelfTransfer(text),
                 directionExplicit = direction.explicit,
             ),
         )
     }
+
+    /**
+     * Money moving between accounts the user already owns.
+     *
+     * A credit card bill payment is the clearest case and the most damaging to
+     * get wrong: the card issuer texts "we have received a payment towards
+     * your card", which reads exactly like income, so paying off a card
+     * inflates income by the payment AND the original spending is already
+     * counted — the same rupees land in the totals twice, with the wrong sign.
+     * The bank at the other end says "payment towards credit card", which is a
+     * spend that never happened either.
+     *
+     * Treating both legs as transfers is the accounting-correct answer: the
+     * money left the user's net worth when the card was SPENT, not when the
+     * bill was settled.
+     */
+    fun isSelfTransfer(text: String): Boolean =
+        CARD_BILL_PAYMENT.containsMatchIn(text) || SELF_TRANSFER.containsMatchIn(text)
 
     /** Collapses the line breaks banks use so one-line patterns can match. */
     fun normalize(rawBody: String): String = rawBody.replace(WHITESPACE, " ").trim()
@@ -270,6 +296,25 @@ object TransactionClassifier {
     )
 
     private val ATM = Regex("(?i)\\b(atm|cash withdrawal|w/d)\\b")
+
+    /**
+     * "payment ... towards your ... card" in either direction, plus the
+     * shorthands issuers use. Anchored on the payment-towards-a-card idea
+     * rather than the word "card" alone, so a card SPEND is untouched.
+     */
+    private val CARD_BILL_PAYMENT = Regex(
+        "(?i)(payment|paid|received).{0,40}\\b(towards|toward|for|to)\\b.{0,40}" +
+            "\\b(credit card|cc|card)\\b|" +
+            "\\b(credit card|card)\\s*(bill|payment|paymt)\\b|" +
+            "\\bcard\\s*payment\\s*(received|made)\\b|" +
+            "\\bbill\\s*payment\\s*(received|towards)\\b",
+    )
+
+    /** Explicit self/own-account movement. */
+    private val SELF_TRANSFER = Regex(
+        "(?i)\\b(self[- ]transfer|own account|to your own|between your accounts|" +
+            "transfer to self|self a/c)\\b",
+    )
     private val DATE_LIKE = Regex("\\d{1,2}[-/][A-Za-z0-9]{2,4}[-/]\\d{2,4}|\\d{2}[-/]\\d{2}")
 
     /** Words that mean the capture is describing an account, not a payee. */

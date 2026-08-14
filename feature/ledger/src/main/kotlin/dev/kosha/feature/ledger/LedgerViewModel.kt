@@ -11,6 +11,7 @@ import dev.kosha.core.database.model.AccountEntity
 import dev.kosha.core.database.model.CategoryEntity
 import dev.kosha.core.database.model.EvidenceKind
 import dev.kosha.core.database.model.SavedQueryEntity
+import dev.kosha.core.database.model.SystemCategoryKey
 import dev.kosha.core.database.model.TxnSource
 import dev.kosha.core.database.model.TxnType
 import dev.kosha.core.database.repo.AccountRepository
@@ -95,7 +96,11 @@ data class LedgerUiState(
     val availableMonths: List<YearMonth> = emptyList(),
     /** True when rows exist but the current filters hide them all. */
     val hiddenByFilter: Boolean = false,
-)
+) {
+    /** System Transfers row — the "this is my own account" shortcut. */
+    val transfersCategoryId: Long?
+        get() = categories.firstOrNull { it.systemKey == SystemCategoryKey.TRANSFERS }?.id
+}
 
 /**
  * What is behind one ledger row. The original bank message is the point: a

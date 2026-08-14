@@ -308,3 +308,30 @@ Format: date · decision · alternatives · why.
 - **2026-08-14 · Recategorizing offers to apply to the whole merchant** ·
   per-row only · Categorizing one row of a merchant you have twenty of is not
   really a per-row decision.
+
+## Wrong-row swipe and self-transfers (2026-08-14)
+
+- **2026-08-14 · Ledger rows carry stable keys and `rememberUpdatedState`
+  callbacks** · a keyless `items(count)` with lambdas captured at first
+  composition · `rememberSwipeToDismissBoxState` keeps the callback it was
+  first given. A LazyColumn reuses a row's slot for whatever scrolls into it,
+  so the retained callback went on referring to the row that used to be there:
+  swiping ₹15,000 opened the action sheet for a ₹5,000 row — with Delete in
+  it. This was a data-loss bug, not a display glitch. Fixed at both ends:
+  stable `key = txn.id` so the slot is not reused across rows, and
+  `rememberUpdatedState` so the retained lambda reads the current handlers.
+- **2026-08-14 · Credit card bill payments and self transfers are Transfers,
+  not income** · reading the direction verb alone · The card issuer texts "we
+  have received a payment towards your card", which reads exactly like income.
+  Counting it that way inflates income by the payment AND the original card
+  spending is already counted — the same rupees land in the totals twice, with
+  the wrong sign. The paying side says "payment towards credit card", a spend
+  that never happened. Both legs are filed under Transfers, which the analytics
+  queries already exclude, so balances stay right and the totals stop
+  double-counting. The detection anchors on "payment TOWARDS a card" rather
+  than the word "card", so an ordinary card spend is untouched.
+- **2026-08-14 · The Edit sheet can mark anything as "between my own
+  accounts"** · relying on detection alone · No parser can know that the
+  account at the other end is also yours — a transfer to your own account at
+  another bank is indistinguishable from paying a person. Detection covers the
+  phrasings that are decidable; this covers the rest, and is one tap.

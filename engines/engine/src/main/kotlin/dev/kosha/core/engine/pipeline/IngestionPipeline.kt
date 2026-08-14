@@ -22,6 +22,12 @@ class IngestionPipeline(
             val score: Double,
             val merchantNormalized: String?,
             val isAtmWithdrawal: Boolean,
+            /**
+             * Money between the user's own accounts (a card bill, a self
+             * transfer). Committed as a Transfer so it is excluded from
+             * income and spend rather than counted as both.
+             */
+            val isSelfTransfer: Boolean,
             val bank: String?,
             val patternId: String?,
         ) : Outcome
@@ -68,6 +74,7 @@ class IngestionPipeline(
                 existing = existing,
                 expectedRecurring = expectedRecurring,
                 isAtmWithdrawal = parsed.isAtmWithdrawal,
+                isSelfTransfer = parsed.isSelfTransfer,
                 bank = parsed.bank,
                 patternId = parsed.patternId,
             )
@@ -81,6 +88,7 @@ class IngestionPipeline(
         existing: List<DedupEngine.ExistingTxn>,
         expectedRecurring: List<DedupEngine.ExpectedRecurring> = emptyList(),
         isAtmWithdrawal: Boolean = false,
+        isSelfTransfer: Boolean = false,
         bank: String? = null,
         patternId: String? = null,
     ): Outcome {
@@ -121,6 +129,7 @@ class IngestionPipeline(
                 score = decision.score,
                 merchantNormalized = merchantNormalized,
                 isAtmWithdrawal = isAtmWithdrawal,
+                isSelfTransfer = isSelfTransfer,
                 bank = bank,
                 patternId = patternId,
             )

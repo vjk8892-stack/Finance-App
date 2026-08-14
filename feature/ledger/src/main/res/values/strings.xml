@@ -71,6 +71,9 @@
     <string name="edit_money_in">Money in</string>
     <string name="edit_date">Date · %1$s</string>
     <string name="edit_date_confirm">Use this date</string>
+    <string name="edit_is_transfer_on">Between my own accounts</string>
+    <string name="edit_is_transfer_off">Mark as a transfer between my accounts</string>
+    <string name="edit_is_transfer_help">Card bill payments and moving money to another of your accounts are not income or spending. Marked entries keep your balances right but stay out of the totals.</string>
     <string name="edit_save">Save</string>
     <string name="ledger_categorize_existing">Categorize existing</string>
     <string name="ledger_categorize_done">Sorted %1$d entries into categories.</string>

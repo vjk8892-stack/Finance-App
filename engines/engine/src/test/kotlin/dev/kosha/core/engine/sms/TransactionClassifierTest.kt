@@ -182,6 +182,42 @@ class TransactionClassifierTest {
     }
 
     @Test
+    fun `a credit card bill payment is a transfer, not income`() {
+        // Real message from a live install. Read as income it inflated the
+        // month by the payment, while the original card spending was already
+        // counted — the same rupees twice, with the wrong sign.
+        val e = extraction(
+            "Dear Customer, We have received a payment of INR 6,386.45 towards your " +
+                "LevelUP CC 653094XXXXXXX7376 on 01-08-2026 10:29. -CUB",
+        )
+        assertEquals(Money(638_645), e.amount)
+        assertTrue("card bill payment must be a self transfer", e.isSelfTransfer)
+    }
+
+    @Test
+    fun `the paying side of a card bill is also a transfer`() {
+        listOf(
+            "Rs.6,386.45 debited from a/c XX1234 towards CREDIT CARD payment on 01-08-26",
+            "INR 5,000 paid to your HDFC Credit Card from a/c XX1234",
+            "Payment of Rs.2,000 received for card ending 7376",
+        ).forEach { body ->
+            assertTrue("not flagged as a transfer: ${'$'}body", extraction(body).isSelfTransfer)
+        }
+    }
+
+    @Test
+    fun `an ordinary card spend is NOT a transfer`() {
+        // The distinction is "payment TOWARDS a card" vs "spent ON a card".
+        listOf(
+            "Rs.1,299.00 spent on HDFC Bank Card x9012 at AMAZON RETAIL on 12-08-26",
+            "INR 349.00 debited A/c no. XX5566 UPI/P2M/522233445566/NETFLIX ENT",
+            "Rs.85,000.00 credited to a/c XX1234 from ACME PAYROLL on 01-08-26",
+        ).forEach { body ->
+            assertFalse("wrongly flagged as a transfer: ${'$'}body", extraction(body).isSelfTransfer)
+        }
+    }
+
+    @Test
     fun `atm withdrawals are flagged for the cash-transfer path`() {
         assertTrue(extraction("Rs.2000.00 withdrawn at ATM from a/c x4321 on 12-08-26").isAtmWithdrawal)
         assertFalse(extraction("Rs.2000.00 debited from a/c x4321 to SHOP on 12-08-26").isAtmWithdrawal)

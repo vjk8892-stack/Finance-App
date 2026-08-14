@@ -38,6 +38,8 @@ class SmsParser(private val library: SmsPatternLibrary) {
             val patternId: String?,
             val bank: String?,
             val isAtmWithdrawal: Boolean,
+            /** Between the user's own accounts — neither income nor spend. */
+            val isSelfTransfer: Boolean,
         ) : Result
     }
 
@@ -115,6 +117,7 @@ class SmsParser(private val library: SmsPatternLibrary) {
             patternId = pattern?.spec?.id,
             bank = pattern?.spec?.bank,
             isAtmWithdrawal = pattern?.spec?.isAtmWithdrawal ?: extraction.isAtmWithdrawal,
+            isSelfTransfer = extraction.isSelfTransfer,
         )
     }
 

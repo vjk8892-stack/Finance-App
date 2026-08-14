@@ -34,6 +34,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -197,12 +198,16 @@ fun LedgerScreen(
         if (queryState.isFiltering) {
             // Query results replace the grouped ledger while a query is live.
             LazyColumn(Modifier.fillMaxSize()) {
-                items(queryState.rows.size) { i ->
+                items(
+                    count = queryState.rows.size,
+                    key = { i -> queryState.rows[i].txn.id },
+                ) { i ->
+                    val row = queryState.rows[i]
                     TransactionRow(
-                        row = queryState.rows[i],
-                        onOpen = { viewModel.openDetail(queryState.rows[i]) },
-                        onRecategorize = { recategorizing = queryState.rows[i] },
-                        onActions = { acting = queryState.rows[i] },
+                        row = row,
+                        onOpen = { viewModel.openDetail(row) },
+                        onRecategorize = { recategorizing = row },
+                        onActions = { acting = row },
                     )
                 }
             }
@@ -229,7 +234,10 @@ fun LedgerScreen(
                         item(key = "day-${day.date}") {
                             DayHeader(day.label, day.total)
                         }
-                        items(day.rows.size) { i ->
+                        items(
+                            count = day.rows.size,
+                            key = { i -> day.rows[i].txn.id },
+                        ) { i ->
                             val row = day.rows[i]
                             TransactionRow(
                                 row = row,
@@ -265,6 +273,7 @@ fun LedgerScreen(
         EditTransactionSheet(
             row = row,
             categories = state.categories.filter { !it.isSystem },
+            transfersCategoryId = state.transfersCategoryId,
             onSave = { edited ->
                 viewModel.saveEdit(edited)
                 editing = null
@@ -402,11 +411,20 @@ private fun TransactionRow(
     onRecategorize: () -> Unit,
     onActions: () -> Unit,
 ) {
+    // `rememberSwipeToDismissBoxState` keeps the callback it was FIRST given.
+    // A LazyColumn reuses a row's slot for whatever scrolls into it, so the
+    // retained callback went on referring to the row that used to be there —
+    // swiping one transaction opened the action sheet for a different one,
+    // with Delete in it. `rememberUpdatedState` makes the retained lambda read
+    // the current handlers instead of the ones captured at first composition;
+    // the stable item keys at the call sites are the other half of the fix.
+    val currentRecategorize by rememberUpdatedState(onRecategorize)
+    val currentActions by rememberUpdatedState(onActions)
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             when (value) {
-                SwipeToDismissBoxValue.StartToEnd -> onRecategorize()
-                SwipeToDismissBoxValue.EndToStart -> onActions()
+                SwipeToDismissBoxValue.StartToEnd -> currentRecategorize()
+                SwipeToDismissBoxValue.EndToStart -> currentActions()
                 SwipeToDismissBoxValue.Settled -> Unit
             }
             false // never actually dismiss the row

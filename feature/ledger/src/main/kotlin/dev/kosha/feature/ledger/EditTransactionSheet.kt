@@ -58,6 +58,8 @@ import java.time.format.DateTimeFormatter
 fun EditTransactionSheet(
     row: LedgerRow,
     categories: List<CategoryEntity>,
+    /** The system Transfers row, so "my own account" can be one tap. */
+    transfersCategoryId: Long?,
     onSave: (EditedTransaction) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -66,6 +68,7 @@ fun EditTransactionSheet(
     var note by remember { mutableStateOf(txn.note.orEmpty()) }
     var type by remember { mutableStateOf(txn.type) }
     var categoryId by remember { mutableStateOf(txn.categoryId) }
+    var isTransfer by remember { mutableStateOf(txn.categoryId == transfersCategoryId) }
     var timestamp by remember { mutableStateOf(txn.timestampMillis) }
     var showDatePicker by remember { mutableStateOf(false) }
     // Rupees as typed, so the field behaves like a text field rather than
@@ -173,16 +176,41 @@ fun EditTransactionSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
 
+            // No parser can know that the account at the other end is also
+            // yours. Moving money between your own accounts — a card bill, a
+            // transfer to another bank — is neither income nor spending, and
+            // counting it as either is what makes the savings gap nonsense.
+            KoshaChip(
+                label = if (isTransfer) {
+                    stringResource(R.string.edit_is_transfer_on)
+                } else {
+                    stringResource(R.string.edit_is_transfer_off)
+                },
+                selected = isTransfer,
+                onClick = {
+                    isTransfer = !isTransfer
+                    if (isTransfer) categoryId = transfersCategoryId
+                },
+                accent = KoshaColors.AccentTeal,
+            )
             Text(
-                text = stringResource(R.string.edit_category),
-                style = KoshaType.Label,
+                text = stringResource(R.string.edit_is_transfer_help),
+                style = KoshaType.Caption,
                 color = KoshaColors.OffWhiteFaint,
             )
-            CategoryFlowGrid(
-                categories = categories,
-                selectedId = categoryId,
-                onPick = { picked -> categoryId = if (categoryId == picked.id) null else picked.id },
-            )
+
+            if (!isTransfer) {
+                Text(
+                    text = stringResource(R.string.edit_category),
+                    style = KoshaType.Label,
+                    color = KoshaColors.OffWhiteFaint,
+                )
+                CategoryFlowGrid(
+                    categories = categories,
+                    selectedId = categoryId,
+                    onPick = { picked -> categoryId = if (categoryId == picked.id) null else picked.id },
+                )
+            }
 
             Spacer(Modifier.height(KoshaSpacing.xs))
             Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.s)) {
@@ -198,7 +226,7 @@ fun EditTransactionSheet(
                                 merchantRaw = merchant.trim().takeIf { it.isNotBlank() },
                                 note = note.trim().takeIf { it.isNotBlank() },
                                 timestampMillis = timestamp,
-                                categoryId = categoryId,
+                                categoryId = if (isTransfer) transfersCategoryId else categoryId,
                             ),
                         )
                     },

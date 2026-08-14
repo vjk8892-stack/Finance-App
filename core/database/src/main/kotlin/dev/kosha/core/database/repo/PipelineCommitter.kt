@@ -154,12 +154,22 @@ class PipelineCommitter @Inject constructor(
             if (outcome.isAtmWithdrawal) {
                 commitAtmWithdrawal(outcome, source, rawEvidence, retainRawBody)
             } else {
+                // Money between the user's own accounts is a real movement but
+                // neither income nor spend. Filing it under Transfers keeps
+                // the balances right while the analytics queries, which
+                // already exclude that category, stop counting it twice.
+                val forced = if (outcome.isSelfTransfer) {
+                    categoryDao.bySystemKey(SystemCategoryKey.TRANSFERS)?.id
+                } else {
+                    null
+                }
                 val inserted = insert(
                     txn = outcome.txn,
                     merchantNormalized = outcome.merchantNormalized,
                     source = source,
                     score = outcome.score,
                     status = TxnStatus.COMMITTED,
+                    forcedCategoryId = forced,
                 )
                     ?: return CommitResult.Dropped("no-account")
                 attachEvidence(inserted.id, source, rawEvidence, retainRawBody)
