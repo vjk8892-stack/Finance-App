@@ -69,7 +69,16 @@ fun ReviewQueueScreen(
                 text = stringResource(R.string.review_title),
                 style = KoshaType.Title,
                 color = KoshaColors.OffWhite,
+                modifier = Modifier.weight(1f),
             )
+            if (state.total > 0) {
+                Text(
+                    text = stringResource(R.string.review_remaining, state.total),
+                    style = KoshaType.Caption,
+                    color = KoshaColors.OffWhiteFaint,
+                    modifier = Modifier.padding(end = KoshaSpacing.s),
+                )
+            }
         }
 
         if (state.items.isEmpty()) {
@@ -85,20 +94,123 @@ fun ReviewQueueScreen(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(KoshaSpacing.screenPadding),
                 verticalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
             ) {
-                items(state.items.size) { i ->
-                    ReviewCard(
-                        row = state.items[i],
-                        categories = state.categories,
-                        originalMessage = state.evidenceByTxnId[state.items[i].txn.id],
-                        onApprove = { categoryId -> viewModel.approve(state.items[i].txn.id, categoryId) },
-                        onMerge = { viewModel.mergeDuplicate(state.items[i].txn.id) },
-                        onDiscard = { viewModel.discard(state.items[i].txn.id) },
+                state.groups.forEach { group ->
+                    item(key = "header-${group.key}") {
+                        GroupHeader(
+                            group = group,
+                            onApproveAll = { viewModel.approveAll(group) },
+                            onDiscardAll = { viewModel.discardAll(group) },
+                        )
+                    }
+                    items(group.rows.size, key = { i -> group.rows[i].txn.id }) { i ->
+                        val row = group.rows[i]
+                        ReviewCard(
+                            row = row,
+                            categories = state.categories,
+                            originalMessage = state.evidenceByTxnId[row.txn.id],
+                            onApprove = { categoryId -> viewModel.approve(row.txn.id, categoryId) },
+                            onMerge = { viewModel.mergeDuplicate(row.txn.id) },
+                            onDiscard = { viewModel.discard(row.txn.id) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Header for one reason, with the bulk actions for it.
+ *
+ * A queue this long is only drainable in groups — and everything in it is
+ * excluded from every total until cleared, so an unread queue quietly makes
+ * the rest of the app wrong. The count and net are on the header so approving
+ * a group is an informed action rather than a leap.
+ */
+@Composable
+private fun GroupHeader(
+    group: ReviewGroup,
+    onApproveAll: () -> Unit,
+    onDiscardAll: () -> Unit,
+) {
+    var confirming by remember { mutableStateOf(false) }
+
+    Column(Modifier.fillMaxWidth().padding(top = KoshaSpacing.s)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = groupTitle(group),
+                style = KoshaType.SectionHeader,
+                color = KoshaColors.OffWhite,
+                modifier = Modifier.weight(1f),
+            )
+            AmountText(
+                amount = group.total,
+                style = KoshaType.AmountSmall,
+                color = KoshaColors.OffWhiteMuted,
+                withPaise = false,
+            )
+        }
+        Text(
+            text = stringResource(R.string.review_group_count, group.rows.size),
+            style = KoshaType.Caption,
+            color = KoshaColors.OffWhiteFaint,
+        )
+        // Duplicates are a judgement about two specific rows, so they are
+        // never offered as a bulk approval.
+        if (!group.isDuplicateGroup) {
+            Spacer(Modifier.height(KoshaSpacing.xxs))
+            if (!confirming) {
+                Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs)) {
+                    KoshaChip(
+                        label = stringResource(R.string.review_approve_all, group.rows.size),
+                        onClick = { confirming = true },
+                        accent = KoshaColors.AccentTeal,
+                    )
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.review_approve_all_confirm, group.rows.size),
+                    style = KoshaType.Caption,
+                    color = KoshaColors.Amber,
+                )
+                Spacer(Modifier.height(KoshaSpacing.xxs))
+                Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs)) {
+                    KoshaChip(
+                        label = stringResource(R.string.review_approve_all_yes),
+                        onClick = {
+                            confirming = false
+                            onApproveAll()
+                        },
+                        accent = KoshaColors.AccentTeal,
+                    )
+                    KoshaChip(
+                        label = stringResource(R.string.review_discard_all),
+                        onClick = {
+                            confirming = false
+                            onDiscardAll()
+                        },
+                        accent = KoshaColors.Amber,
+                    )
+                    KoshaChip(
+                        label = stringResource(R.string.ledger_cancel_generic),
+                        onClick = { confirming = false },
                     )
                 }
             }
         }
     }
 }
+
+@Composable
+private fun groupTitle(group: ReviewGroup): String = stringResource(
+    when (group.key) {
+        ReviewQueueViewModel.KEY_NEW_ACCOUNT -> R.string.review_group_new_account
+        ReviewQueueViewModel.KEY_ACCOUNT_TAIL -> R.string.review_group_account_tail
+        ReviewQueueViewModel.KEY_ACCOUNT_UNKNOWN -> R.string.review_group_account_unknown
+        ReviewQueueViewModel.DUPLICATES_KEY -> R.string.review_group_duplicates
+        else -> R.string.review_group_low_confidence
+    },
+)
 
 /**
  * "Parsed with low confidence" for everything tells the reader nothing about

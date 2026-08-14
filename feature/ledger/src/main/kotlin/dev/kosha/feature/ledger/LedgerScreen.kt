@@ -77,6 +77,8 @@ fun LedgerScreen(
     var recategorizing by remember { mutableStateOf<LedgerRow?>(null) }
     var acting by remember { mutableStateOf<LedgerRow?>(null) }
     var filtersOpen by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<LedgerRow?>(null) }
+    val retroResult by viewModel.retroResult.collectAsState()
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -166,8 +168,31 @@ fun LedgerScreen(
                 onClick = onOpenBudgets,
                 accent = KoshaColors.AccentTeal,
             )
+            // Categorization improved after these rows were captured, and it
+            // only runs at capture time — so history stays Uncategorized until
+            // something re-applies the rules to it.
+            KoshaChip(
+                label = stringResource(R.string.ledger_categorize_existing),
+                onClick = viewModel::categorizeExisting,
+            )
         }
         Spacer(Modifier.height(KoshaSpacing.xs))
+
+        retroResult?.let { result ->
+            Text(
+                text = if (result.categorized > 0) {
+                    stringResource(R.string.ledger_categorize_done, result.categorized)
+                } else {
+                    stringResource(R.string.ledger_categorize_none)
+                },
+                style = KoshaType.Caption,
+                color = KoshaColors.AccentTeal,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = viewModel::clearRetroResult)
+                    .padding(horizontal = KoshaSpacing.screenPadding, vertical = KoshaSpacing.xs),
+            )
+        }
 
         if (queryState.isFiltering) {
             // Query results replace the grouped ledger while a query is live.
@@ -223,11 +248,28 @@ fun LedgerScreen(
     recategorizing?.let { row ->
         RecategorizeSheet(
             categories = state.categories.filter { !it.isSystem },
+            merchantName = row.txn.merchantRaw,
             onPick = { category ->
                 viewModel.recategorize(row.txn.id, category.id)
                 recategorizing = null
             },
+            onPickForMerchant = { category ->
+                viewModel.recategorizeMerchant(row, category.id)
+                recategorizing = null
+            },
             onDismiss = { recategorizing = null },
+        )
+    }
+
+    editing?.let { row ->
+        EditTransactionSheet(
+            row = row,
+            categories = state.categories.filter { !it.isSystem },
+            onSave = { edited ->
+                viewModel.saveEdit(edited)
+                editing = null
+            },
+            onDismiss = { editing = null },
         )
     }
 
@@ -254,6 +296,10 @@ fun LedgerScreen(
             onDismiss = viewModel::closeDetail,
             onRecategorize = {
                 recategorizing = open.row
+                viewModel.closeDetail()
+            },
+            onEdit = {
+                editing = open.row
                 viewModel.closeDetail()
             },
         )
@@ -458,9 +504,15 @@ private fun TransactionRow(
 @Composable
 private fun RecategorizeSheet(
     categories: List<CategoryEntity>,
+    merchantName: String?,
     onPick: (CategoryEntity) -> Unit,
+    onPickForMerchant: (CategoryEntity) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // Categorizing one row of a merchant you have twenty of is not really a
+    // per-row decision, so offer to settle the merchant in one go.
+    var applyToMerchant by remember { mutableStateOf(merchantName != null) }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = KoshaColors.CharcoalOverlay,
@@ -476,8 +528,30 @@ private fun RecategorizeSheet(
                 style = KoshaType.Title,
                 color = KoshaColors.OffWhite,
             )
+            if (merchantName != null) {
+                Spacer(Modifier.height(KoshaSpacing.xxs))
+                KoshaChip(
+                    label = if (applyToMerchant) {
+                        stringResource(R.string.ledger_apply_all_merchant, merchantName)
+                    } else {
+                        stringResource(R.string.ledger_apply_this_one)
+                    },
+                    selected = applyToMerchant,
+                    onClick = { applyToMerchant = !applyToMerchant },
+                    accent = KoshaColors.AccentTeal,
+                )
+            }
             Spacer(Modifier.height(KoshaSpacing.xs))
-            CategoryFlowGrid(categories = categories, onPick = onPick)
+            CategoryFlowGrid(
+                categories = categories,
+                onPick = { category ->
+                    if (applyToMerchant && merchantName != null) {
+                        onPickForMerchant(category)
+                    } else {
+                        onPick(category)
+                    }
+                },
+            )
             Spacer(Modifier.height(KoshaSpacing.l))
         }
     }

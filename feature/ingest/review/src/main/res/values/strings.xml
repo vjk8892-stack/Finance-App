@@ -11,4 +11,16 @@
     <string name="review_reason_new_account">From an account you had not added — Kosha created “•• %1$s”. Rename or merge it in Accounts.</string>
     <string name="review_reason_account_unknown">The message did not say which account this came from.</string>
     <string name="review_reason_account_tail">Your account had no digits recorded — Kosha took “%1$s” from this message. Fix it in Accounts if that is a different bank.</string>
+    <string name="review_remaining">%1$d waiting</string>
+    <string name="review_group_count">%1$d entries</string>
+    <string name="review_approve_all">Approve all %1$d</string>
+    <string name="review_approve_all_confirm">Add all %1$d to your ledger?</string>
+    <string name="review_approve_all_yes">Yes, add them</string>
+    <string name="review_discard_all">Discard them</string>
+    <string name="ledger_cancel_generic">Cancel</string>
+    <string name="review_group_low_confidence">Check the details</string>
+    <string name="review_group_new_account">From accounts you had not added</string>
+    <string name="review_group_account_tail">Account digits taken from a message</string>
+    <string name="review_group_account_unknown">Account not named in the message</string>
+    <string name="review_group_duplicates">Possible duplicates</string>
 </resources>

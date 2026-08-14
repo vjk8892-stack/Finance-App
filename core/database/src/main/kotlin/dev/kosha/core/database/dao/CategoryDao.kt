@@ -26,6 +26,9 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE type = :type ORDER BY sortOrder, id")
     fun observeByType(type: CategoryType): Flow<List<CategoryEntity>>
 
+    @Query("SELECT * FROM categories ORDER BY sortOrder, id")
+    suspend fun observeAllOnce(): List<CategoryEntity>
+
     @Query("SELECT * FROM categories WHERE id = :id")
     suspend fun byId(id: Long): CategoryEntity?
 

@@ -269,3 +269,42 @@ Format: date · decision · alternatives · why.
   accounts** · a bare list of balances · The total is what people open the
   screen for, and an account with no digits silently cannot be matched to any
   bank message — worth saying where it is fixable.
+
+## Making the existing data usable (2026-08-14)
+
+- **2026-08-14 · Categorization can be re-applied to rows already captured
+  (`RetroCategorizer`)** · telling the user to re-scan · Categorization runs at
+  commit time, so improving the rules only helps messages that arrive
+  afterwards — the user's history, which is the part they care about, keeps
+  whatever it got on the day. Asking them to re-scan pushes the cost of our
+  late rule onto them. The pass walks committed rows with no category and
+  applies the same two signals in the same order as the committer: the user's
+  own history for that merchant first, keyword rules second. Decisions are made
+  once per merchant, and rows that already have a real category are never
+  touched, so it is idempotent.
+- **2026-08-14 · The uncategorized bucket is split into the merchants inside
+  it** · one "Uncategorized" slice · Every category-shaped visual divides
+  `spendByCategoryName`, so one bucket holding most of the spend collapses all
+  of them to a single slice and the Insights tab says nothing on real data. The
+  merchant names ARE known even when the category is not, so the bucket is
+  broken into its top merchants — turning "₹90,921 Uncategorized" into a
+  readable ranking using data already on the device. Categorized spend keeps
+  its category name, so this quietly stops mattering as categories fill in.
+- **2026-08-14 · The review queue groups by reason and approves in bulk** ·
+  one row at a time · A hundred-item queue reviewed row by row is a queue
+  nobody finishes — and everything in it is excluded from every total until
+  cleared, so an unread queue quietly makes the rest of the app wrong. Rows
+  waiting for the same reason are one decision. Each group carries its count
+  and net so approving is informed, and possible duplicates are never offered
+  for bulk approval because merge-or-keep is a judgement about two specific
+  rows. Balances are recomputed once per affected account, not once per row.
+- **2026-08-14 · Transactions are editable: amount, direction, date, name,
+  note, category** · recategorize-or-delete · Everything in the ledger came
+  from a parser and no parser is right every time; without editing, a row with
+  a wrong amount had to be deleted and retyped, losing the link to the message
+  it came from. Renaming a merchant renormalizes it, or categorization and
+  dedup keep matching the old name. Changing the day keeps the time of day so
+  dedup windows are not silently shifted.
+- **2026-08-14 · Recategorizing offers to apply to the whole merchant** ·
+  per-row only · Categorizing one row of a merchant you have twenty of is not
+  really a per-row decision.

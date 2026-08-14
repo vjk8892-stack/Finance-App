@@ -45,4 +45,29 @@ class TransactionRepository @Inject constructor(
     suspend fun recategorize(id: Long, categoryId: Long?) {
         transactionDao.recategorize(id, categoryId, System.currentTimeMillis())
     }
+
+    /** Every transaction of a merchant, in one decision (spec G7). */
+    suspend fun recategorizeMerchant(merchantNormalized: String, categoryId: Long?) {
+        transactionDao.recategorizeMerchant(merchantNormalized, categoryId, System.currentTimeMillis())
+    }
+
+    /**
+     * Approve a batch. Balances are recomputed once per affected account
+     * rather than once per row — approving a hundred rows one at a time would
+     * recompute the same account a hundred times.
+     */
+    suspend fun approveAll(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        val accountIds = transactionDao.accountIdsFor(ids)
+        transactionDao.approveReviewBatch(ids, System.currentTimeMillis())
+        accountIds.forEach { accountDao.recomputeBalance(it) }
+    }
+
+    suspend fun deleteAll(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        // Read the accounts BEFORE the rows disappear.
+        val accountIds = transactionDao.accountIdsFor(ids)
+        transactionDao.deleteBatch(ids)
+        accountIds.forEach { accountDao.recomputeBalance(it) }
+    }
 }

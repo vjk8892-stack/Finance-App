@@ -70,19 +70,15 @@ class InsightsRepository @Inject constructor(
             categoryDao.bySystemKey(SystemCategoryKey.TRANSFERS)?.id,
             categoryDao.bySystemKey(SystemCategoryKey.CASH_WITHDRAWAL)?.id,
         )
+        val uncategorizedId = categoryDao.bySystemKey(SystemCategoryKey.UNCATEGORIZED)?.id
 
-        val spendByName = snapshot.spendByCategory
-            .mapNotNull { (categoryId, amount) ->
-                val name = categoryId?.let { categories[it]?.name } ?: "Uncategorized"
-                name to amount
-            }
-            .sortedByDescending { it.second.paise }
-
-        // Daily spend for the heatmap.
+        // Daily spend for the heatmap, and the raw rows the breakdown needs.
         val periodTxns = transactionDao.inWindow(
             period.startEpochMillis(zone),
             period.endEpochMillisExclusive(zone),
         ).filter { it.status == TxnStatus.COMMITTED && it.type == TxnType.DEBIT }
+
+        val spendByName = spendBreakdown(snapshot.spendByCategory, categories, periodTxns, uncategorizedId)
         val dailySpend = periodTxns
             .groupBy { Periods.localDateOf(it.timestampMillis, zone) }
             .mapValues { (_, txns) -> Money(txns.sumOf { it.amountPaise }) }
@@ -257,6 +253,66 @@ class InsightsRepository @Inject constructor(
         )
     }
 
+    /**
+     * "Where the money went", by category — except that an uncategorized
+     * bucket is not an answer, it is the absence of one.
+     *
+     * Every category-shaped visual (Sankey, treemap, radar, what-if) divides
+     * this list, so when one bucket holds most of the spend they all collapse
+     * to a single slice and the Insights tab says nothing. The merchant names
+     * ARE known even when the category is not, so the uncategorized bucket is
+     * split into the merchants inside it rather than shown as one block. That
+     * turns "₹90,921 Uncategorized" into a readable ranking of who was
+     * actually paid, using data already on the device.
+     *
+     * Categorized spend keeps its category name, so this quietly stops
+     * mattering as categories fill in.
+     */
+    private fun spendBreakdown(
+        spendByCategory: Map<Long?, Money>,
+        categories: Map<Long, dev.kosha.core.database.model.CategoryEntity>,
+        periodTxns: List<dev.kosha.core.database.model.TransactionEntity>,
+        uncategorizedId: Long?,
+    ): List<Pair<String, Money>> {
+        val named = mutableListOf<Pair<String, Money>>()
+        var unnamedTotal = 0L
+
+        for ((categoryId, amount) in spendByCategory) {
+            if (categoryId == null || categoryId == uncategorizedId) {
+                unnamedTotal += amount.paise
+            } else {
+                named += (categories[categoryId]?.name ?: "Uncategorized") to amount
+            }
+        }
+
+        if (unnamedTotal > 0) {
+            val uncategorizedTxns = periodTxns.filter {
+                it.categoryId == null || it.categoryId == uncategorizedId
+            }
+            val byMerchant = uncategorizedTxns
+                .groupBy { it.merchantRaw?.takeIf { name -> name.isNotBlank() } }
+                .mapValues { (_, txns) -> txns.sumOf { it.amountPaise } }
+
+            byMerchant.entries
+                .filter { it.key != null }
+                .sortedByDescending { it.value }
+                .take(UNCATEGORIZED_MERCHANT_SLICES)
+                .forEach { named += it.key!! to Money(it.value) }
+
+            // Whatever is left — nameless rows, and merchants past the cut —
+            // stays honestly labelled rather than being silently dropped.
+            val accountedFor = byMerchant.entries
+                .filter { it.key != null }
+                .sortedByDescending { it.value }
+                .take(UNCATEGORIZED_MERCHANT_SLICES)
+                .sumOf { it.value }
+            val remainder = unnamedTotal - accountedFor
+            if (remainder > 0) named += "Uncategorized" to Money(remainder)
+        }
+
+        return named.sortedByDescending { it.second.paise }
+    }
+
     /** 3-month average spend per category — the DNA radar's baseline. */
     private suspend fun baselineSpend(
         current: Period,
@@ -284,6 +340,13 @@ class InsightsRepository @Inject constructor(
         const val TREND_PERIODS = 12
         const val BASELINE_PERIODS = 3
         const val DNA_AXES = 6
+
+        /**
+         * How many merchants to name inside the uncategorized bucket. Enough
+         * to see the shape of the month, few enough that the chart stays a
+         * chart rather than a list.
+         */
+        const val UNCATEGORIZED_MERCHANT_SLICES = 8
         /** ≥ 12% a year counts as high-interest for advisory ordering. */
         const val HIGH_INTEREST_BPS = 1200
     }

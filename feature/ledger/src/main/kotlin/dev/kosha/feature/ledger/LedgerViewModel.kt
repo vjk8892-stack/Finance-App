@@ -17,8 +17,10 @@ import dev.kosha.core.database.repo.AccountRepository
 import dev.kosha.core.database.repo.CategoryRepository
 import dev.kosha.core.database.repo.OriginalMessageSource
 import dev.kosha.core.database.repo.QueryRepository
+import dev.kosha.core.database.repo.RetroCategorizer
 import dev.kosha.core.database.repo.TransactionRepository
 import dev.kosha.core.database.settings.SettingsRepository
+import dev.kosha.core.engine.merchant.MerchantMatcher
 import dev.kosha.core.engine.query.Aggregation
 import dev.kosha.core.engine.query.Query
 import dev.kosha.core.engine.query.QueryAnswer
@@ -127,6 +129,7 @@ class LedgerViewModel @Inject constructor(
     private val metaDao: MetaDao,
     private val categoryRepository: CategoryRepository,
     private val originalMessageSource: OriginalMessageSource,
+    private val retroCategorizer: RetroCategorizer,
     accountRepository: AccountRepository,
 ) : ViewModel() {
 
@@ -265,6 +268,61 @@ class LedgerViewModel @Inject constructor(
 
     fun closeDetail() {
         _detail.value = null
+    }
+
+    /**
+     * Apply the user's corrections. `update` recomputes the account balance,
+     * so an amount or direction change is reflected immediately.
+     */
+    fun saveEdit(edited: EditedTransaction) {
+        viewModelScope.launch {
+            val existing = transactionRepository.byId(edited.id) ?: return@launch
+            transactionRepository.update(
+                existing.copy(
+                    amountPaise = edited.amountPaise,
+                    type = edited.type,
+                    merchantRaw = edited.merchantRaw,
+                    // Renaming a merchant has to renormalize too, or
+                    // categorization and dedup keep matching the old name.
+                    merchantNormalized = edited.merchantRaw
+                        ?.let { MerchantMatcher.normalize(it) }
+                        ?.takeIf { it.isNotEmpty() },
+                    note = edited.note,
+                    timestampMillis = edited.timestampMillis,
+                    categoryId = edited.categoryId,
+                ),
+            )
+            closeDetail()
+        }
+    }
+
+    /**
+     * Categorize this merchant's whole history at once. Correcting one row of
+     * a merchant you have twenty of is not really a per-row decision.
+     */
+    fun recategorizeMerchant(row: LedgerRow, categoryId: Long) {
+        val merchant = row.txn.merchantNormalized
+        viewModelScope.launch {
+            if (merchant.isNullOrBlank()) {
+                transactionRepository.recategorize(row.txn.id, categoryId)
+            } else {
+                transactionRepository.recategorizeMerchant(merchant, categoryId)
+            }
+        }
+    }
+
+    /** Retro-categorize existing rows using the current rules. */
+    fun categorizeExisting() {
+        viewModelScope.launch {
+            _retroResult.value = retroCategorizer.run()
+        }
+    }
+
+    private val _retroResult = MutableStateFlow<RetroCategorizer.Result?>(null)
+    val retroResult: StateFlow<RetroCategorizer.Result?> = _retroResult.asStateFlow()
+
+    fun clearRetroResult() {
+        _retroResult.value = null
     }
 
     fun recategorize(txnId: Long, categoryId: Long) {

@@ -50,6 +50,7 @@ fun TransactionDetailSheet(
     detail: TransactionDetail,
     onDismiss: () -> Unit,
     onRecategorize: () -> Unit,
+    onEdit: () -> Unit,
 ) {
     val row = detail.row
     val txn = row.txn
@@ -151,11 +152,17 @@ fun TransactionDetailSheet(
             }
 
             Spacer(Modifier.height(KoshaSpacing.xs))
-            KoshaChip(
-                label = stringResource(R.string.ledger_recategorize),
-                onClick = onRecategorize,
-                accent = KoshaColors.AccentTeal,
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs)) {
+                KoshaChip(
+                    label = stringResource(R.string.edit_title),
+                    onClick = onEdit,
+                    accent = KoshaColors.AccentTeal,
+                )
+                KoshaChip(
+                    label = stringResource(R.string.ledger_recategorize),
+                    onClick = onRecategorize,
+                )
+            }
             Spacer(Modifier.height(KoshaSpacing.xl))
         }
     }

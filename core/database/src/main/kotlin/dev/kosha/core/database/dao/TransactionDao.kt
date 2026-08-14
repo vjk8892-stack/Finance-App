@@ -127,6 +127,53 @@ interface TransactionDao {
     @Query("UPDATE transactions SET categoryId = :categoryId, updatedAtMillis = :now WHERE id = :id")
     suspend fun recategorize(id: Long, categoryId: Long?, now: Long)
 
+    // --- Bulk operations (spec C2.4: a queue you cannot drain is a queue
+    // that stops being read at all) ---
+
+    /**
+     * Approve several at once. Same effect as [approveReview] per row; done in
+     * one statement so 117 rows is one write, not 117.
+     */
+    @Query(
+        """
+        UPDATE transactions SET status = 'committed', reviewReason = NULL,
+               possibleDuplicateOfId = NULL, updatedAtMillis = :now
+        WHERE id IN (:ids)
+        """
+    )
+    suspend fun approveReviewBatch(ids: List<Long>, now: Long)
+
+    @Query("DELETE FROM transactions WHERE id IN (:ids) OR parentTransactionId IN (:ids)")
+    suspend fun deleteBatch(ids: List<Long>)
+
+    /** Apply one category to every transaction of a merchant, at any status. */
+    @Query(
+        """
+        UPDATE transactions SET categoryId = :categoryId, updatedAtMillis = :now
+        WHERE merchantNormalized = :merchantNormalized
+        """
+    )
+    suspend fun recategorizeMerchant(merchantNormalized: String, categoryId: Long?, now: Long)
+
+    /**
+     * Committed rows that still have no real category, for the retro pass.
+     * [uncategorizedId] is the system Uncategorized row, which counts as "not
+     * categorized" just as much as NULL does.
+     */
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE status = 'committed'
+          AND merchantNormalized IS NOT NULL AND merchantNormalized != ''
+          AND (categoryId IS NULL OR categoryId = :uncategorizedId)
+        """
+    )
+    suspend fun uncategorizedWithMerchant(uncategorizedId: Long?): List<TransactionEntity>
+
+    /** Accounts touched by a set of rows, so balances can be recomputed once each. */
+    @Query("SELECT DISTINCT accountId FROM transactions WHERE id IN (:ids)")
+    suspend fun accountIdsFor(ids: List<Long>): List<Long>
+
     // Evidence
     @Insert
     suspend fun insertEvidence(evidence: TransactionEvidenceEntity): Long
