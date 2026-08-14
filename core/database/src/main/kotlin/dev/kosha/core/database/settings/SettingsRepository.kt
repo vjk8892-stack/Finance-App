@@ -62,4 +62,13 @@ class SettingsRepository @Inject constructor(
     suspend fun setPeriodAnchorDay(day: Int) = context.dataStore.edit {
         it[Keys.periodAnchorDay] = day.coerceIn(1, 28)
     }
+
+    /**
+     * Opt-in raw SMS retention (spec B4). Off by default: normally only the
+     * extracted fields are kept. Turning it on stores the original message
+     * alongside the transaction so a mis-parse can actually be diagnosed.
+     */
+    suspend fun setRetainRawSms(retain: Boolean) = context.dataStore.edit {
+        it[Keys.retainRawSms] = retain
+    }
 }

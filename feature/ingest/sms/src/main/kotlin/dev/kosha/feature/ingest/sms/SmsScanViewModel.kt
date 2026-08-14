@@ -3,6 +3,7 @@ package dev.kosha.feature.ingest.sms
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.kosha.core.database.settings.SettingsRepository
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,16 +15,31 @@ data class SmsScanUiState(
     val progress: Pair<Int, Int>? = null,
     val summary: HistoricalSmsImporter.ImportSummary? = null,
     val permissionGranted: Boolean = false,
+    val retainRawSms: Boolean = false,
     val error: String? = null,
 )
 
 @HiltViewModel
 class SmsScanViewModel @Inject constructor(
     private val importer: HistoricalSmsImporter,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SmsScanUiState())
     val state: StateFlow<SmsScanUiState> = _state.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            settingsRepository.settings.collect { settings ->
+                _state.value = _state.value.copy(retainRawSms = settings.retainRawSms)
+            }
+        }
+    }
+
+    /** Spec B4 debug toggle: keep the original message to diagnose mis-parses. */
+    fun setRetainRawSms(retain: Boolean) {
+        viewModelScope.launch { settingsRepository.setRetainRawSms(retain) }
+    }
 
     fun onPermissionResult(granted: Boolean) {
         _state.value = _state.value.copy(permissionGranted = granted)

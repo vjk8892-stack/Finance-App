@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.kosha.core.database.dao.LedgerRow
 import dev.kosha.core.database.dao.TransactionDao
 import dev.kosha.core.database.model.CategoryEntity
+import dev.kosha.core.database.model.EvidenceKind
 import dev.kosha.core.database.repo.CategoryRepository
 import dev.kosha.core.database.repo.TransactionRepository
 import javax.inject.Inject
@@ -18,6 +19,8 @@ import kotlinx.coroutines.launch
 data class ReviewUiState(
     val items: List<LedgerRow> = emptyList(),
     val categories: List<CategoryEntity> = emptyList(),
+    /** Transaction id → original message, when raw retention is on (B4). */
+    val evidenceByTxnId: Map<Long, String> = emptyMap(),
 )
 
 @HiltViewModel
@@ -31,7 +34,20 @@ class ReviewQueueViewModel @Inject constructor(
         transactionDao.observeReviewQueue(),
         categoryRepository.observeAll(),
     ) { items, categories ->
-        ReviewUiState(items = items, categories = categories.filter { !it.isSystem })
+        // Show the original message when the user opted to keep it — a
+        // low-confidence parse is only actionable if you can see the source.
+        val evidence = items.associate { row ->
+            row.txn.id to transactionDao.evidenceFor(row.txn.id)
+                .firstOrNull { it.kind == EvidenceKind.SMS_TEXT }
+                ?.payload
+                .orEmpty()
+        }.filterValues { it.isNotBlank() }
+
+        ReviewUiState(
+            items = items,
+            categories = categories.filter { !it.isSystem },
+            evidenceByTxnId = evidence,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReviewUiState())
 
     /** Approve: commit as-is (optionally with a category picked in the sheet). */

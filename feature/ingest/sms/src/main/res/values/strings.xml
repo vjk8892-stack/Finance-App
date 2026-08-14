@@ -8,4 +8,9 @@
     <string name="sms_scan_summary">Logged %1$d, %2$d waiting for review, %3$d already recorded — from %4$d messages.</string>
     <string name="sms_scan_idempotent">Safe to run again — anything already logged is merged, never duplicated.</string>
     <string name="sms_scan_unsupported">This build has no SMS access, so messages cannot be scanned. Install the full build to capture bank alerts automatically. Manual and photo entry work as normal.</string>
+
+    <string name="sms_keep_raw_title">Keep original message text</string>
+    <string name="sms_keep_raw_body">Off by default — Kosha normally stores only the amount, account, merchant and reference. Turn this on and re-scan to see the exact message behind each entry, which is what makes a wrong reading fixable. It never leaves the device either way.</string>
+    <string name="sms_keep_raw_on">Keeping message text</string>
+    <string name="sms_keep_raw_off">Not keeping message text</string>
 </resources>

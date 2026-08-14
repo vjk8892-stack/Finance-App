@@ -158,6 +158,33 @@ fun SmsScanScreen(
                 }
             }
 
+            // Diagnosing a bad parse needs the original text (spec B4 keeps
+            // it off by default, so this is an explicit opt-in).
+            KoshaCard(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.sms_keep_raw_title),
+                    style = KoshaType.Body,
+                    color = KoshaColors.OffWhite,
+                )
+                Spacer(Modifier.height(KoshaSpacing.xxs))
+                Text(
+                    text = stringResource(R.string.sms_keep_raw_body),
+                    style = KoshaType.Caption,
+                    color = KoshaColors.OffWhiteMuted,
+                )
+                Spacer(Modifier.height(KoshaSpacing.xs))
+                KoshaChip(
+                    label = if (state.retainRawSms) {
+                        stringResource(R.string.sms_keep_raw_on)
+                    } else {
+                        stringResource(R.string.sms_keep_raw_off)
+                    },
+                    selected = state.retainRawSms,
+                    onClick = { viewModel.setRetainRawSms(!state.retainRawSms) },
+                    accent = KoshaColors.Amber,
+                )
+            }
+
             state.summary?.let { summary ->
                 KoshaCard(modifier = Modifier.fillMaxWidth()) {
                     Text(

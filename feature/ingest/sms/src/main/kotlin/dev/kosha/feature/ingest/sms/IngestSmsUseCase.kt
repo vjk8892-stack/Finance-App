@@ -4,9 +4,11 @@ import android.util.Log
 import dev.kosha.core.database.model.TxnSource
 import dev.kosha.core.database.repo.PipelineCommitter
 import dev.kosha.core.database.repo.RecurringRepository
+import dev.kosha.core.database.settings.SettingsRepository
 import dev.kosha.core.engine.pipeline.IngestionPipeline
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.first
 
 /**
  * One SMS in → pipeline → committed rows out. The single entry point used by
@@ -17,6 +19,7 @@ import javax.inject.Singleton
 class IngestSmsUseCase @Inject constructor(
     private val committer: PipelineCommitter,
     private val recurringRepository: RecurringRepository,
+    private val settingsRepository: SettingsRepository,
 ) {
     private val pipeline = IngestionPipeline()
 
@@ -36,7 +39,10 @@ class IngestSmsUseCase @Inject constructor(
             outcome = outcome,
             source = TxnSource.SMS,
             rawEvidence = body,
-            retainRawBody = false, // spec B4 default: raw SMS not stored
+            // Spec B4: raw SMS is not stored unless the user opts in. When
+            // they do, the original text rides along so a bad parse can be
+            // seen and reported rather than just distrusted.
+            retainRawBody = settingsRepository.settings.first().retainRawSms,
         )
         if (result is PipelineCommitter.CommitResult.Dropped && result.reason != "not-bank-sender") {
             // Discard-with-log (spec B3) — logcat until the debug screen lands.

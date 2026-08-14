@@ -87,6 +87,7 @@ fun ReviewQueueScreen(
                     ReviewCard(
                         row = state.items[i],
                         categories = state.categories,
+                        originalMessage = state.evidenceByTxnId[state.items[i].txn.id],
                         onApprove = { categoryId -> viewModel.approve(state.items[i].txn.id, categoryId) },
                         onMerge = { viewModel.mergeDuplicate(state.items[i].txn.id) },
                         onDiscard = { viewModel.discard(state.items[i].txn.id) },
@@ -101,6 +102,7 @@ fun ReviewQueueScreen(
 private fun ReviewCard(
     row: LedgerRow,
     categories: List<CategoryEntity>,
+    originalMessage: String?,
     onApprove: (Long?) -> Unit,
     onMerge: () -> Unit,
     onDiscard: () -> Unit,
@@ -142,6 +144,18 @@ private fun ReviewCard(
             style = KoshaType.Caption,
             color = KoshaColors.Amber,
         )
+        // Only present when raw retention is on — the message that produced
+        // this row, so a wrong reading is obvious rather than mysterious.
+        originalMessage?.let { message ->
+            Spacer(Modifier.height(KoshaSpacing.xxs))
+            Text(
+                text = message,
+                style = KoshaType.Caption,
+                color = KoshaColors.OffWhiteFaint,
+                maxLines = 6,
+            )
+        }
+
         Spacer(Modifier.height(KoshaSpacing.xs))
 
         if (!isPossibleDuplicate) {
