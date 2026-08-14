@@ -14,6 +14,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -69,6 +70,10 @@ const val ROUTE_GOALS = "goals"
 const val ROUTE_SMS_SCAN = "sms-scan"
 const val ROUTE_PERMISSIONS = "permissions"
 const val ARG_QUICK_CATEGORY = "quickCategoryId"
+
+/** Chart → ledger deep links, so a slice can show the rows behind it. */
+const val ARG_LEDGER_CATEGORY = "ledgerCategory"
+const val ARG_LEDGER_MONTH = "ledgerMonth"
 
 @Composable
 fun KoshaAppScaffold(startAction: String? = null) {
@@ -145,12 +150,29 @@ fun KoshaAppScaffold(startAction: String? = null) {
                     onOpenReview = { navController.navigate(ROUTE_REVIEW) },
                 )
             }
-            composable(KoshaDestination.LEDGER.route) {
+            composable(
+                route = "${KoshaDestination.LEDGER.route}" +
+                    "?$ARG_LEDGER_CATEGORY={$ARG_LEDGER_CATEGORY}&$ARG_LEDGER_MONTH={$ARG_LEDGER_MONTH}",
+                arguments = listOf(
+                    navArgument(ARG_LEDGER_CATEGORY) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                    navArgument(ARG_LEDGER_MONTH) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) { entry ->
                 LedgerScreen(
                     onOpenAccounts = { navController.navigate(ROUTE_ACCOUNTS) },
                     onOpenReview = { navController.navigate(ROUTE_REVIEW) },
                     onScanSms = { navController.navigate(ROUTE_SMS_SCAN) },
                     onOpenBudgets = { navController.navigate(ROUTE_BUDGETS) },
+                    incomingCategory = entry.arguments?.getString(ARG_LEDGER_CATEGORY),
+                    incomingMonth = entry.arguments?.getString(ARG_LEDGER_MONTH),
                 )
             }
             composable(
@@ -170,7 +192,17 @@ fun KoshaAppScaffold(startAction: String? = null) {
                 )
             }
             composable(KoshaDestination.INSIGHTS.route) {
-                InsightsScreen()
+                InsightsScreen(
+                    onOpenLedger = { category, month ->
+                        val args = listOfNotNull(
+                            category?.let { "$ARG_LEDGER_CATEGORY=${Uri.encode(it)}" },
+                            month?.let { "$ARG_LEDGER_MONTH=$it" },
+                        ).joinToString("&")
+                        navController.navigate(
+                            "${KoshaDestination.LEDGER.route}" + if (args.isEmpty()) "" else "?$args",
+                        )
+                    },
+                )
             }
             composable(KoshaDestination.VAULT.route) {
                 VaultScreen()

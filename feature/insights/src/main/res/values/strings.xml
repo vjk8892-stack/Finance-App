@@ -62,6 +62,7 @@
     <string name="insights_leaks_none">Nothing unusual, and no leaks worth naming.</string>
     <string name="insights_leak_detail">%1$d times, about %2$s each</string>
     <string name="insights_anomaly">Bigger than usual</string>
+    <string name="insights_tap_for_rows">Tap a line to see those transactions.</string>
     <string name="insights_pick_category">Pick a category to try it out.</string>
     <string name="insights_whatif">What-if</string>
     <string name="insights_whatif_cut">Cut %1$d%%</string>

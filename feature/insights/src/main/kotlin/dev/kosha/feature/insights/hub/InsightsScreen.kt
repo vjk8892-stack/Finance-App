@@ -40,6 +40,7 @@ import dev.kosha.core.designsystem.token.KoshaSpacing
 import dev.kosha.core.designsystem.token.KoshaType
 import dev.kosha.core.engine.insight.HealthScore
 import dev.kosha.feature.insights.R
+import java.time.YearMonth
 import dev.kosha.feature.insights.charts.CalendarHeatmap
 import dev.kosha.feature.insights.charts.CategoryTreemap
 import dev.kosha.feature.insights.charts.RadarAxis
@@ -58,7 +59,10 @@ import kotlin.math.roundToInt
  * What-If · Opportunity Cost. Each section expands in place.
  */
 @Composable
-fun InsightsScreen(viewModel: InsightsViewModel = hiltViewModel()) {
+fun InsightsScreen(
+    onOpenLedger: (categoryName: String?, monthKey: String?) -> Unit = { _, _ -> },
+    viewModel: InsightsViewModel = hiltViewModel(),
+) {
     val insights by viewModel.insights.collectAsState()
     val whatIf by viewModel.whatIf.collectAsState()
     val opportunity by viewModel.opportunityCost.collectAsState()
@@ -90,10 +94,10 @@ fun InsightsScreen(viewModel: InsightsViewModel = hiltViewModel()) {
         // Before anything category-shaped: am I spending more than usual,
         // and more than I meant to? That question needs no categories at all,
         // which is exactly why it belongs first.
-        item { MonthlyComparisonSection(data) }
-        item { FlowSection(data) }
+        item { MonthlyComparisonSection(data, onOpenLedger) }
+        item { FlowSection(data, onOpenLedger) }
         item { RhythmSection(data) }
-        item { ShapeSection(data) }
+        item { ShapeSection(data, onOpenLedger) }
         item { TrajectorySection(data) }
         item { HealthSection(data) }
         item { AdvisorSection(data) }
@@ -152,8 +156,18 @@ private fun EmptyNote(text: String) {
 
 /** Figures beside every chart: the picture shows shape, this shows amounts. */
 @Composable
-private fun AmountLine(label: String, amount: Money, color: androidx.compose.ui.graphics.Color) {
-    Row(Modifier.fillMaxWidth()) {
+private fun AmountLine(
+    label: String,
+    amount: Money,
+    color: androidx.compose.ui.graphics.Color,
+    onClick: (() -> Unit)? = null,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(vertical = KoshaSpacing.xxs),
+    ) {
         Text(
             text = label,
             style = KoshaType.Body,
@@ -165,15 +179,22 @@ private fun AmountLine(label: String, amount: Money, color: androidx.compose.ui.
 }
 
 @Composable
-private fun MonthlyComparisonSection(data: InsightsRepository.Insights) {
+private fun MonthlyComparisonSection(
+    data: InsightsRepository.Insights,
+    onOpenLedger: (String?, String?) -> Unit,
+) {
     Section(
         title = stringResource(R.string.insights_monthly),
         subtitle = stringResource(R.string.insights_monthly_sub),
     ) {
-        // Oldest first, so time runs left to right.
-        val bars = data.trend.reversed().mapIndexed { index, point ->
+        // `trend` already runs oldest → newest. Reversing it here put the
+        // newest month on the left AND marked the oldest as "current", which
+        // is why the axis read Aug, Jul, Jun … Sept and the comparison line
+        // named the wrong month.
+        val bars = data.trend.mapIndexed { index, point ->
             MonthBar(
                 label = MONTH_LABEL.format(point.period.start),
+                monthKey = YearMonth.from(point.period.start).toString(),
                 spent = point.expense,
                 income = point.income,
                 isCurrent = index == data.trend.lastIndex,
@@ -185,7 +206,13 @@ private fun MonthlyComparisonSection(data: InsightsRepository.Insights) {
             return@Section
         }
 
-        MonthlyBars(months = bars, budget = data.monthlyBudget)
+        MonthlyBars(
+            months = bars,
+            budget = data.monthlyBudget,
+            // `bars` is a filtered view of `trend`, so the key travels on the
+            // bar itself rather than being looked up by index.
+            onSelect = { index -> bars.getOrNull(index)?.let { onOpenLedger(null, it.monthKey) } },
+        )
         Spacer(Modifier.height(KoshaSpacing.s))
 
         val previous = bars.dropLast(1).lastOrNull { it.spent.paise > 0 }
@@ -225,7 +252,10 @@ private fun MonthlyComparisonSection(data: InsightsRepository.Insights) {
 private val MONTH_LABEL = java.time.format.DateTimeFormatter.ofPattern("MMM")
 
 @Composable
-private fun FlowSection(data: InsightsRepository.Insights) {
+private fun FlowSection(
+    data: InsightsRepository.Insights,
+    onOpenLedger: (String?, String?) -> Unit,
+) {
     Section(
         title = stringResource(R.string.insights_flow),
         subtitle = stringResource(R.string.insights_flow_sub),
@@ -281,7 +311,10 @@ private fun RhythmSection(data: InsightsRepository.Insights) {
 }
 
 @Composable
-private fun ShapeSection(data: InsightsRepository.Insights) {
+private fun ShapeSection(
+    data: InsightsRepository.Insights,
+    onOpenLedger: (String?, String?) -> Unit,
+) {
     Section(
         title = stringResource(R.string.insights_shape),
         subtitle = stringResource(R.string.insights_shape_sub),
@@ -297,8 +330,19 @@ private fun ShapeSection(data: InsightsRepository.Insights) {
         Spacer(Modifier.height(KoshaSpacing.s))
         // The treemap shows proportion; this shows what each slice cost.
         data.spendByCategoryName.take(6).forEach { (name, amount) ->
-            AmountLine(name, amount, KoshaColors.OffWhite)
+            AmountLine(
+                label = name,
+                amount = amount,
+                color = KoshaColors.OffWhite,
+                onClick = { onOpenLedger(name, null) },
+            )
         }
+        Spacer(Modifier.height(KoshaSpacing.xxs))
+        Text(
+            text = stringResource(R.string.insights_tap_for_rows),
+            style = KoshaType.Caption,
+            color = KoshaColors.OffWhiteFaint,
+        )
 
         // A radar needs at least three axes to be a shape at all.
         if (data.dnaCurrent.size >= 3) {

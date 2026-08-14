@@ -335,3 +335,27 @@ Format: date · decision · alternatives · why.
   account at the other end is also yours — a transfer to your own account at
   another bank is indistinguishable from paying a person. Detection covers the
   phrasings that are decidable; this covers the rest, and is one tap.
+
+## Numbers that agree with each other (2026-08-14)
+
+- **2026-08-14 · Ledger month and day totals honour the same exclusions as
+  everything else** · a raw signed sum of the visible rows · Home said
+  "₹84,199 spent" for August while the ledger header said "−₹77,812" for the
+  same August. The difference was exactly one credit-card bill payment: the
+  savings gap, budgets and charts all exclude transfers, and this header alone
+  did not. Two numbers for the same month that disagree make BOTH
+  untrustworthy — a user cannot tell which one is lying. The header now uses
+  the same basis, and states the transfer volume it left out so the difference
+  is never a mystery.
+- **2026-08-14 · The month-by-month chart was reversed twice** · — ·
+  `InsightsRepository` already returns the trend oldest → newest; the screen
+  reversed it again, so the axis read Aug, Jul, Jun … Sept, the "current"
+  month was actually the oldest, and the comparison sentence named the wrong
+  month. Reported as "charts are not so accurate", and they were.
+- **2026-08-14 · Chart slices open the transactions behind them** · charts as
+  read-only pictures · A slice is a claim — "₹16,173 on EMI & Loans" — and the
+  only way to check a claim is to see the rows that make it. Tapping a
+  category line or a month bar lands on exactly those rows, pre-filtered,
+  which also makes a wrong-looking number diagnosable instead of merely
+  annoying. The month key travels on the bar rather than being looked up by
+  index, because the bar list is a filtered view of the trend.

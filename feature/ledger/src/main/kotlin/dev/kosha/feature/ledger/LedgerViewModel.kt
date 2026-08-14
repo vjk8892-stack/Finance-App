@@ -46,7 +46,7 @@ import kotlinx.serialization.json.Json
 data class LedgerDayGroup(
     val date: LocalDate,
     val label: String,
-    /** Net change for the day: credits positive, debits negative. */
+    /** Net for the day on the same basis as every other total in the app. */
     val total: Money,
     val rows: List<LedgerRow>,
 )
@@ -54,14 +54,20 @@ data class LedgerDayGroup(
 data class LedgerMonthGroup(
     val monthLabel: String,
     /**
-     * Net CHANGE for the month: credits positive, debits negative.
+     * Net for the month: credits positive, debits negative, EXCLUDING
+     * transfers and cash withdrawals.
      *
-     * It used to be spend-positive (debits − credits), which rendered a screen
-     * of nothing but credits as "−₹21,386" — the exact opposite of what the
-     * rows said. Matching the sign convention the rows already use means the
-     * header agrees with them under every filter.
+     * Those exclusions are the point. Every other figure in the app — the
+     * savings gap, the budgets, the charts — leaves transfers out, because
+     * moving your own money between your own accounts is neither income nor
+     * spending. This header did not, so Home said ₹84,199 spent while the
+     * ledger said ₹77,812 for the same August: the difference was exactly one
+     * credit-card bill payment, counted here and nowhere else. Two numbers
+     * for the same month that disagree makes both untrustworthy.
      */
     val total: Money,
+    /** Transfer volume left out above, so the difference is never a mystery. */
+    val excludedTransfers: Money,
     val days: List<LedgerDayGroup>,
 )
 
@@ -144,6 +150,22 @@ class LedgerViewModel @Inject constructor(
 
     private val _filters = MutableStateFlow(LedgerFilters())
 
+    /**
+     * Arrive pre-filtered when a chart sent the user here. A chart slice is a
+     * claim about a slice of the ledger — "₹16,173 on EMI & Loans" — and the
+     * only way to check a claim is to see the rows behind it, so tapping one
+     * has to land on exactly those rows rather than on everything.
+     */
+    fun applyIncomingFilter(categoryName: String?, monthKey: String?) {
+        if (categoryName == null && monthKey == null) return
+        val month = monthKey?.let { runCatching { YearMonth.parse(it) }.getOrNull() }
+        viewModelScope.launch {
+            val categoryId = categoryName
+                ?.let { name -> categoryRepository.observeAll().first().firstOrNull { it.name == name }?.id }
+            _filters.value = LedgerFilters(categoryId = categoryId, month = month)
+        }
+    }
+
     fun setDirection(direction: LedgerFilter) {
         _filters.value = _filters.value.copy(direction = direction)
     }
@@ -172,8 +194,16 @@ class LedgerViewModel @Inject constructor(
         _filters,
     ) { rows, categories, reviewCount, accounts, filters ->
         val visible = rows.filter { row -> filters.matches(row) }
+        // The same exclusions the savings gap and the charts use (spec G12).
+        val excludedCategoryIds = categories
+            .filter {
+                it.systemKey == SystemCategoryKey.TRANSFERS ||
+                    it.systemKey == SystemCategoryKey.CASH_WITHDRAWAL
+            }
+            .map { it.id }
+            .toSet()
         LedgerUiState(
-            months = group(visible),
+            months = group(visible, excludedCategoryIds),
             categories = categories,
             isEmpty = visible.isEmpty(),
             reviewCount = reviewCount,
@@ -203,7 +233,14 @@ class LedgerViewModel @Inject constructor(
         return true
     }
 
-    private fun group(rows: List<LedgerRow>): List<LedgerMonthGroup> {
+    /** Credits positive, debits negative, transfers not counted at all. */
+    private fun net(rows: List<LedgerRow>, excluded: Set<Long>): Money = Money(
+        rows.filter { it.txn.categoryId !in excluded }.sumOf { row ->
+            if (row.txn.type == TxnType.DEBIT) -row.txn.amountPaise else row.txn.amountPaise
+        },
+    )
+
+    private fun group(rows: List<LedgerRow>, excludedCategoryIds: Set<Long>): List<LedgerMonthGroup> {
         val today = LocalDate.now(zone)
         return rows
             .groupBy { localDate(it.txn.timestampMillis) }
@@ -214,12 +251,13 @@ class LedgerViewModel @Inject constructor(
             .sortedByDescending { it.key }
             .map { (month, dayEntries) ->
                 val allRows = dayEntries.flatMap { it.value }
-                val net = allRows.sumOf { row ->
-                    if (row.txn.type == TxnType.DEBIT) -row.txn.amountPaise else row.txn.amountPaise
-                }
                 LedgerMonthGroup(
                     monthLabel = month.format(monthFormat),
-                    total = Money(net),
+                    total = net(allRows, excludedCategoryIds),
+                    excludedTransfers = Money(
+                        allRows.filter { it.txn.categoryId in excludedCategoryIds }
+                            .sumOf { it.txn.amountPaise },
+                    ),
                     days = dayEntries.map { (date, dayRows) ->
                         LedgerDayGroup(
                             date = date,
@@ -228,11 +266,7 @@ class LedgerViewModel @Inject constructor(
                                 today.minusDays(1) -> "Yesterday"
                                 else -> date.format(dayFormat)
                             },
-                            total = Money(
-                                dayRows.sumOf {
-                                    if (it.txn.type == TxnType.DEBIT) -it.txn.amountPaise else it.txn.amountPaise
-                                },
-                            ),
+                            total = net(dayRows, excludedCategoryIds),
                             rows = dayRows,
                         )
                     },

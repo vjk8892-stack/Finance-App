@@ -1,10 +1,12 @@
 package dev.kosha.feature.insights.charts
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.PathEffect
@@ -20,6 +22,8 @@ import dev.kosha.core.designsystem.token.KoshaType
 data class MonthBar(
     /** Short month label, e.g. "Aug". */
     val label: String,
+    /** ISO year-month ("2026-08") — what a tap on this bar filters by. */
+    val monthKey: String,
     val spent: Money,
     val income: Money,
     val isCurrent: Boolean,
@@ -42,6 +46,8 @@ fun MonthlyBars(
     months: List<MonthBar>,
     budget: Money?,
     modifier: Modifier = Modifier,
+    /** Index into [months] of the bar tapped. */
+    onSelect: ((Int) -> Unit)? = null,
 ) {
     val textMeasurer = rememberTextMeasurer()
     val labelStyle = KoshaType.Caption.copy(color = KoshaColors.OffWhiteFaint)
@@ -62,6 +68,21 @@ fun MonthlyBars(
         modifier
             .fillMaxWidth()
             .height(200.dp)
+            // A bar is a claim about a month; tapping it should show the
+            // transactions that make the claim true.
+            .then(
+                if (onSelect != null && months.isNotEmpty()) {
+                    Modifier.pointerInput(months.size) {
+                        detectTapGestures { offset ->
+                            val slotWidth = size.width.toFloat() / months.size
+                            val index = (offset.x / slotWidth).toInt().coerceIn(0, months.lastIndex)
+                            onSelect(index)
+                        }
+                    }
+                } else {
+                    Modifier
+                },
+            )
             .semantics { contentDescription = description },
     ) {
         if (months.isEmpty()) return@Canvas

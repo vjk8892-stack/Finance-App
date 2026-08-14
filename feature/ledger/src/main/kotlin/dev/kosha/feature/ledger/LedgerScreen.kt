@@ -70,8 +70,14 @@ fun LedgerScreen(
     onOpenReview: () -> Unit = {},
     onScanSms: () -> Unit = {},
     onOpenBudgets: () -> Unit = {},
+    /** Set when a chart slice sent the user here. */
+    incomingCategory: String? = null,
+    incomingMonth: String? = null,
     viewModel: LedgerViewModel = hiltViewModel(),
 ) {
+    androidx.compose.runtime.LaunchedEffect(incomingCategory, incomingMonth) {
+        viewModel.applyIncomingFilter(incomingCategory, incomingMonth)
+    }
     val state by viewModel.uiState.collectAsState()
     val queryState by viewModel.query.collectAsState()
     val detail by viewModel.detail.collectAsState()
@@ -228,7 +234,7 @@ fun LedgerScreen(
             LazyColumn(Modifier.fillMaxSize()) {
                 state.months.forEach { month ->
                     item(key = "month-${month.monthLabel}") {
-                        MonthHeader(month.monthLabel, month.total)
+                        MonthHeader(month.monthLabel, month.total, month.excludedTransfers)
                     }
                     month.days.forEach { day ->
                         item(key = "day-${day.date}") {
@@ -380,7 +386,7 @@ private fun DayHeader(label: String, total: Money) {
 }
 
 @Composable
-private fun MonthHeader(label: String, total: Money) {
+private fun MonthHeader(label: String, total: Money, excludedTransfers: Money) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -394,13 +400,27 @@ private fun MonthHeader(label: String, total: Money) {
             color = KoshaColors.OffWhite,
             modifier = Modifier.weight(1f),
         )
-        AmountText(
-            amount = total,
-            style = KoshaType.AmountSmall,
-            color = if (total.isNegative) KoshaColors.OffWhiteMuted else KoshaColors.AccentTeal,
-            withPaise = false,
-            signed = !total.isNegative,
-        )
+        Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+            AmountText(
+                amount = total,
+                style = KoshaType.AmountSmall,
+                color = if (total.isNegative) KoshaColors.OffWhiteMuted else KoshaColors.AccentTeal,
+                withPaise = false,
+                signed = !total.isNegative,
+            )
+            // Say what was left out, so this never silently disagrees with the
+            // savings gap the way it used to.
+            if (excludedTransfers.paise > 0) {
+                Text(
+                    text = stringResource(
+                        R.string.ledger_excludes_transfers,
+                        excludedTransfers.format(withPaise = false),
+                    ),
+                    style = KoshaType.Caption,
+                    color = KoshaColors.OffWhiteFaint,
+                )
+            }
+        }
     }
 }
 
