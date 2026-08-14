@@ -60,17 +60,23 @@ jobs:
             --title "Kosha debug APK (latest)" \
             --notes "Unsigned debug build of $SHA.
 
-          **kosha-lite-arm64** — start here. No SMS permission, so it installs
-          normally. Everything works except automatic SMS capture: manual entry,
-          photo/OCR, budgets, insights, vault, export.
+          **kosha-full-arm64 — the one to use.** Every permission is declared, so
+          SMS, Camera and Notifications all appear in Android's app info and you
+          turn each on or off there. In-app: Home → Permissions shows the live
+          state of each with a deep link.
 
-          **kosha-full-arm64** — adds automatic bank-SMS capture. Android blocks
-          sideloaded apps that request SMS access, so installing this one needs
-          Play Protect scanning turned off (Play Store → Play Protect → gear →
-          off), or \`adb install\`.
+          Installing it: Android blocks sideloaded apps that request SMS, so turn
+          Play Protect scanning off for the install (Play Store → profile → Play
+          Protect → gear → off), or use \`adb install\`. If the SMS toggle is then
+          greyed out in app info, open its ⋮ menu → 'Allow restricted settings'.
 
-          **kosha-full-universal** — same as full, with all four ABIs. Only needed
-          for an x86 emulator.
+          **kosha-lite-arm64** — fallback if the above is more trouble than it is
+          worth. SMS permissions are compiled out, so it installs with no
+          Play Protect fight and no SMS row in app info. Everything else is
+          identical; only automatic bank-SMS capture is missing.
+
+          **kosha-full-universal** — same as full, all four ABIs. Only for an
+          x86 emulator.
 
           All builds are debug and unsigned." \
             --target "$GITHUB_SHA" \

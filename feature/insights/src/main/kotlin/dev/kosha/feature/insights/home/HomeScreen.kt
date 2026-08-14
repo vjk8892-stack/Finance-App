@@ -59,6 +59,7 @@ fun HomeScreen(
     onOpenRecurring: () -> Unit = {},
     onOpenExport: () -> Unit = {},
     onOpenGoals: () -> Unit = {},
+    onOpenPermissions: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -130,6 +131,10 @@ fun HomeScreen(
             KoshaChip(
                 label = stringResource(R.string.home_export),
                 onClick = onOpenExport,
+            )
+            KoshaChip(
+                label = stringResource(R.string.home_permissions),
+                onClick = onOpenPermissions,
             )
         }
         Spacer(Modifier.height(KoshaSpacing.xxl))

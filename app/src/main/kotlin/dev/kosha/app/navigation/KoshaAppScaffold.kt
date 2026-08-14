@@ -27,6 +27,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.kosha.app.R
+import dev.kosha.app.settings.PermissionsScreen
 import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaType
 import dev.kosha.feature.budget.BudgetScreen
@@ -66,6 +67,7 @@ const val ROUTE_RECURRING = "recurring"
 const val ROUTE_EXPORT = "export"
 const val ROUTE_GOALS = "goals"
 const val ROUTE_SMS_SCAN = "sms-scan"
+const val ROUTE_PERMISSIONS = "permissions"
 const val ARG_QUICK_CATEGORY = "quickCategoryId"
 
 @Composable
@@ -129,6 +131,7 @@ fun KoshaAppScaffold(startAction: String? = null) {
                     onOpenRecurring = { navController.navigate(ROUTE_RECURRING) },
                     onOpenExport = { navController.navigate(ROUTE_EXPORT) },
                     onOpenGoals = { navController.navigate(ROUTE_GOALS) },
+                    onOpenPermissions = { navController.navigate(ROUTE_PERMISSIONS) },
                     onQuickAdd = { categoryId ->
                         navController.navigate("${KoshaDestination.ADD.route}?$ARG_QUICK_CATEGORY=$categoryId")
                     },
@@ -187,6 +190,9 @@ fun KoshaAppScaffold(startAction: String? = null) {
             }
             composable(ROUTE_SMS_SCAN) {
                 SmsScanScreen(onBack = { navController.popBackStack() })
+            }
+            composable(ROUTE_PERMISSIONS) {
+                PermissionsScreen(onBack = { navController.popBackStack() })
             }
         }
     }

@@ -46,4 +46,29 @@
 
     <string name="lock_prompt_title">Unlock Kosha</string>
     <string name="lock_prompt_subtitle">Your ledger stays private</string>
+
+    <string name="permissions_title">Permissions</string>
+    <string name="permissions_intro">Kosha asks for nothing at launch. Each permission below unlocks one feature, and the app stays useful with all of them off.</string>
+    <string name="permissions_state_on">On</string>
+    <string name="permissions_state_off">Off</string>
+    <string name="permissions_state_absent">Not in this build</string>
+    <string name="permissions_turn_on">Turn on</string>
+    <string name="permissions_open_settings">Open app info</string>
+
+    <string name="permissions_sms_title">Bank SMS</string>
+    <string name="permissions_sms_body">Reads allowlisted bank senders to log spends automatically. Only the amount, account, merchant and reference are extracted; the message text is not stored, and nothing leaves the device.</string>
+    <string name="permissions_sms_without">Off: log by hand or from a photo. Everything else is unaffected.</string>
+
+    <string name="permissions_camera_title">Camera</string>
+    <string name="permissions_camera_body">Scans receipts and UPI screenshots on-device.</string>
+    <string name="permissions_camera_without">Off: the Import tab still reads screenshots from your gallery, with no storage permission needed.</string>
+
+    <string name="permissions_notifications_title">Notifications</string>
+    <string name="permissions_notifications_body">Budget heads-ups, bill reminders and a single daily review digest — never per-item pings.</string>
+    <string name="permissions_notifications_without">Off: alerts simply do not fire. Nothing else changes.</string>
+
+    <string name="permissions_restricted_title">SMS toggle greyed out?</string>
+    <string name="permissions_restricted_body">Android treats SMS as a restricted permission for apps installed outside the Play Store. In app info, open the ⋮ menu and choose "Allow restricted settings", then turn SMS on.</string>
+
+    <string name="permissions_no_internet">Kosha has no internet permission at all, so no setting here can send your data anywhere.</string>
 </resources>
