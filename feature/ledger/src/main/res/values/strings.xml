@@ -44,6 +44,8 @@
     <string name="accounts_add">Add account</string>
     <string name="accounts_name">Name</string>
     <string name="accounts_last4">Last 4 digits (optional)</string>
+    <string name="accounts_last4_help">Bank messages quote these. Kosha matches alerts to this account by them.</string>
+    <string name="accounts_edit">Edit account</string>
     <string name="accounts_opening_balance">Opening balance (₹)</string>
     <string name="accounts_save">Save</string>
     <string name="accounts_empty">No accounts yet. Add your bank, cash, cards and wallets.</string>

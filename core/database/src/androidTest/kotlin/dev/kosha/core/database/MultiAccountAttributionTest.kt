@@ -96,6 +96,40 @@ class MultiAccountAttributionTest {
     }
 
     @Test
+    fun theOnlyAccountAdoptsTheFirstTailItSees() = runBlocking {
+        // Onboarding treats the tail as optional, so the common install has
+        // one account with none. Without this, every single message would
+        // look like a new bank and the app would be all review queue.
+        val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
+        val db = inMemoryDb(context)
+        CategorySeeder.ensureSeeded(db.categoryDao())
+        val committer = PipelineCommitter(db.transactionDao(), db.accountDao(), db.categoryDao())
+
+        val hdfc = db.accountDao().insert(
+            AccountEntity(name = "HDFC Savings", type = AccountType.BANK, last4 = null),
+        )
+
+        val first = commit(committer, capture("1234", 10_000))
+        assertTrue("adoption must be confirmable: $first", first is PipelineCommitter.CommitResult.QueuedForReview)
+        assertEquals(1, db.accountDao().activeAccounts().size)
+        assertEquals("1234", db.accountDao().byId(hdfc)!!.last4)
+        assertEquals(
+            "account-tail-1234",
+            db.transactionDao().byId((first as PipelineCommitter.CommitResult.QueuedForReview).txnId)!!.reviewReason,
+        )
+
+        // Now the tail is known, the same bank's next message just commits...
+        val second = commit(committer, capture("1234", 20_000))
+        assertTrue("$second", second is PipelineCommitter.CommitResult.Committed)
+
+        // ...and a genuinely different bank becomes its own account.
+        val other = commit(committer, capture("7788", 30_000))
+        assertTrue("$other", other is PipelineCommitter.CommitResult.QueuedForReview)
+        assertEquals(2, db.accountDao().activeAccounts().size)
+        db.close()
+    }
+
+    @Test
     fun matchingTailGoesStraightToItsAccount() = runBlocking {
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
         val db = inMemoryDb(context)

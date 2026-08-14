@@ -76,11 +76,12 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    fun addAccount(name: String, type: AccountType, openingRupees: String) {
+    fun addAccount(name: String, type: AccountType, last4: String, openingRupees: String) {
         viewModelScope.launch {
             accountRepository.create(
                 name = name,
                 type = type,
+                last4 = last4.takeIf { it.isNotBlank() },
                 openingBalancePaise = Money.parseOrNull(openingRupees)?.paise ?: 0,
             )
         }

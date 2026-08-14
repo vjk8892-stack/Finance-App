@@ -147,3 +147,17 @@ Format: date · decision · alternatives · why.
   one generic "low confidence" line · Every row reading "Parsed with low
   confidence" tells the reader nothing about what to check; the committer
   already records why, so it is now shown.
+- **2026-08-14 · Onboarding asks for the account's last 4 digits, and the
+  Accounts screen can edit them** · treating the tail as a cosmetic detail ·
+  It was never collected during onboarding, so the one account every install
+  starts with had `last4 = null` and tail matching could not work at all —
+  which is why every captured message looked like it belonged to the same
+  account. The tail is what multi-account attribution runs on, so it is now
+  asked for (still optional) and correctable afterwards.
+- **2026-08-14 · A lone account with no tail on file ADOPTS the first tail it
+  sees, in review** · creating a second account for it · Given the above,
+  existing installs would otherwise treat every message as a new bank and
+  turn the whole ledger into a review queue. One account, no tail recorded,
+  a tail arriving — that is that account, near enough to propose and cheap to
+  correct. Adoption happens once; afterwards ordinary matching applies and a
+  genuinely different bank gets its own account.

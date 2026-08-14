@@ -108,12 +108,15 @@ private fun reviewReasonText(reason: String?, isPossibleDuplicate: Boolean): Str
     reason == null -> stringResource(R.string.review_reason_low_confidence)
     reason.startsWith(NEW_ACCOUNT_PREFIX) ->
         stringResource(R.string.review_reason_new_account, reason.removePrefix(NEW_ACCOUNT_PREFIX))
+    reason.startsWith(ACCOUNT_TAIL_PREFIX) ->
+        stringResource(R.string.review_reason_account_tail, reason.removePrefix(ACCOUNT_TAIL_PREFIX))
     reason == ACCOUNT_UNKNOWN -> stringResource(R.string.review_reason_account_unknown)
     else -> stringResource(R.string.review_reason_low_confidence)
 }
 
 /** Kept in step with PipelineCommitter's attribution reasons. */
 private const val NEW_ACCOUNT_PREFIX = "new-account-"
+private const val ACCOUNT_TAIL_PREFIX = "account-tail-"
 private const val ACCOUNT_UNKNOWN = "account-unknown"
 
 @Composable

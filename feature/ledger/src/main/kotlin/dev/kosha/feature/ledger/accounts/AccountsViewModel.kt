@@ -31,4 +31,22 @@ class AccountsViewModel @Inject constructor(
             )
         }
     }
+
+    /**
+     * Edit the identifying details. The tail matters beyond cosmetics: SMS
+     * attribution matches on it, so a wrong or missing one has to be
+     * correctable — including on an account Kosha created itself from a
+     * message tail it had never seen.
+     */
+    fun rename(account: AccountEntity, name: String, type: AccountType, last4: String) {
+        viewModelScope.launch {
+            accountRepository.update(
+                account.copy(
+                    name = name.trim().ifBlank { account.name },
+                    type = type,
+                    last4 = last4.takeIf { it.isNotBlank() },
+                ),
+            )
+        }
+    }
 }

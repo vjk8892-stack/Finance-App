@@ -54,6 +54,11 @@ fun AccountsScreen(
 ) {
     val accounts by viewModel.accounts.collectAsState()
     var showEditor by remember { mutableStateOf(false) }
+    // Non-null when editing an existing account rather than adding one. The
+    // tail especially has to be fixable: SMS attribution hangs off it, and it
+    // can be wrong either because it was never entered or because Kosha
+    // adopted the wrong one from a message.
+    var editing by remember { mutableStateOf<AccountEntity?>(null) }
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -99,7 +104,7 @@ fun AccountsScreen(
                 verticalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
             ) {
                 items(accounts.size) { i ->
-                    AccountCard(accounts[i])
+                    AccountCard(accounts[i], onClick = { editing = accounts[i] })
                 }
             }
         }
@@ -114,11 +119,22 @@ fun AccountsScreen(
             onDismiss = { showEditor = false },
         )
     }
+
+    editing?.let { account ->
+        AccountEditorSheet(
+            existing = account,
+            onSave = { name, type, last4, _ ->
+                viewModel.rename(account, name, type, last4)
+                editing = null
+            },
+            onDismiss = { editing = null },
+        )
+    }
 }
 
 @Composable
-private fun AccountCard(account: AccountEntity) {
-    KoshaCard(modifier = Modifier.fillMaxWidth()) {
+private fun AccountCard(account: AccountEntity, onClick: () -> Unit) {
+    KoshaCard(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
@@ -151,10 +167,11 @@ private fun AccountCard(account: AccountEntity) {
 private fun AccountEditorSheet(
     onSave: (name: String, type: AccountType, last4: String, openingRupees: String) -> Unit,
     onDismiss: () -> Unit,
+    existing: AccountEntity? = null,
 ) {
-    var name by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf(AccountType.BANK) }
-    var last4 by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(existing?.name.orEmpty()) }
+    var type by remember { mutableStateOf(existing?.type ?: AccountType.BANK) }
+    var last4 by remember { mutableStateOf(existing?.last4.orEmpty()) }
     var opening by remember { mutableStateOf("") }
 
     val typeLabels = listOf(
@@ -173,7 +190,9 @@ private fun AccountEditorSheet(
             verticalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
         ) {
             Text(
-                text = stringResource(R.string.accounts_add),
+                text = stringResource(
+                    if (existing != null) R.string.accounts_edit else R.string.accounts_add,
+                ),
                 style = KoshaType.Title,
                 color = KoshaColors.OffWhite,
             )
@@ -198,18 +217,31 @@ private fun AccountEditorSheet(
                 value = last4,
                 onValueChange = { if (it.length <= 4 && it.all(Char::isDigit)) last4 = it },
                 placeholder = { Text(stringResource(R.string.accounts_last4), color = KoshaColors.OffWhiteFaint) },
-                colors = editorFieldColors(),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            TextField(
-                value = opening,
-                onValueChange = { text ->
-                    if (text.all { it.isDigit() || it == '.' }) opening = text
+                supportingText = {
+                    Text(
+                        stringResource(R.string.accounts_last4_help),
+                        style = KoshaType.Caption,
+                        color = KoshaColors.OffWhiteFaint,
+                    )
                 },
-                placeholder = { Text(stringResource(R.string.accounts_opening_balance), color = KoshaColors.OffWhiteFaint) },
                 colors = editorFieldColors(),
                 modifier = Modifier.fillMaxWidth(),
             )
+            // Opening balance is a creation-time fact; changing it later would
+            // silently rewrite history, so editing leaves it alone.
+            if (existing == null) {
+                TextField(
+                    value = opening,
+                    onValueChange = { text ->
+                        if (text.all { it.isDigit() || it == '.' }) opening = text
+                    },
+                    placeholder = {
+                        Text(stringResource(R.string.accounts_opening_balance), color = KoshaColors.OffWhiteFaint)
+                    },
+                    colors = editorFieldColors(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             TextButton(
                 onClick = { if (name.isNotBlank()) onSave(name.trim(), type, last4, opening) },
                 enabled = name.isNotBlank(),

@@ -141,6 +141,7 @@ private fun StepCard(
 private fun AccountsStep(viewModel: OnboardingViewModel) {
     var name by remember { mutableStateOf("") }
     var type by remember { mutableStateOf(AccountType.BANK) }
+    var last4 by remember { mutableStateOf("") }
     var opening by remember { mutableStateOf("") }
     var addedCount by remember { mutableStateOf(0) }
 
@@ -165,6 +166,23 @@ private fun AccountsStep(viewModel: OnboardingViewModel) {
             }
         }
         Spacer(Modifier.height(KoshaSpacing.xs))
+        // Without the tail, a bank alert cannot be told apart from any other
+        // bank's — which is the whole of multi-account attribution.
+        TextField(
+            value = last4,
+            onValueChange = { text -> if (text.all { it.isDigit() } && text.length <= 4) last4 = text },
+            placeholder = { Text(stringResource(R.string.onb_account_last4), color = KoshaColors.OffWhiteFaint) },
+            supportingText = {
+                Text(
+                    stringResource(R.string.onb_account_last4_help),
+                    style = KoshaType.Caption,
+                    color = KoshaColors.OffWhiteFaint,
+                )
+            },
+            colors = onbFieldColors(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(KoshaSpacing.xs))
         TextField(
             value = opening,
             onValueChange = { text -> if (text.all { it.isDigit() || it == '.' }) opening = text },
@@ -176,9 +194,10 @@ private fun AccountsStep(viewModel: OnboardingViewModel) {
         TextButton(
             onClick = {
                 if (name.isNotBlank()) {
-                    viewModel.addAccount(name.trim(), type, opening)
+                    viewModel.addAccount(name.trim(), type, last4, opening)
                     addedCount++
                     name = ""
+                    last4 = ""
                     opening = ""
                 }
             },

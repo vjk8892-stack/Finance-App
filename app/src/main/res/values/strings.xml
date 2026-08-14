@@ -15,6 +15,8 @@
     <string name="onb_accounts_title">Your accounts</string>
     <string name="onb_accounts_body">Add the places your money lives — bank, cash, cards, wallets.</string>
     <string name="onb_account_name">Account name (e.g. HDFC Savings)</string>
+    <string name="onb_account_last4">Last 4 digits (optional)</string>
+    <string name="onb_account_last4_help">Bank messages quote these. Without them Kosha cannot tell one bank\'s alerts from another\'s.</string>
     <string name="onb_account_opening">Opening balance (₹, optional)</string>
     <string name="onb_account_add">Add account</string>
     <string name="onb_accounts_added">%1$d added</string>

@@ -10,4 +10,5 @@
     <string name="review_reason_low_confidence">Parsed with low confidence — check the details</string>
     <string name="review_reason_new_account">From an account you had not added — Kosha created “•• %1$s”. Rename or merge it in Accounts.</string>
     <string name="review_reason_account_unknown">The message did not say which account this came from.</string>
+    <string name="review_reason_account_tail">Your account had no digits recorded — Kosha took “%1$s” from this message. Fix it in Accounts if that is a different bank.</string>
 </resources>

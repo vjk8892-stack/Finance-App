@@ -78,6 +78,9 @@ class PipelineCommitter @Inject constructor(
         /** The tail matched an account, or there was only one candidate. */
         data class Matched(val id: Long) : AccountResolution
 
+        /** The only account on file had no tail recorded; this one is now its. */
+        data class Adopted(val id: Long, val last4: String) : AccountResolution
+
         /** A tail the user never registered — discovered and created here. */
         data class Discovered(val id: Long, val last4: String) : AccountResolution
 
@@ -98,6 +101,17 @@ class PipelineCommitter @Inject constructor(
             val tail = last4.takeLast(3)
             active.firstOrNull { !it.last4.isNullOrBlank() && it.last4.takeLast(3) == tail }
                 ?.let { return AccountResolution.Matched(it.id) }
+
+            // Onboarding treats the tail as optional, so the one account on
+            // file often has none — and then EVERY message would look like a
+            // new bank. One account with no tail plus a tail arriving is that
+            // account, near enough; record it and let the user confirm in
+            // review, after which normal matching takes over.
+            val untailed = active.singleOrNull()?.takeIf { it.last4.isNullOrBlank() }
+            if (untailed != null) {
+                accountDao.update(untailed.copy(last4 = last4))
+                return AccountResolution.Adopted(untailed.id, last4)
+            }
 
             if (active.size < MAX_DISCOVERED_ACCOUNTS) {
                 val id = accountDao.insert(
@@ -275,6 +289,7 @@ class PipelineCommitter @Inject constructor(
         val resolution = resolveAccount(txn.accountLast4)
         val accountId = when (resolution) {
             is AccountResolution.Matched -> resolution.id
+            is AccountResolution.Adopted -> resolution.id
             is AccountResolution.Discovered -> resolution.id
             is AccountResolution.Ambiguous -> resolution.fallbackId
             AccountResolution.NoAccounts -> return null
@@ -283,6 +298,7 @@ class PipelineCommitter @Inject constructor(
         // ledger, however confident the parse itself was — a misattributed
         // amount is worse than one waiting in review.
         val attributionReason = when (resolution) {
+            is AccountResolution.Adopted -> "account-tail-${resolution.last4}"
             is AccountResolution.Discovered -> "new-account-${resolution.last4}"
             is AccountResolution.Ambiguous -> "account-unknown"
             else -> null
