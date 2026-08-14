@@ -60,7 +60,7 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun InsightsScreen(
-    onOpenLedger: (categoryName: String?, monthKey: String?, search: String?) -> Unit = { _, _, _ -> },
+    onOpenLedger: (LedgerTarget) -> Unit = {},
     viewModel: InsightsViewModel = hiltViewModel(),
 ) {
     val insights by viewModel.insights.collectAsState()
@@ -181,7 +181,7 @@ private fun AmountLine(
 @Composable
 private fun MonthlyComparisonSection(
     data: InsightsRepository.Insights,
-    onOpenLedger: (String?, String?, String?) -> Unit,
+    onOpenLedger: (LedgerTarget) -> Unit,
 ) {
     Section(
         title = stringResource(R.string.insights_monthly),
@@ -211,7 +211,7 @@ private fun MonthlyComparisonSection(
             budget = data.monthlyBudget,
             // `bars` is a filtered view of `trend`, so the key travels on the
             // bar itself rather than being looked up by index.
-            onSelect = { index -> bars.getOrNull(index)?.let { onOpenLedger(null, it.monthKey, null) } },
+            onSelect = { index -> bars.getOrNull(index)?.let { onOpenLedger(LedgerTarget.month(it.monthKey)) } },
         )
         Spacer(Modifier.height(KoshaSpacing.s))
 
@@ -254,7 +254,7 @@ private val MONTH_LABEL = java.time.format.DateTimeFormatter.ofPattern("MMM")
 @Composable
 private fun FlowSection(
     data: InsightsRepository.Insights,
-    onOpenLedger: (String?, String?, String?) -> Unit,
+    onOpenLedger: (LedgerTarget) -> Unit,
 ) {
     Section(
         title = stringResource(R.string.insights_flow),
@@ -276,10 +276,23 @@ private fun FlowSection(
         )
         Spacer(Modifier.height(KoshaSpacing.s))
 
+        val flowSlices = data.spendSlices.take(6)
         SankeyChart(
             income = data.income,
-            flows = data.spendByCategoryName.take(6).map { SankeyFlow(it.first, it.second) },
+            flows = flowSlices.map { SankeyFlow(it.label, it.amount) },
             savings = if (data.savings.isNegative) Money.ZERO else data.savings,
+            // Savings is not a row in the ledger — it is what did NOT leave —
+            // so it stays inert rather than opening an empty list.
+            onSelect = { flow ->
+                flowSlices.firstOrNull { it.label == flow.label }
+                    ?.let { onOpenLedger(LedgerTarget.slice(it)) }
+            },
+        )
+        Spacer(Modifier.height(KoshaSpacing.xxs))
+        Text(
+            text = stringResource(R.string.insights_tap_for_rows),
+            style = KoshaType.Caption,
+            color = KoshaColors.OffWhiteFaint,
         )
     }
 }
@@ -287,7 +300,7 @@ private fun FlowSection(
 @Composable
 private fun RhythmSection(
     data: InsightsRepository.Insights,
-    onOpenLedger: (String?, String?, String?) -> Unit,
+    onOpenLedger: (LedgerTarget) -> Unit,
 ) {
     Section(
         title = stringResource(R.string.insights_rhythm),
@@ -303,7 +316,7 @@ private fun RhythmSection(
             monthEnd = data.period.endInclusive,
             // A dark cell says "a lot happened here"; the follow-up question is
             // always "what?".
-            onSelectDay = { day -> onOpenLedger(null, YearMonth.from(day).toString(), null) },
+            onSelectDay = { day -> onOpenLedger(LedgerTarget.day(day)) },
         )
         Spacer(Modifier.height(KoshaSpacing.xs))
         data.dailySpend.maxByOrNull { it.value.paise }?.let { (date, amount) ->
@@ -319,7 +332,7 @@ private fun RhythmSection(
 @Composable
 private fun ShapeSection(
     data: InsightsRepository.Insights,
-    onOpenLedger: (String?, String?, String?) -> Unit,
+    onOpenLedger: (LedgerTarget) -> Unit,
 ) {
     Section(
         title = stringResource(R.string.insights_shape),
@@ -331,17 +344,20 @@ private fun ShapeSection(
         }
 
         CategoryTreemap(
-            slices = data.spendByCategoryName.map { TreemapSlice(it.first, it.second) },
-            onSelect = { label -> onOpenLedger(label, null, null) },
+            slices = data.spendSlices.map { TreemapSlice(it.label, it.amount) },
+            onSelect = { label ->
+                data.spendSlices.firstOrNull { it.label == label }
+                    ?.let { onOpenLedger(LedgerTarget.slice(it)) }
+            },
         )
         Spacer(Modifier.height(KoshaSpacing.s))
         // The treemap shows proportion; this shows what each slice cost.
-        data.spendByCategoryName.take(6).forEach { (name, amount) ->
+        data.spendSlices.take(6).forEach { slice ->
             AmountLine(
-                label = name,
-                amount = amount,
+                label = slice.label,
+                amount = slice.amount,
                 color = KoshaColors.OffWhite,
-                onClick = { onOpenLedger(name, null, null) },
+                onClick = { onOpenLedger(LedgerTarget.slice(slice)) },
             )
         }
         Spacer(Modifier.height(KoshaSpacing.xxs))
@@ -487,7 +503,7 @@ private fun AdvisorSection(data: InsightsRepository.Insights) {
 @Composable
 private fun LeaksAndAnomaliesSection(
     data: InsightsRepository.Insights,
-    onOpenLedger: (String?, String?, String?) -> Unit,
+    onOpenLedger: (LedgerTarget) -> Unit,
 ) {
     Section(title = stringResource(R.string.insights_leaks)) {
         if (data.leaks.isEmpty() && data.anomalies.isEmpty()) {
@@ -501,7 +517,7 @@ private fun LeaksAndAnomaliesSection(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .clickable { onOpenLedger(null, null, leak.merchant) },
+                    .clickable { onOpenLedger(LedgerTarget.merchant(leak.merchant)) },
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(leak.merchant, style = KoshaType.Body, color = KoshaColors.OffWhite)
@@ -530,7 +546,7 @@ private fun LeaksAndAnomaliesSection(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .clickable { onOpenLedger(null, null, flag.label) },
+                    .clickable { onOpenLedger(LedgerTarget.merchant(flag.label)) },
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(

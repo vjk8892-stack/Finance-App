@@ -108,10 +108,17 @@ fun KoshaAppScaffold(startAction: String? = null) {
                     NavigationBarItem(
                         selected = selected,
                         onClick = {
+                            // No saveState/restoreState. With them, opening the
+                            // ledger from an Insights chart put ledger on top of
+                            // insights; tapping Insights then popped that stack,
+                            // saved it, and immediately RESTORED it — landing
+                            // back on the filtered ledger. A tab that does not go
+                            // to its own tab is broken, and scroll position is not
+                            // worth that. popUpTo leaves Home beneath, so the
+                            // system back button still exits from any tab.
                             navController.navigate(destination.route) {
-                                popUpTo(KoshaDestination.HOME.route) { saveState = true }
+                                popUpTo(KoshaDestination.HOME.route)
                                 launchSingleTop = true
-                                restoreState = true
                             }
                         },
                         icon = {
@@ -222,11 +229,13 @@ fun KoshaAppScaffold(startAction: String? = null) {
             }
             composable(KoshaDestination.INSIGHTS.route) {
                 InsightsScreen(
-                    onOpenLedger = { category, month, search ->
+                    onOpenLedger = { target ->
                         val args = listOfNotNull(
-                            category?.let { "$ARG_LEDGER_CATEGORY=${Uri.encode(it)}" },
-                            month?.let { "$ARG_LEDGER_MONTH=$it" },
-                            search?.let { "$ARG_LEDGER_SEARCH=${Uri.encode(it)}" },
+                            target.category?.let { "$ARG_LEDGER_CATEGORY=${Uri.encode(it)}" },
+                            target.monthKey?.let { "$ARG_LEDGER_MONTH=$it" },
+                            target.search?.let { "$ARG_LEDGER_SEARCH=${Uri.encode(it)}" },
+                            target.from?.let { "$ARG_LEDGER_FROM=$it" },
+                            target.to?.let { "$ARG_LEDGER_TO=$it" },
                         ).joinToString("&")
                         navController.navigate(
                             "${KoshaDestination.LEDGER.route}" + if (args.isEmpty()) "" else "?$args",

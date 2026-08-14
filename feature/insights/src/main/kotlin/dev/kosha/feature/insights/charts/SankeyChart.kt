@@ -1,11 +1,14 @@
 package dev.kosha.feature.insights.charts
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -36,6 +39,7 @@ fun SankeyChart(
     flows: List<SankeyFlow>,
     savings: Money,
     modifier: Modifier = Modifier,
+    onSelect: ((SankeyFlow) -> Unit)? = null,
 ) {
     val textMeasurer = rememberTextMeasurer()
     val allFlows = remember(flows, savings) {
@@ -49,12 +53,30 @@ fun SankeyChart(
     val description = "Money flow: income ${income.format(withPaise = false)} splits into " +
         allFlows.joinToString { "${it.label} ${it.amount.format(withPaise = false)}" }
 
+    // Each flow's band on the destination side, recorded while drawing so a tap
+    // resolves against what is actually on screen. Bands are stacked and never
+    // overlap, so a tap at any height maps to exactly one flow — including the
+    // thin ones, which are the whole reason ribbons get tapped at all.
+    val bands = remember(allFlows) { mutableStateListOf<Pair<SankeyFlow, ClosedFloatingPointRange<Float>>>() }
+
     Canvas(
         modifier
             .fillMaxWidth()
             .height(260.dp)
+            .then(
+                if (onSelect != null) {
+                    Modifier.pointerInput(allFlows) {
+                        detectTapGestures { offset ->
+                            bands.firstOrNull { offset.y in it.second }?.let { onSelect(it.first) }
+                        }
+                    }
+                } else {
+                    Modifier
+                },
+            )
             .semantics { contentDescription = description },
     ) {
+        bands.clear()
         val nodeWidth = 14.dp.toPx()
         val gap = 4.dp.toPx()
         val leftX = 0f
@@ -95,6 +117,8 @@ fun SankeyChart(
                 topLeft = Offset(rightX, targetY),
                 size = Size(nodeWidth, ribbonHeight),
             )
+
+            bands += flow to (targetY..(targetY + ribbonHeight + gap))
 
             drawFlowLabel(textMeasurer, flow, rightX, targetY, ribbonHeight)
 

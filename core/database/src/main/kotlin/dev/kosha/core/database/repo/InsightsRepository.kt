@@ -42,6 +42,14 @@ class InsightsRepository @Inject constructor(
         val expense: Money,
         val savings: Money,
         val spendByCategoryName: List<Pair<String, Money>>,
+        /**
+         * The same breakdown, but each slice knows whether its label is a
+         * CATEGORY or a MERCHANT. Charts drill down by tapping a slice, and
+         * filtering the ledger by category for a label that is actually a
+         * merchant name silently finds nothing — which is what tapping the
+         * small treemap slices used to do.
+         */
+        val spendSlices: List<SpendSlice>,
         val dailySpend: Map<LocalDate, Money>,
         val dnaCurrent: List<Pair<String, Money>>,
         val dnaBaseline: List<Pair<String, Money>>,
@@ -54,6 +62,11 @@ class InsightsRepository @Inject constructor(
         val advice: Advisor.Advice,
         val debtComparison: DebtPlanner.Comparison?,
     )
+
+    /** What a slice's label means, and so how to look it up in the ledger. */
+    enum class SliceKind { CATEGORY, MERCHANT }
+
+    data class SpendSlice(val label: String, val amount: Money, val kind: SliceKind)
 
     data class TrendPoint(
         val period: Period,
@@ -239,7 +252,8 @@ class InsightsRepository @Inject constructor(
             income = snapshot.totals.actualIncome,
             expense = snapshot.totals.totalExpense,
             savings = snapshot.totals.savingsGap,
-            spendByCategoryName = spendByName,
+            spendByCategoryName = spendByName.map { it.label to it.amount },
+            spendSlices = spendByName,
             dailySpend = dailySpend,
             dnaCurrent = spendByName.take(DNA_AXES),
             dnaBaseline = baseline,
@@ -273,15 +287,19 @@ class InsightsRepository @Inject constructor(
         categories: Map<Long, dev.kosha.core.database.model.CategoryEntity>,
         periodTxns: List<dev.kosha.core.database.model.TransactionEntity>,
         uncategorizedId: Long?,
-    ): List<Pair<String, Money>> {
-        val named = mutableListOf<Pair<String, Money>>()
+    ): List<SpendSlice> {
+        val named = mutableListOf<SpendSlice>()
         var unnamedTotal = 0L
 
         for ((categoryId, amount) in spendByCategory) {
             if (categoryId == null || categoryId == uncategorizedId) {
                 unnamedTotal += amount.paise
             } else {
-                named += (categories[categoryId]?.name ?: "Uncategorized") to amount
+                named += SpendSlice(
+                    label = categories[categoryId]?.name ?: "Uncategorized",
+                    amount = amount,
+                    kind = SliceKind.CATEGORY,
+                )
             }
         }
 
@@ -297,7 +315,9 @@ class InsightsRepository @Inject constructor(
                 .filter { it.key != null }
                 .sortedByDescending { it.value }
                 .take(UNCATEGORIZED_MERCHANT_SLICES)
-                .forEach { named += it.key!! to Money(it.value) }
+                .forEach {
+                    named += SpendSlice(it.key!!, Money(it.value), SliceKind.MERCHANT)
+                }
 
             // Whatever is left — nameless rows, and merchants past the cut —
             // stays honestly labelled rather than being silently dropped.
@@ -307,10 +327,12 @@ class InsightsRepository @Inject constructor(
                 .take(UNCATEGORIZED_MERCHANT_SLICES)
                 .sumOf { it.value }
             val remainder = unnamedTotal - accountedFor
-            if (remainder > 0) named += "Uncategorized" to Money(remainder)
+            if (remainder > 0) {
+                named += SpendSlice("Uncategorized", Money(remainder), SliceKind.CATEGORY)
+            }
         }
 
-        return named.sortedByDescending { it.second.paise }
+        return named.sortedByDescending { it.amount.paise }
     }
 
     /** 3-month average spend per category — the DNA radar's baseline. */
