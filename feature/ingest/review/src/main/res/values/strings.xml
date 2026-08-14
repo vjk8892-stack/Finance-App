@@ -26,4 +26,11 @@
     <string name="undo_action">Undo</string>
     <string name="undo_approved">Added to your ledger</string>
     <string name="undo_discarded">Entries discarded</string>
+    <string name="review_sort_oldest">Oldest first</string>
+    <string name="review_sort_newest">Newest first</string>
+    <string name="review_sort_largest">Largest first</string>
+    <string name="review_edit">Fix first</string>
+    <string name="review_edit_cancel">Cancel fix</string>
+    <string name="review_edit_amount">Amount (₹)</string>
+    <string name="review_edit_name">Name</string>
 </resources>

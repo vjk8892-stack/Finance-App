@@ -33,8 +33,12 @@ data class ReviewGroup(
     val isDuplicateGroup: Boolean,
 )
 
+/** Queue ordering. Oldest first by default — the ones going stale. */
+enum class ReviewSort { OLDEST, NEWEST, LARGEST }
+
 data class ReviewUiState(
     val items: List<LedgerRow> = emptyList(),
+    val sort: ReviewSort = ReviewSort.OLDEST,
     val groups: List<ReviewGroup> = emptyList(),
     val categories: List<CategoryEntity> = emptyList(),
     /** Transaction id → original message, when raw retention is on (B4). */
@@ -50,10 +54,38 @@ class ReviewQueueViewModel @Inject constructor(
     categoryRepository: CategoryRepository,
 ) : ViewModel() {
 
+    private val _sort = MutableStateFlow(ReviewSort.OLDEST)
+
+    fun setSort(sort: ReviewSort) {
+        _sort.value = sort
+    }
+
+    /**
+     * Apply the user's corrections to a queued row WITHOUT approving it.
+     *
+     * A row with a misread amount previously had to be approved first and
+     * fixed afterwards — which puts a number you know is wrong into the ledger
+     * and relies on you remembering to come back. Fixing before approving is
+     * the order anyone would actually want.
+     */
+    fun saveEdit(txnId: Long, amountPaise: Long, merchantRaw: String?, categoryId: Long?) {
+        viewModelScope.launch {
+            val existing = transactionRepository.byId(txnId) ?: return@launch
+            transactionRepository.update(
+                existing.copy(
+                    amountPaise = amountPaise,
+                    merchantRaw = merchantRaw,
+                    categoryId = categoryId ?: existing.categoryId,
+                ),
+            )
+        }
+    }
+
     val uiState: StateFlow<ReviewUiState> = combine(
         transactionDao.observeReviewQueue(),
         categoryRepository.observeAll(),
-    ) { items, categories ->
+        _sort,
+    ) { items, categories, sort ->
         // Show the original message when the user opted to keep it — a
         // low-confidence parse is only actionable if you can see the source.
         val evidence = items.associate { row ->
@@ -63,9 +95,11 @@ class ReviewQueueViewModel @Inject constructor(
                 .orEmpty()
         }.filterValues { it.isNotBlank() }
 
+        val ordered = items.sortedWith(sort.comparator())
         ReviewUiState(
-            items = items,
-            groups = group(items),
+            items = ordered,
+            sort = sort,
+            groups = group(ordered),
             categories = categories.filter { !it.isSystem },
             evidenceByTxnId = evidence,
         )
@@ -93,7 +127,7 @@ class ReviewQueueViewModel @Inject constructor(
                 ReviewGroup(
                     key = key,
                     title = key,
-                    rows = rows.sortedBy { it.txn.timestampMillis },
+                    rows = rows,
                     total = Money(
                         rows.sumOf {
                             if (it.txn.type == TxnType.DEBIT) -it.txn.amountPaise else it.txn.amountPaise
@@ -110,11 +144,17 @@ class ReviewQueueViewModel @Inject constructor(
             grouped + ReviewGroup(
                 key = DUPLICATES_KEY,
                 title = DUPLICATES_KEY,
-                rows = duplicates.sortedBy { it.txn.timestampMillis },
+                rows = duplicates,
                 total = Money(duplicates.sumOf { -it.txn.amountPaise }),
                 isDuplicateGroup = true,
             )
         }
+    }
+
+    private fun ReviewSort.comparator(): Comparator<LedgerRow> = when (this) {
+        ReviewSort.OLDEST -> compareBy { it.txn.timestampMillis }
+        ReviewSort.NEWEST -> compareByDescending { it.txn.timestampMillis }
+        ReviewSort.LARGEST -> compareByDescending { it.txn.amountPaise }
     }
 
     /** Collapses per-row detail ("new-account-7788") into a shared reason. */

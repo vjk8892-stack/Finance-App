@@ -19,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,6 +72,7 @@ fun LedgerScreen(
     onOpenReview: () -> Unit = {},
     onScanSms: () -> Unit = {},
     onOpenBudgets: () -> Unit = {},
+    onAddTransaction: () -> Unit = {},
     /** Set when a chart slice sent the user here. */
     incomingCategory: String? = null,
     incomingMonth: String? = null,
@@ -133,6 +135,15 @@ fun LedgerScreen(
                     Icons.Outlined.AccountBalanceWallet,
                     contentDescription = stringResource(R.string.ledger_accounts),
                     tint = KoshaColors.OffWhiteMuted,
+                )
+            }
+            // Noticing a missing entry happens HERE, so adding one should not
+            // require finding another tab first.
+            IconButton(onClick = onAddTransaction) {
+                Icon(
+                    Icons.Outlined.Add,
+                    contentDescription = stringResource(R.string.ledger_add),
+                    tint = KoshaColors.AccentTealBright,
                 )
             }
         }

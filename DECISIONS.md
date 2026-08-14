@@ -425,3 +425,11 @@ Format: date · decision · alternatives · why.
 - **2026-08-14 · Treemap slices wear the category colour** · a grey ramp ·
   Same colour as the ledger icon for that category, so the eye can carry a
   category between screens without re-reading labels.
+- **2026-08-14 · A queued row can be fixed BEFORE it is approved** ·
+  approve-then-edit · Correcting a misread amount meant putting a number you
+  know is wrong into the ledger and trusting yourself to come back for it. The
+  queue also sorts now — oldest first by default, since those are the ones
+  going stale.
+- **2026-08-14 · The Ledger has its own add button** · the Add tab only ·
+  Noticing a missing entry happens while looking at the ledger, so adding one
+  should not start with finding another tab.

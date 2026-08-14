@@ -19,6 +19,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -84,6 +86,23 @@ fun ReviewQueueScreen(
             }
         }
 
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = KoshaSpacing.screenPadding, vertical = KoshaSpacing.xs),
+        ) {
+            ReviewSort.entries.forEach { option ->
+                KoshaChip(
+                    label = stringResource(option.labelRes()),
+                    selected = state.sort == option,
+                    onClick = { viewModel.setSort(option) },
+                    accent = KoshaColors.AccentTeal,
+                )
+            }
+        }
+
         if (state.items.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
@@ -114,6 +133,9 @@ fun ReviewQueueScreen(
                             onApprove = { categoryId -> viewModel.approve(row.txn.id, categoryId) },
                             onMerge = { viewModel.mergeDuplicate(row.txn.id) },
                             onDiscard = { viewModel.discard(row.txn.id) },
+                            onSaveEdit = { amount, merchant, categoryId ->
+                                viewModel.saveEdit(row.txn.id, amount, merchant, categoryId)
+                            },
                         )
                     }
                 }
@@ -243,6 +265,20 @@ private fun reviewReasonText(reason: String?, isPossibleDuplicate: Boolean): Str
     else -> stringResource(R.string.review_reason_low_confidence)
 }
 
+private fun ReviewSort.labelRes(): Int = when (this) {
+    ReviewSort.OLDEST -> R.string.review_sort_oldest
+    ReviewSort.NEWEST -> R.string.review_sort_newest
+    ReviewSort.LARGEST -> R.string.review_sort_largest
+}
+
+/** Rupees as typed → paise, or null when it is not a number. */
+private fun parseRupees(text: String): Long? {
+    val cleaned = text.replace(",", "").trim()
+    val value = cleaned.toDoubleOrNull() ?: return null
+    if (value <= 0) return null
+    return Math.round(value * 100)
+}
+
 /** Kept in step with PipelineCommitter's attribution reasons. */
 private const val NEW_ACCOUNT_PREFIX = "new-account-"
 private const val ACCOUNT_TAIL_PREFIX = "account-tail-"
@@ -256,9 +292,21 @@ private fun ReviewCard(
     onApprove: (Long?) -> Unit,
     onMerge: () -> Unit,
     onDiscard: () -> Unit,
+    onSaveEdit: (amountPaise: Long, merchantRaw: String?, categoryId: Long?) -> Unit,
 ) {
     val isPossibleDuplicate = row.txn.possibleDuplicateOfId != null
     var pickedCategory by remember { mutableStateOf<Long?>(null) }
+    var editing by remember { mutableStateOf(false) }
+    var amountText by remember(row.txn.id) {
+        mutableStateOf(
+            if (row.txn.amountPaise % 100 == 0L) {
+                (row.txn.amountPaise / 100).toString()
+            } else {
+                String.format("%.2f", row.txn.amountPaise / 100.0)
+            },
+        )
+    }
+    var merchantText by remember(row.txn.id) { mutableStateOf(row.txn.merchantRaw.orEmpty()) }
     val timeLabel = remember(row.txn.timestampMillis) {
         DateTimeFormatter.ofPattern("d MMM, HH:mm")
             .format(Instant.ofEpochMilli(row.txn.timestampMillis).atZone(ZoneId.systemDefault()))
@@ -326,6 +374,38 @@ private fun ReviewCard(
             Spacer(Modifier.height(KoshaSpacing.xs))
         }
 
+        // Correcting a misread amount used to mean approving it first and
+        // fixing it afterwards, which puts a number you know is wrong into the
+        // ledger and trusts you to come back.
+        if (editing) {
+            TextField(
+                value = amountText,
+                onValueChange = { t -> if (t.all { it.isDigit() || it == '.' }) amountText = t },
+                label = { Text(stringResource(R.string.review_edit_amount), color = KoshaColors.OffWhiteFaint) },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = KoshaColors.CharcoalRaised,
+                    unfocusedContainerColor = KoshaColors.CharcoalRaised,
+                    focusedTextColor = KoshaColors.OffWhite,
+                    unfocusedTextColor = KoshaColors.OffWhite,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(KoshaSpacing.xxs))
+            TextField(
+                value = merchantText,
+                onValueChange = { merchantText = it },
+                label = { Text(stringResource(R.string.review_edit_name), color = KoshaColors.OffWhiteFaint) },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = KoshaColors.CharcoalRaised,
+                    unfocusedContainerColor = KoshaColors.CharcoalRaised,
+                    focusedTextColor = KoshaColors.OffWhite,
+                    unfocusedTextColor = KoshaColors.OffWhite,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(KoshaSpacing.xs))
+        }
+
         Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.s)) {
             if (isPossibleDuplicate) {
                 TextButton(onClick = onMerge) {
@@ -335,8 +415,27 @@ private fun ReviewCard(
                     Text(stringResource(R.string.review_duplicate_keep), color = KoshaColors.OffWhiteMuted)
                 }
             } else {
-                TextButton(onClick = { onApprove(pickedCategory) }) {
+                TextButton(
+                    onClick = {
+                        if (editing) {
+                            val paise = parseRupees(amountText)
+                            if (paise != null) {
+                                onSaveEdit(paise, merchantText.trim().takeIf { it.isNotBlank() }, pickedCategory)
+                            }
+                            editing = false
+                        }
+                        onApprove(pickedCategory)
+                    },
+                ) {
                     Text(stringResource(R.string.review_approve), color = KoshaColors.AccentTeal)
+                }
+                TextButton(onClick = { editing = !editing }) {
+                    Text(
+                        text = stringResource(
+                            if (editing) R.string.review_edit_cancel else R.string.review_edit,
+                        ),
+                        color = KoshaColors.OffWhiteMuted,
+                    )
                 }
                 TextButton(onClick = onDiscard) {
                     Text(stringResource(R.string.review_discard), color = KoshaColors.OffWhiteMuted)

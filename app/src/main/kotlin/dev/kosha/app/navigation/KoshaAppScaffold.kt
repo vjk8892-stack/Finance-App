@@ -201,6 +201,7 @@ fun KoshaAppScaffold(startAction: String? = null) {
                     incomingFrom = entry.arguments?.getString(ARG_LEDGER_FROM),
                     incomingTo = entry.arguments?.getString(ARG_LEDGER_TO),
                     incomingSearch = entry.arguments?.getString(ARG_LEDGER_SEARCH),
+                    onAddTransaction = { navController.navigate(KoshaDestination.ADD.route) },
                 )
             }
             composable(
