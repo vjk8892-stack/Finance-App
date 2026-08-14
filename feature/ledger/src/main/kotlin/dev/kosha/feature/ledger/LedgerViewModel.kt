@@ -40,6 +40,8 @@ import kotlinx.serialization.json.Json
 data class LedgerDayGroup(
     val date: LocalDate,
     val label: String,
+    /** Net for the day: debits − credits. Answers "what did today cost?". */
+    val total: Money,
     val rows: List<LedgerRow>,
 )
 
@@ -50,11 +52,17 @@ data class LedgerMonthGroup(
     val days: List<LedgerDayGroup>,
 )
 
+/** Ledger direction filter — "what came in" vs "what went out". */
+enum class LedgerFilter { ALL, OUT, IN }
+
 data class LedgerUiState(
     val months: List<LedgerMonthGroup> = emptyList(),
     val categories: List<CategoryEntity> = emptyList(),
     val isEmpty: Boolean = false,
     val reviewCount: Int = 0,
+    val filter: LedgerFilter = LedgerFilter.ALL,
+    /** True when rows exist but the current filter hides them all. */
+    val hiddenByFilter: Boolean = false,
 )
 
 /**
@@ -89,16 +97,34 @@ class LedgerViewModel @Inject constructor(
     private val dayFormat = DateTimeFormatter.ofPattern("EEE d MMM")
     private val monthFormat = DateTimeFormatter.ofPattern("MMMM yyyy")
 
+    private val _filter = MutableStateFlow(LedgerFilter.ALL)
+
+    fun setFilter(filter: LedgerFilter) {
+        _filter.value = filter
+    }
+
     val uiState: StateFlow<LedgerUiState> = combine(
         transactionRepository.observeLedger(),
         categoryRepository.observeAll(),
         transactionDao.observeReviewCount(),
-    ) { rows, categories, reviewCount ->
+        _filter,
+    ) { rows, categories, reviewCount, filter ->
+        val visible = rows.filter { row ->
+            when (filter) {
+                LedgerFilter.ALL -> true
+                LedgerFilter.OUT -> row.txn.type == TxnType.DEBIT
+                LedgerFilter.IN -> row.txn.type == TxnType.CREDIT
+            }
+        }
         LedgerUiState(
-            months = group(rows),
+            months = group(visible),
             categories = categories,
-            isEmpty = rows.isEmpty(),
+            isEmpty = visible.isEmpty(),
             reviewCount = reviewCount,
+            filter = filter,
+            // "Nothing here" reads as a bug when the cause is a filter you
+            // forgot you set, so the two empties say different things.
+            hiddenByFilter = visible.isEmpty() && rows.isNotEmpty(),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LedgerUiState())
 
@@ -127,6 +153,11 @@ class LedgerViewModel @Inject constructor(
                                 today.minusDays(1) -> "Yesterday"
                                 else -> date.format(dayFormat)
                             },
+                            total = Money(
+                                dayRows.sumOf {
+                                    if (it.txn.type == TxnType.DEBIT) it.txn.amountPaise else -it.txn.amountPaise
+                                },
+                            ),
                             rows = dayRows,
                         )
                     },

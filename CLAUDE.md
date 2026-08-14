@@ -7,6 +7,11 @@ product, design, and phasing. `DECISIONS.md` is the append-only decision log.
 tests + debug APK). Gates that need physical devices are still open — see
 `docs/DEVICE_GATES.md`.
 
+## Reporting back
+When an enhancement pass is finished, summarise it as **very simple bullet
+points — one line per change, plain language, no jargon**. Detail belongs in
+`DECISIONS.md` and the commit message, not the reply.
+
 ## Stack
 Kotlin · Jetpack Compose + Material 3 (custom "Kosha DS") · Room + SQLCipher ·
 Hilt · WorkManager · ML Kit (on-device) · Glance · CameraX · custom Canvas

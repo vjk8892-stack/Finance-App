@@ -10,7 +10,8 @@
     <string name="pulse_income">Income</string>
     <string name="pulse_expense">Spent</string>
     <string name="pulse_gap">Gap</string>
-    <string name="pulse_tap_hint">Tap for the breakdown</string>
+    <string name="home_see_transactions">See transactions</string>
+    <string name="pulse_tap_hint">Tap to see what made it</string>
 
     <string name="home_quick_add">Quick add</string>
     <string name="home_review_chip">%1$d to review</string>
@@ -54,6 +55,7 @@
     <string name="insights_leaks_none">Nothing unusual, and no leaks worth naming.</string>
     <string name="insights_leak_detail">%1$d times, about %2$s each</string>
     <string name="insights_anomaly">Bigger than usual</string>
+    <string name="insights_pick_category">Pick a category to try it out.</string>
     <string name="insights_whatif">What-if</string>
     <string name="insights_whatif_cut">Cut %1$d%%</string>
     <string name="insights_whatif_annual">Over a year that is</string>

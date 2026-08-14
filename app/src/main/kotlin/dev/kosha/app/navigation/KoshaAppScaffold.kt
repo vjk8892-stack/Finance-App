@@ -126,6 +126,13 @@ fun KoshaAppScaffold(startAction: String? = null) {
         ) {
             composable(KoshaDestination.HOME.route) {
                 HomeScreen(
+                    onOpenLedger = {
+                        navController.navigate(KoshaDestination.LEDGER.route) {
+                            popUpTo(KoshaDestination.HOME.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
                     onOpenBudgets = { navController.navigate(ROUTE_BUDGETS) },
                     onOpenIncome = { navController.navigate(ROUTE_INCOME) },
                     onOpenRecurring = { navController.navigate(ROUTE_RECURRING) },
@@ -143,6 +150,7 @@ fun KoshaAppScaffold(startAction: String? = null) {
                     onOpenAccounts = { navController.navigate(ROUTE_ACCOUNTS) },
                     onOpenReview = { navController.navigate(ROUTE_REVIEW) },
                     onScanSms = { navController.navigate(ROUTE_SMS_SCAN) },
+                    onOpenBudgets = { navController.navigate(ROUTE_BUDGETS) },
                 )
             }
             composable(

@@ -137,8 +137,16 @@ fun TransactionDetailSheet(
                 }
 
                 else -> {
+                    // Say WHY there is no message, rather than showing a gap.
                     Text(
-                        text = stringResource(R.string.detail_no_evidence),
+                        text = stringResource(
+                            when (txn.source) {
+                                TxnSource.MANUAL -> R.string.detail_source_manual
+                                TxnSource.RECURRING -> R.string.detail_source_recurring
+                                TxnSource.OCR -> R.string.detail_source_photo_gone
+                                TxnSource.SMS -> R.string.detail_no_evidence
+                            },
+                        ),
                         style = KoshaType.Caption,
                         color = KoshaColors.OffWhiteFaint,
                     )

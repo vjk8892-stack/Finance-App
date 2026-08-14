@@ -199,3 +199,32 @@ Format: date · decision · alternatives · why.
   usual" label on every row · Three identical rows cannot be acted on. The
   flag now carries the merchant, or the category name for category-scope
   flags.
+
+## Refinement pass (2026-08-14)
+
+- **2026-08-14 · The savings gap navigates to the ledger; the breakdown is
+  always visible** · tap-to-expand a breakdown · The gap is a question —
+  "where did it go?" — and the tap answered it with two more numbers and then
+  nothing. Income/spent now show unconditionally (they fit), and the tap goes
+  to the transactions. "See transactions" and "Budgets" sit directly under the
+  ring, because reading the gap and acting on it are the same moment.
+- **2026-08-14 · The ledger has a money-in / money-out filter** · scrolling and
+  reading the sign · Credits and debits interleave, so answering "what came in
+  this month?" meant scanning the whole list. The empty state distinguishes
+  "nothing recorded" from "the filter hides everything", which otherwise reads
+  as a bug.
+- **2026-08-14 · Day headers are readable and carry the day's total** ·
+  `OffWhiteFaint` day labels · The date is how you navigate a ledger, and it
+  was drawn in the hint/disabled tone — the dimmest thing on screen. Today and
+  Yesterday now get full contrast, older days one step down, each day is
+  separated by a rule, and the day's net sits on the right.
+- **2026-08-14 · The review queue offers every category, scrollable** · the
+  first three · The right category was usually not among the first three, so
+  approving a row left it uncategorized anyway — the queue was creating the
+  work it was meant to remove.
+- **2026-08-14 · The detail sheet says WHY there is no message** · a single
+  generic line · A manual entry, a recurring rule and a discarded SMS are
+  three different situations, and only one of them is worth acting on.
+- **2026-08-14 · What-if and Opportunity cost prompt for a category** · a bare
+  chip row · Both cards rendered as a title and three chips with no indication
+  they did anything until one was tapped, which read as unfinished.

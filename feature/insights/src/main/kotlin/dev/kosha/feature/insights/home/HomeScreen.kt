@@ -52,6 +52,7 @@ import java.time.format.DateTimeFormatter
  */
 @Composable
 fun HomeScreen(
+    onOpenLedger: () -> Unit,
     onOpenBudgets: () -> Unit,
     onOpenIncome: () -> Unit,
     onQuickAdd: (categoryId: Long) -> Unit,
@@ -63,7 +64,6 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
-    var pulseExpanded by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -94,7 +94,27 @@ fun HomeScreen(
 
         WeatherLine(state)
         Spacer(Modifier.height(KoshaSpacing.l))
-        Pulse(state, expanded = pulseExpanded, onToggle = { pulseExpanded = !pulseExpanded })
+        Pulse(state, onOpenLedger = onOpenLedger)
+        Spacer(Modifier.height(KoshaSpacing.s))
+        // The two things anyone wants after reading the gap: see what made it,
+        // and do something about it. Both belong here, not further down.
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            KoshaChip(
+                label = stringResource(R.string.home_see_transactions),
+                onClick = onOpenLedger,
+                modifier = Modifier.weight(1f),
+            )
+            KoshaChip(
+                label = stringResource(
+                    if (state.budgetRings.isEmpty()) R.string.home_budgets_empty else R.string.home_budgets,
+                ),
+                onClick = onOpenBudgets,
+                modifier = Modifier.weight(1f),
+            )
+        }
         Spacer(Modifier.height(KoshaSpacing.l))
 
         // Review queue chip — renders ONLY when non-empty (spec A2/C2.4)
@@ -164,11 +184,14 @@ private fun WeatherLine(state: HomeUiState) {
 }
 
 @Composable
-private fun Pulse(state: HomeUiState, expanded: Boolean, onToggle: () -> Unit) {
+private fun Pulse(state: HomeUiState, onOpenLedger: () -> Unit) {
     Box(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle),
+            // The gap is a question — "where did it go?" — so tapping it goes
+            // to the answer. It used to toggle a breakdown that is now always
+            // on screen, which made the tap a dead end.
+            .clickable(onClick = onOpenLedger),
         contentAlignment = Alignment.Center,
     ) {
         // The one place the teal→violet accent gradient appears on Home.
@@ -193,17 +216,14 @@ private fun Pulse(state: HomeUiState, expanded: Boolean, onToggle: () -> Unit) {
                 withPaise = false,
                 countUp = true,
             )
-            if (expanded) {
-                Spacer(Modifier.height(KoshaSpacing.s))
-                PulseBreakdown(state)
-            } else {
-                Spacer(Modifier.height(KoshaSpacing.xxs))
-                Text(
-                    text = stringResource(R.string.pulse_tap_hint),
-                    style = KoshaType.Caption,
-                    color = KoshaColors.OffWhiteFaint,
-                )
-            }
+            Spacer(Modifier.height(KoshaSpacing.s))
+            PulseBreakdown(state)
+            Spacer(Modifier.height(KoshaSpacing.xxs))
+            Text(
+                text = stringResource(R.string.pulse_tap_hint),
+                style = KoshaType.Caption,
+                color = KoshaColors.OffWhiteFaint,
+            )
         }
     }
 }

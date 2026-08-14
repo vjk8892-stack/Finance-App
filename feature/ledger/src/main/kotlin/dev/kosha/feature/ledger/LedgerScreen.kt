@@ -2,6 +2,7 @@ package dev.kosha.feature.ledger
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -66,6 +68,7 @@ fun LedgerScreen(
     onOpenAccounts: () -> Unit,
     onOpenReview: () -> Unit = {},
     onScanSms: () -> Unit = {},
+    onOpenBudgets: () -> Unit = {},
     viewModel: LedgerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -130,6 +133,31 @@ fun LedgerScreen(
         }
         Spacer(Modifier.height(KoshaSpacing.xs))
 
+        // Direction filter, plus budgets within reach of the numbers they
+        // are about.
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = KoshaSpacing.screenPadding),
+        ) {
+            LedgerFilter.entries.forEach { option ->
+                KoshaChip(
+                    label = stringResource(option.labelRes()),
+                    selected = state.filter == option,
+                    onClick = { viewModel.setFilter(option) },
+                )
+            }
+            KoshaChip(
+                label = stringResource(R.string.ledger_budgets),
+                onClick = onOpenBudgets,
+                accent = KoshaColors.AccentTeal,
+            )
+        }
+        Spacer(Modifier.height(KoshaSpacing.xs))
+
         if (queryState.isFiltering) {
             // Query results replace the grouped ledger while a query is live.
             LazyColumn(Modifier.fillMaxSize()) {
@@ -145,7 +173,11 @@ fun LedgerScreen(
         } else if (state.isEmpty) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
-                    text = stringResource(R.string.ledger_empty),
+                    text = if (state.hiddenByFilter) {
+                        stringResource(R.string.ledger_empty_filtered)
+                    } else {
+                        stringResource(R.string.ledger_empty)
+                    },
                     style = KoshaType.InsightSerif,
                     color = KoshaColors.OffWhiteMuted,
                     modifier = Modifier.padding(KoshaSpacing.xl),
@@ -159,15 +191,7 @@ fun LedgerScreen(
                     }
                     month.days.forEach { day ->
                         item(key = "day-${day.date}") {
-                            Text(
-                                text = day.label,
-                                style = KoshaType.Label,
-                                color = KoshaColors.OffWhiteFaint,
-                                modifier = Modifier.padding(
-                                    horizontal = KoshaSpacing.screenPadding,
-                                    vertical = KoshaSpacing.xs,
-                                ),
-                            )
+                            DayHeader(day.label, day.total)
                         }
                         items(day.rows.size) { i ->
                             val row = day.rows[i]
@@ -218,6 +242,51 @@ fun LedgerScreen(
             },
             onDismiss = { acting = null },
         )
+    }
+}
+
+/** Filter chip label. */
+private fun LedgerFilter.labelRes(): Int = when (this) {
+    LedgerFilter.ALL -> R.string.ledger_filter_all
+    LedgerFilter.OUT -> R.string.ledger_filter_out
+    LedgerFilter.IN -> R.string.ledger_filter_in
+}
+
+/**
+ * The date is how you navigate a ledger, so it has to be readable. It was
+ * drawn in `OffWhiteFaint` — the hint/disabled tone — which made the spine of
+ * the list the dimmest thing on screen. Today and Yesterday get full contrast,
+ * older days one step down, and a rule separates each day from the last.
+ */
+@Composable
+private fun DayHeader(label: String, total: Money) {
+    val isRecent = label == "Today" || label == "Yesterday"
+    Column(Modifier.fillMaxWidth()) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(KoshaColors.Outline),
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = KoshaSpacing.screenPadding, vertical = KoshaSpacing.xs),
+        ) {
+            Text(
+                text = label,
+                style = KoshaType.Label,
+                color = if (isRecent) KoshaColors.OffWhite else KoshaColors.OffWhiteMuted,
+                modifier = Modifier.weight(1f),
+            )
+            AmountText(
+                amount = total,
+                style = KoshaType.AmountSmall,
+                color = KoshaColors.OffWhiteFaint,
+                withPaise = false,
+            )
+        }
     }
 }
 

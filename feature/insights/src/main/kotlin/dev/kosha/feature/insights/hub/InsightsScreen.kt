@@ -431,6 +431,18 @@ private fun WhatIfSection(
     viewModel: InsightsViewModel,
 ) {
     Section(title = stringResource(R.string.insights_whatif)) {
+        if (data.spendByCategoryName.isEmpty()) {
+            EmptyNote(stringResource(R.string.insights_empty_shape))
+            return@Section
+        }
+        // Without this the card is a bare row of chips with no hint that it
+        // does anything until one is tapped.
+        Text(
+            text = stringResource(R.string.insights_pick_category),
+            style = KoshaType.Caption,
+            color = KoshaColors.OffWhiteFaint,
+        )
+        Spacer(Modifier.height(KoshaSpacing.xs))
         Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs)) {
             data.spendByCategoryName.take(3).forEach { (name, amount) ->
                 KoshaChip(
@@ -486,6 +498,16 @@ private fun OpportunityCostSection(
         title = stringResource(R.string.insights_opportunity),
         subtitle = stringResource(R.string.insights_opportunity_sub),
     ) {
+        if (data.spendByCategoryName.isEmpty()) {
+            EmptyNote(stringResource(R.string.insights_empty_shape))
+            return@Section
+        }
+        Text(
+            text = stringResource(R.string.insights_pick_category),
+            style = KoshaType.Caption,
+            color = KoshaColors.OffWhiteFaint,
+        )
+        Spacer(Modifier.height(KoshaSpacing.xs))
         Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs)) {
             data.spendByCategoryName.take(3).forEach { (name, amount) ->
                 KoshaChip(

@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Icon
@@ -177,11 +179,16 @@ private fun ReviewCard(
 
         if (!isPossibleDuplicate) {
             // Quick category row before approving
+            // All of them, scrollable. Showing the first three meant the
+            // right category usually was not offered, so approving a row left
+            // it uncategorized anyway.
             Row(
                 horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xxs),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
             ) {
-                categories.take(3).forEach { cat ->
+                categories.forEach { cat ->
                     KoshaChip(
                         label = cat.name,
                         selected = pickedCategory == cat.id,

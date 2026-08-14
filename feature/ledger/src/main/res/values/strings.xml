@@ -54,6 +54,11 @@
     <string name="accounts_type_card">Card</string>
     <string name="accounts_type_wallet">Wallet</string>
     <string name="accounts_type_mealcard">Meal card</string>
+    <string name="ledger_filter_all">All</string>
+    <string name="ledger_filter_out">Money out</string>
+    <string name="ledger_filter_in">Money in</string>
+    <string name="ledger_budgets">Budgets</string>
+    <string name="ledger_empty_filtered">Nothing matches this filter — try “All”.</string>
     <string name="ledger_no_name">No name in the message</string>
     <string name="detail_no_merchant">No name in the message</string>
     <string name="detail_when">When</string>
@@ -70,5 +75,8 @@
     <string name="detail_message_missing">Kosha did not keep this message — by default it stores only the amount, account, name and reference. Turn keeping on and re-scan to see the text behind future entries. It never leaves the device either way.</string>
     <string name="detail_keep_messages_on">Keeping message text</string>
     <string name="detail_keep_messages_off">Not keeping message text</string>
-    <string name="detail_no_evidence">Entered by hand, so there is no message behind it.</string>
+    <string name="detail_no_evidence">No message was stored for this entry.</string>
+    <string name="detail_source_manual">This is a manual entry — you typed it in, so there is no bank message behind it.</string>
+    <string name="detail_source_recurring">Created automatically by a recurring rule, not from a message.</string>
+    <string name="detail_source_photo_gone">Captured from a photo, but the image is no longer available.</string>
 </resources>
