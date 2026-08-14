@@ -41,6 +41,9 @@ fun SankeyChart(
     val allFlows = remember(flows, savings) {
         (flows + SankeyFlow(SAVINGS_LABEL, savings)).filter { it.amount.paise > 0 }
     }
+    // Nothing has flowed yet — an income bar pointing at nothing reads as a
+    // rendering fault, so draw nothing and let the caller show its empty note.
+    if (allFlows.isEmpty()) return
     val total = allFlows.sumOf { it.amount.paise }.coerceAtLeast(1)
 
     val description = "Money flow: income ${income.format(withPaise = false)} splits into " +
@@ -145,8 +148,9 @@ private fun DrawScope.drawFlowLabel(
 ) {
     // Skip labels on ribbons too thin to hold text — no clutter.
     if (nodeHeight < 14.dp.toPx()) return
+    // A flow diagram without figures is decoration: always show the amount.
     val layout = textMeasurer.measure(
-        text = flow.label,
+        text = "${flow.label}  ${flow.amount.format(withPaise = false)}",
         style = KoshaType.Caption.copy(color = KoshaColors.OffWhiteMuted),
     )
     drawText(

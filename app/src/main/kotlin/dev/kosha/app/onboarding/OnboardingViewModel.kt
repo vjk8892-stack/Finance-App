@@ -1,8 +1,11 @@
 package dev.kosha.app.onboarding
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.kosha.feature.ingest.sms.SmsCapability
 import dev.kosha.core.database.settings.SettingsRepository
 import dev.kosha.core.common.Money
 import dev.kosha.core.database.dao.PlanningDao
@@ -34,11 +37,19 @@ data class OnboardingUiState(
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val accountRepository: AccountRepository,
     private val planningDao: PlanningDao,
     private val settingsRepository: SettingsRepository,
     private val importer: HistoricalSmsImporter,
 ) : ViewModel() {
+
+    /**
+     * False in the lite build, where the SMS permissions are not in the
+     * manifest. Offering "Allow SMS access" there is a dead end — the OS
+     * refuses instantly — so those steps are skipped entirely.
+     */
+    private val smsSupported: Boolean = SmsCapability.isSupportedByBuild(context)
 
     private val _state = MutableStateFlow(OnboardingUiState())
     val state: StateFlow<OnboardingUiState> = _state.asStateFlow()
@@ -46,14 +57,22 @@ class OnboardingViewModel @Inject constructor(
     fun next() {
         val steps = OnboardingStep.entries
         val current = _state.value.step
-        val nextIndex = steps.indexOf(current) + 1
-        if (nextIndex < steps.size) {
-            var next = steps[nextIndex]
-            // Without SMS permission the import step is meaningless — skip it.
-            if (next == OnboardingStep.IMPORT && !_state.value.smsGranted) {
-                next = OnboardingStep.NOTIFICATIONS
+        var nextIndex = steps.indexOf(current) + 1
+
+        while (nextIndex < steps.size) {
+            val candidate = steps[nextIndex]
+            val skip = when (candidate) {
+                // This build cannot ask for SMS at all.
+                OnboardingStep.SMS -> !smsSupported
+                // Nothing to import without SMS access.
+                OnboardingStep.IMPORT -> !smsSupported || !_state.value.smsGranted
+                else -> false
             }
-            _state.value = _state.value.copy(step = next)
+            if (!skip) {
+                _state.value = _state.value.copy(step = candidate)
+                return
+            }
+            nextIndex++
         }
     }
 

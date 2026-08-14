@@ -3,6 +3,7 @@
     <string name="ledger_title">Ledger</string>
     <string name="ledger_empty">Nothing here yet — add your first entry from the center tab.</string>
     <string name="ledger_accounts">Accounts</string>
+    <string name="ledger_scan_sms">Scan bank messages</string>
     <string name="ledger_recategorize">Recategorize</string>
     <string name="ledger_edit">Edit</string>
     <string name="ledger_delete">Delete</string>

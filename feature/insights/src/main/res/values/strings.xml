@@ -30,6 +30,11 @@
 
     <string name="insights_title">Insights</string>
     <string name="insights_loading">Gathering your numbers…</string>
+    <string name="insights_empty_flow">Nothing has flowed yet. Log an entry or set your income and this fills in.</string>
+    <string name="insights_empty_rhythm">No spending recorded this period yet.</string>
+    <string name="insights_empty_shape">No categorised spending yet — the mix appears once you log a few entries.</string>
+    <string name="insights_empty_trajectory">Not enough history yet. This needs a couple of months to say anything useful.</string>
+    <string name="insights_busiest_day">Busiest day — the %1$d</string>
     <string name="insights_flow">Flow</string>
     <string name="insights_flow_sub">Where income goes</string>
     <string name="insights_rhythm">Rhythm</string>

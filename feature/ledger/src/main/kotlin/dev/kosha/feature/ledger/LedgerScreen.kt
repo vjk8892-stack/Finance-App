@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -63,6 +64,7 @@ internal fun TxnSource.glyph(): String = when (this) {
 fun LedgerScreen(
     onOpenAccounts: () -> Unit,
     onOpenReview: () -> Unit = {},
+    onScanSms: () -> Unit = {},
     viewModel: LedgerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -88,6 +90,14 @@ fun LedgerScreen(
                     label = stringResource(R.string.ledger_review_chip, state.reviewCount),
                     onClick = onOpenReview,
                     accent = KoshaColors.Amber,
+                )
+            }
+            // Noticed a missing entry? Re-scan the inbox from here.
+            IconButton(onClick = onScanSms) {
+                Icon(
+                    Icons.Outlined.Sync,
+                    contentDescription = stringResource(R.string.ledger_scan_sms),
+                    tint = KoshaColors.OffWhiteMuted,
                 )
             }
             IconButton(onClick = onOpenAccounts) {

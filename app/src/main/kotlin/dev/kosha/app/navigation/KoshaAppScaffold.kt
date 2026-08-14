@@ -37,6 +37,7 @@ import dev.kosha.feature.income.IncomeScreen
 import dev.kosha.feature.ingest.ocr.ImportScreen
 import dev.kosha.feature.ingest.ocr.ScanScreen
 import dev.kosha.feature.ingest.review.ReviewQueueScreen
+import dev.kosha.feature.ingest.sms.SmsScanScreen
 import dev.kosha.feature.insights.home.HomeScreen
 import dev.kosha.feature.insights.hub.InsightsScreen
 import dev.kosha.feature.ledger.LedgerScreen
@@ -64,6 +65,7 @@ const val ROUTE_INCOME = "income"
 const val ROUTE_RECURRING = "recurring"
 const val ROUTE_EXPORT = "export"
 const val ROUTE_GOALS = "goals"
+const val ROUTE_SMS_SCAN = "sms-scan"
 const val ARG_QUICK_CATEGORY = "quickCategoryId"
 
 @Composable
@@ -137,6 +139,7 @@ fun KoshaAppScaffold(startAction: String? = null) {
                 LedgerScreen(
                     onOpenAccounts = { navController.navigate(ROUTE_ACCOUNTS) },
                     onOpenReview = { navController.navigate(ROUTE_REVIEW) },
+                    onScanSms = { navController.navigate(ROUTE_SMS_SCAN) },
                 )
             }
             composable(
@@ -181,6 +184,9 @@ fun KoshaAppScaffold(startAction: String? = null) {
             }
             composable(ROUTE_GOALS) {
                 GoalsScreen(onBack = { navController.popBackStack() })
+            }
+            composable(ROUTE_SMS_SCAN) {
+                SmsScanScreen(onBack = { navController.popBackStack() })
             }
         }
     }

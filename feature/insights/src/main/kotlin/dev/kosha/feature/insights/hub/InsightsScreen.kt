@@ -133,12 +133,53 @@ private fun Section(
     }
 }
 
+/** A chart with no data reads as a broken chart — say so in words instead. */
+@Composable
+private fun EmptyNote(text: String) {
+    Text(
+        text = text,
+        style = KoshaType.InsightSerif,
+        color = KoshaColors.OffWhiteMuted,
+        modifier = Modifier.padding(vertical = KoshaSpacing.s),
+    )
+}
+
+/** Figures beside every chart: the picture shows shape, this shows amounts. */
+@Composable
+private fun AmountLine(label: String, amount: Money, color: androidx.compose.ui.graphics.Color) {
+    Row(Modifier.fillMaxWidth()) {
+        Text(
+            text = label,
+            style = KoshaType.Body,
+            color = KoshaColors.OffWhiteMuted,
+            modifier = Modifier.weight(1f),
+        )
+        AmountText(amount = amount, style = KoshaType.AmountBody, color = color, withPaise = false)
+    }
+}
+
 @Composable
 private fun FlowSection(data: InsightsRepository.Insights) {
     Section(
         title = stringResource(R.string.insights_flow),
         subtitle = stringResource(R.string.insights_flow_sub),
     ) {
+        val hasFlow = data.income.paise > 0 || data.spendByCategoryName.isNotEmpty()
+        if (!hasFlow) {
+            EmptyNote(stringResource(R.string.insights_empty_flow))
+            return@Section
+        }
+
+        // Totals first, so the numbers are readable without decoding ribbons.
+        AmountLine(stringResource(R.string.pulse_income), data.income, KoshaColors.AccentTeal)
+        AmountLine(stringResource(R.string.pulse_expense), data.expense, KoshaColors.OffWhiteMuted)
+        AmountLine(
+            stringResource(R.string.pulse_gap),
+            data.savings,
+            if (data.savings.isNegative) KoshaColors.Amber else KoshaColors.OffWhite,
+        )
+        Spacer(Modifier.height(KoshaSpacing.s))
+
         SankeyChart(
             income = data.income,
             flows = data.spendByCategoryName.take(6).map { SankeyFlow(it.first, it.second) },
@@ -153,11 +194,23 @@ private fun RhythmSection(data: InsightsRepository.Insights) {
         title = stringResource(R.string.insights_rhythm),
         subtitle = stringResource(R.string.insights_rhythm_sub),
     ) {
+        if (data.dailySpend.isEmpty()) {
+            EmptyNote(stringResource(R.string.insights_empty_rhythm))
+            return@Section
+        }
         CalendarHeatmap(
             dailySpend = data.dailySpend,
             monthStart = data.period.start,
             monthEnd = data.period.endInclusive,
         )
+        Spacer(Modifier.height(KoshaSpacing.xs))
+        data.dailySpend.maxByOrNull { it.value.paise }?.let { (date, amount) ->
+            AmountLine(
+                stringResource(R.string.insights_busiest_day, date.dayOfMonth),
+                amount,
+                KoshaColors.OffWhite,
+            )
+        }
     }
 }
 
@@ -167,16 +220,30 @@ private fun ShapeSection(data: InsightsRepository.Insights) {
         title = stringResource(R.string.insights_shape),
         subtitle = stringResource(R.string.insights_shape_sub),
     ) {
+        if (data.spendByCategoryName.isEmpty()) {
+            EmptyNote(stringResource(R.string.insights_empty_shape))
+            return@Section
+        }
+
         CategoryTreemap(
             slices = data.spendByCategoryName.map { TreemapSlice(it.first, it.second) },
         )
-        Spacer(Modifier.height(KoshaSpacing.m))
-        val baseline = data.dnaBaseline.toMap()
-        SpendingDnaRadar(
-            axes = data.dnaCurrent.map { (name, amount) ->
-                RadarAxis(name, amount, baseline[name] ?: Money.ZERO)
-            },
-        )
+        Spacer(Modifier.height(KoshaSpacing.s))
+        // The treemap shows proportion; this shows what each slice cost.
+        data.spendByCategoryName.take(6).forEach { (name, amount) ->
+            AmountLine(name, amount, KoshaColors.OffWhite)
+        }
+
+        // A radar needs at least three axes to be a shape at all.
+        if (data.dnaCurrent.size >= 3) {
+            Spacer(Modifier.height(KoshaSpacing.m))
+            val baseline = data.dnaBaseline.toMap()
+            SpendingDnaRadar(
+                axes = data.dnaCurrent.map { (name, amount) ->
+                    RadarAxis(name, amount, baseline[name] ?: Money.ZERO)
+                },
+            )
+        }
     }
 }
 
@@ -186,6 +253,13 @@ private fun TrajectorySection(data: InsightsRepository.Insights) {
         title = stringResource(R.string.insights_trajectory),
         subtitle = stringResource(R.string.insights_trajectory_sub),
     ) {
+        val hasHistory = data.trend.any {
+            it.income.paise != 0L || it.expense.paise != 0L
+        }
+        if (!hasHistory) {
+            EmptyNote(stringResource(R.string.insights_empty_trajectory))
+            return@Section
+        }
         TrendLines(data.trend)
     }
 }
