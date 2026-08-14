@@ -23,6 +23,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+private val MONTH_LABEL: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM yy")
+private val DAY_LABEL: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy")
+
 data class ExportUiState(
     val busy: Boolean = false,
     val shareUri: Uri? = null,
@@ -35,6 +38,8 @@ data class ExportUiState(
     val backupFolderReady: Boolean = false,
     val backups: List<BackupFolder.Entry> = emptyList(),
     val lastBackupAtMillis: Long = 0,
+    val csvOptions: CsvOptions = CsvOptions(),
+    val pdfOptions: PdfOptions = PdfOptions(),
 )
 
 @HiltViewModel
@@ -66,22 +71,31 @@ class ExportViewModel @Inject constructor(
         _state.value = _state.value.copy(includeVault = !_state.value.includeVault)
     }
 
+    fun setCsvOptions(options: CsvOptions) {
+        _state.value = _state.value.copy(csvOptions = options)
+    }
+
+    fun setPdfOptions(options: PdfOptions) {
+        _state.value = _state.value.copy(pdfOptions = options)
+    }
+
     fun exportCsv() {
-        run {
-            viewModelScope.launch {
-                _state.value = _state.value.copy(busy = true, message = null)
-                val anchor = settingsRepository.settings.first().periodAnchorDay
-                val period = periodRepository.currentPeriod(anchor)
-                val result = runCatching { exportRepository.exportCsv(period) }
-                _state.value = _state.value.copy(
-                    busy = false,
-                    shareUri = result.getOrNull(),
-                    shareMimeType = "text/csv",
-                    message = result.exceptionOrNull()?.let {
-                        context.getString(R.string.export_failed)
-                    },
-                )
-            }
+        viewModelScope.launch {
+            _state.value = _state.value.copy(busy = true, message = null, shareUri = null)
+            val anchor = settingsRepository.settings.first().periodAnchorDay
+            val period = periodRepository.currentPeriod(anchor)
+            val result = runCatching { exportRepository.exportCsv(period, _state.value.csvOptions) }
+            _state.value = _state.value.copy(
+                busy = false,
+                shareUri = result.getOrNull(),
+                shareMimeType = "text/csv",
+                // Producing a file and saying nothing looked exactly like the
+                // button not working. Say what came out, then offer to share it.
+                message = result.fold(
+                    onSuccess = { context.getString(R.string.export_ready_csv) },
+                    onFailure = { context.getString(R.string.export_failed) },
+                ),
+            )
         }
     }
 
@@ -106,6 +120,16 @@ class ExportViewModel @Inject constructor(
                     }
                     .toMap()
 
+                val options = _state.value.pdfOptions
+                // `trend` runs oldest → newest; the chart reads left to right.
+                val trendBars = insights.trend.map { point ->
+                    PdfStatementWriter.TrendBar(
+                        label = MONTH_LABEL.format(point.period.start),
+                        spent = point.expense,
+                        budget = insights.monthlyBudget,
+                    )
+                }
+
                 val statement = PdfStatementWriter.Statement(
                     period = period,
                     weatherSentence = weatherSentence(snapshot.tone, snapshot.totals.savingsGap),
@@ -118,6 +142,7 @@ class ExportViewModel @Inject constructor(
                             name = name,
                             budgeted = limitByCategoryName[name],
                             actual = actual,
+                            month = MONTH_LABEL.format(period.start),
                         )
                     },
                     topMerchants = insights.leaks.map { it.merchant to it.total },
@@ -125,6 +150,10 @@ class ExportViewModel @Inject constructor(
                         it.label to Money(it.amountPaise ?: 0)
                     },
                     trendChart = null,
+                    trendBars = trendBars,
+                    ledger = if (options.fullLedger) ledgerLines(period, options.range) else emptyList(),
+                    options = options,
+                    rangeLabel = rangeLabel(period, options.range),
                 )
                 val name = DateTimeFormatter.ofPattern("yyyy-MM").format(period.start)
                 pdfWriter.write(statement, File(exportRepository.exportDir(), "kosha-$name.pdf"))
@@ -133,7 +162,10 @@ class ExportViewModel @Inject constructor(
                 busy = false,
                 shareUri = result.getOrNull()?.let(exportRepository::fileUri),
                 shareMimeType = "application/pdf",
-                message = result.exceptionOrNull()?.let { context.getString(R.string.export_failed) },
+                message = result.fold(
+                    onSuccess = { context.getString(R.string.export_ready_pdf) },
+                    onFailure = { context.getString(R.string.export_failed) },
+                ),
             )
         }
     }
@@ -217,6 +249,29 @@ class ExportViewModel @Inject constructor(
             backupFolder.delete(uri)
             refreshBackups()
         }
+    }
+
+    /** The ledger section reuses the CSV row builder, so the two always agree. */
+    private suspend fun ledgerLines(
+        period: dev.kosha.core.common.Period,
+        range: ExportRange,
+    ): List<PdfStatementWriter.LedgerLine> =
+        exportRepository.buildRows(period, CsvOptions(range = range)).map { row ->
+            PdfStatementWriter.LedgerLine(
+                date = row.date,
+                merchant = row.merchant.ifBlank { "—" },
+                category = row.category,
+                account = row.account,
+                amount = row.amount,
+                isCredit = row.isCredit,
+            )
+        }
+
+    private fun rangeLabel(period: dev.kosha.core.common.Period, range: ExportRange): String {
+        val today = java.time.LocalDate.now()
+        val start = range.startDate(period, today) ?: return "Everything up to ${DAY_LABEL.format(today)}"
+        val end = range.endDateExclusive(period)?.minusDays(1) ?: today
+        return "${DAY_LABEL.format(start)} — ${DAY_LABEL.format(end)}"
     }
 
     private fun weatherSentence(tone: PeriodMath.WeatherTone, gap: Money): String = when (tone) {

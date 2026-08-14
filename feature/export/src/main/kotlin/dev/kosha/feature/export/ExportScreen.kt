@@ -83,29 +83,8 @@ fun ExportScreen(
             Modifier.padding(horizontal = KoshaSpacing.screenPadding),
             verticalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
         ) {
-            KoshaCard(modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.export_csv), style = KoshaType.Body, color = KoshaColors.OffWhite)
-                Text(
-                    stringResource(R.string.export_csv_sub),
-                    style = KoshaType.Caption,
-                    color = KoshaColors.OffWhiteFaint,
-                )
-                TextButton(onClick = { viewModel.exportCsv() }) {
-                    Text(stringResource(R.string.export_csv), color = KoshaColors.AccentTeal)
-                }
-            }
-
-            KoshaCard(modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.export_pdf), style = KoshaType.Body, color = KoshaColors.OffWhite)
-                Text(
-                    stringResource(R.string.export_pdf_sub),
-                    style = KoshaType.Caption,
-                    color = KoshaColors.OffWhiteFaint,
-                )
-                TextButton(onClick = { viewModel.exportPdf() }) {
-                    Text(stringResource(R.string.export_pdf), color = KoshaColors.AccentTeal)
-                }
-            }
+            PdfSection(state, viewModel)
+            CsvSection(state, viewModel)
 
             state.shareUri?.let { uri ->
                 KoshaCard(modifier = Modifier.fillMaxWidth()) {
@@ -305,3 +284,171 @@ private fun backupFieldColors() = TextFieldDefaults.colors(
     focusedTextColor = KoshaColors.OffWhite,
     unfocusedTextColor = KoshaColors.OffWhite,
 )
+
+/**
+ * The statement, section by section.
+ *
+ * Everything here used to be fixed: one button producing the same three pages
+ * whatever you wanted. Charts in particular are the reason people export a
+ * statement rather than a spreadsheet, and there was no way to ask for one.
+ */
+@Composable
+private fun PdfSection(state: ExportUiState, viewModel: ExportViewModel) {
+    val options = state.pdfOptions
+    KoshaCard(modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.export_pdf), style = KoshaType.SectionHeader, color = KoshaColors.OffWhite)
+        Text(
+            stringResource(R.string.export_pdf_sub),
+            style = KoshaType.Caption,
+            color = KoshaColors.OffWhiteFaint,
+        )
+
+        Spacer(Modifier.height(KoshaSpacing.xs))
+        RangePicker(options.range) { viewModel.setPdfOptions(options.copy(range = it)) }
+
+        Spacer(Modifier.height(KoshaSpacing.xs))
+        Text(stringResource(R.string.export_include), style = KoshaType.Label, color = KoshaColors.OffWhiteFaint)
+        OptionChips(
+            listOf(
+                Triple(R.string.export_opt_summary, options.summary) {
+                    viewModel.setPdfOptions(options.copy(summary = !options.summary))
+                },
+                Triple(R.string.export_opt_pie, options.pieChart) {
+                    viewModel.setPdfOptions(options.copy(pieChart = !options.pieChart))
+                },
+                Triple(R.string.export_opt_trend, options.trendChart) {
+                    viewModel.setPdfOptions(options.copy(trendChart = !options.trendChart))
+                },
+                Triple(R.string.export_opt_categories, options.categoryTable) {
+                    viewModel.setPdfOptions(options.copy(categoryTable = !options.categoryTable))
+                },
+                Triple(R.string.export_opt_month_column, options.monthColumn) {
+                    viewModel.setPdfOptions(options.copy(monthColumn = !options.monthColumn))
+                },
+                Triple(R.string.export_opt_merchants, options.topMerchants) {
+                    viewModel.setPdfOptions(options.copy(topMerchants = !options.topMerchants))
+                },
+                Triple(R.string.export_opt_recurring, options.recurring) {
+                    viewModel.setPdfOptions(options.copy(recurring = !options.recurring))
+                },
+                Triple(R.string.export_opt_full_ledger, options.fullLedger) {
+                    viewModel.setPdfOptions(options.copy(fullLedger = !options.fullLedger))
+                },
+            ),
+        )
+        if (options.fullLedger) {
+            Text(
+                stringResource(R.string.export_full_ledger_note),
+                style = KoshaType.Caption,
+                color = KoshaColors.OffWhiteFaint,
+            )
+        }
+
+        TextButton(
+            onClick = { viewModel.exportPdf() },
+            enabled = !state.busy && options.hasAnySection,
+        ) {
+            Text(
+                text = stringResource(R.string.export_pdf_action),
+                style = KoshaType.LabelStrong,
+                color = if (options.hasAnySection) KoshaColors.AccentTealBright else KoshaColors.OffWhiteFaint,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CsvSection(state: ExportUiState, viewModel: ExportViewModel) {
+    val options = state.csvOptions
+    KoshaCard(modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.export_csv), style = KoshaType.SectionHeader, color = KoshaColors.OffWhite)
+        Text(
+            stringResource(R.string.export_csv_sub),
+            style = KoshaType.Caption,
+            color = KoshaColors.OffWhiteFaint,
+        )
+
+        Spacer(Modifier.height(KoshaSpacing.xs))
+        RangePicker(options.range) { viewModel.setCsvOptions(options.copy(range = it)) }
+
+        Spacer(Modifier.height(KoshaSpacing.xs))
+        OptionChips(
+            listOf(
+                Triple(R.string.export_csv_split, options.splitAmountColumns) {
+                    viewModel.setCsvOptions(options.copy(splitAmountColumns = !options.splitAmountColumns))
+                },
+                Triple(R.string.export_csv_running, options.includeRunningBalance) {
+                    viewModel.setCsvOptions(options.copy(includeRunningBalance = !options.includeRunningBalance))
+                },
+                Triple(R.string.export_csv_notes, options.includeNotesAndTags) {
+                    viewModel.setCsvOptions(options.copy(includeNotesAndTags = !options.includeNotesAndTags))
+                },
+                Triple(R.string.export_csv_transfers, options.includeTransfers) {
+                    viewModel.setCsvOptions(options.copy(includeTransfers = !options.includeTransfers))
+                },
+                Triple(R.string.export_csv_pending, options.includePending) {
+                    viewModel.setCsvOptions(options.copy(includePending = !options.includePending))
+                },
+            ),
+        )
+        Text(
+            text = stringResource(
+                if (options.includeTransfers) {
+                    R.string.export_csv_transfers_on
+                } else {
+                    R.string.export_csv_transfers_off
+                },
+            ),
+            style = KoshaType.Caption,
+            color = KoshaColors.OffWhiteFaint,
+        )
+
+        TextButton(onClick = { viewModel.exportCsv() }, enabled = !state.busy) {
+            Text(
+                text = stringResource(R.string.export_csv_action),
+                style = KoshaType.LabelStrong,
+                color = KoshaColors.AccentTealBright,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RangePicker(selected: ExportRange, onPick: (ExportRange) -> Unit) {
+    Text(stringResource(R.string.export_range), style = KoshaType.Label, color = KoshaColors.OffWhiteFaint)
+    OptionChips(
+        ExportRange.entries.map { range ->
+            Triple(range.labelRes(), range == selected) { onPick(range) }
+        },
+    )
+}
+
+/** Two per row: chip labels here are phrases, and one per row wastes the page. */
+@Composable
+private fun OptionChips(options: List<Triple<Int, Boolean, () -> Unit>>) {
+    options.chunked(2).forEach { pair ->
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs),
+        ) {
+            pair.forEach { (labelRes, selected, onClick) ->
+                KoshaChip(
+                    label = stringResource(labelRes),
+                    selected = selected,
+                    onClick = onClick,
+                    accent = KoshaColors.AccentTeal,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (pair.size == 1) Spacer(Modifier.weight(1f))
+        }
+    }
+}
+
+private fun ExportRange.labelRes(): Int = when (this) {
+    ExportRange.THIS_PERIOD -> R.string.export_range_period
+    ExportRange.LAST_3_MONTHS -> R.string.export_range_3m
+    ExportRange.LAST_12_MONTHS -> R.string.export_range_12m
+    ExportRange.THIS_FINANCIAL_YEAR -> R.string.export_range_fy
+    ExportRange.EVERYTHING -> R.string.export_range_all
+}

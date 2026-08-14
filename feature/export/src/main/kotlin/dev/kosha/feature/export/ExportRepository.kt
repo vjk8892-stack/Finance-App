@@ -9,10 +9,12 @@ import dev.kosha.core.common.Period
 import dev.kosha.core.database.dao.AccountDao
 import dev.kosha.core.database.dao.CategoryDao
 import dev.kosha.core.database.dao.TransactionDao
+import dev.kosha.core.database.model.SystemCategoryKey
 import dev.kosha.core.database.model.TxnStatus
 import dev.kosha.core.engine.export.CsvWriter
 import java.io.File
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
@@ -38,20 +40,62 @@ class ExportRepository @Inject constructor(
     private val zone: ZoneId = ZoneId.systemDefault()
     private val dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
-    suspend fun exportCsv(period: Period): Uri = withContext(Dispatchers.IO) {
-        val rows = buildRows(period)
-        val csv = CsvWriter.write(rows)
+    suspend fun exportCsv(
+        period: Period,
+        options: CsvOptions = CsvOptions(),
+    ): Uri = withContext(Dispatchers.IO) {
+        val rows = buildRows(period, options)
+        val csv = CsvWriter.write(
+            rows,
+            CsvWriter.Options(
+                splitAmountColumns = options.splitAmountColumns,
+                includeNotesAndTags = options.includeNotesAndTags,
+                includeRunningBalance = options.includeRunningBalance,
+            ),
+        )
         val file = File(exportDir(), "kosha-${dateFormat.format(period.start)}.csv")
         file.writeText(csv)
         fileUri(file)
     }
 
-    suspend fun buildRows(period: Period): List<CsvWriter.Row> {
+    /**
+     * The window [options] asks for, as epoch millis. `null` bounds mean "all
+     * of history" and "up to now" respectively.
+     */
+    fun window(period: Period, range: ExportRange): Pair<Long, Long> {
+        val start = range.startDate(period, LocalDate.now(zone))
+        val endExclusive = range.endDateExclusive(period)
+        return Pair(
+            start?.atStartOfDay(zone)?.toInstant()?.toEpochMilli() ?: 0L,
+            endExclusive?.atStartOfDay(zone)?.toInstant()?.toEpochMilli() ?: Long.MAX_VALUE,
+        )
+    }
+
+    suspend fun buildRows(
+        period: Period,
+        options: CsvOptions = CsvOptions(),
+    ): List<CsvWriter.Row> {
         val accounts = accountDao.activeAccounts().associateBy { it.id }
         val categories = categoryDao.observeAll().first().associateBy { it.id }
+        val excludedIds = categories.values
+            .filter {
+                it.systemKey == SystemCategoryKey.TRANSFERS ||
+                    it.systemKey == SystemCategoryKey.CASH_WITHDRAWAL
+            }
+            .map { it.id }
+            .toSet()
+        val (from, until) = window(period, options.range)
         return transactionDao
-            .inWindow(period.startEpochMillis(zone), period.endEpochMillisExclusive(zone))
-            .filter { it.status == TxnStatus.COMMITTED }
+            .inWindow(from, until)
+            .filter {
+                // Split children would double-count against their parent.
+                it.parentTransactionId == null &&
+                    (
+                        it.status == TxnStatus.COMMITTED ||
+                            (options.includePending && it.status == TxnStatus.PENDING_REVIEW)
+                        ) &&
+                    (options.includeTransfers || it.categoryId !in excludedIds)
+            }
             .sortedBy { it.timestampMillis }
             .map { txn ->
                 CsvWriter.Row(
