@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.kosha.core.common.Money
 import dev.kosha.core.database.model.AccountEntity
 import dev.kosha.core.database.model.AccountType
+import dev.kosha.core.database.dao.TransactionDao
 import dev.kosha.core.database.repo.AccountRepository
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class AccountsViewModel @Inject constructor(
     private val accountRepository: AccountRepository,
+    private val transactionDao: TransactionDao,
 ) : ViewModel() {
 
     val accounts: StateFlow<List<AccountEntity>> = accountRepository.observeActive()
@@ -29,6 +31,21 @@ class AccountsViewModel @Inject constructor(
                 last4 = last4,
                 openingBalancePaise = Money.parseOrNull(openingRupees)?.paise ?: 0L,
             )
+        }
+    }
+
+    /**
+     * Remove an account. Transactions hold a RESTRICT foreign key to it, so an
+     * account with history cannot be deleted outright — it is deactivated,
+     * which hides it everywhere while leaving its rows attributable. Only a
+     * genuinely empty account is deleted, which is the common case for one
+     * Kosha discovered from a mis-parsed tail.
+     */
+    fun remove(account: AccountEntity, onResult: (deleted: Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val used = transactionDao.countForAccount(account.id) > 0
+            if (used) accountRepository.deactivate(account.id) else accountRepository.delete(account)
+            onResult(!used)
         }
     }
 

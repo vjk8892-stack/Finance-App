@@ -71,6 +71,18 @@ data class LedgerMonthGroup(
     val days: List<LedgerDayGroup>,
 )
 
+/**
+ * A completed action that can still be taken back, with the label to offer it
+ * under. Held in memory only — undo is a few seconds of grace, not history.
+ */
+data class UndoableAction(val kind: UndoKind, val undo: suspend () -> Unit)
+
+/** What was undone — the screen turns this into wording. */
+enum class UndoKind { DELETED, RECATEGORIZED, APPROVED, DISCARDED }
+
+/** How the ledger is ordered. */
+enum class LedgerSort { NEWEST, OLDEST, LARGEST, SMALLEST, NAME }
+
 /** Ledger direction filter — "what came in" vs "what went out". */
 enum class LedgerFilter { ALL, OUT, IN }
 
@@ -83,6 +95,15 @@ data class LedgerFilters(
     val accountId: Long? = null,
     val month: YearMonth? = null,
     val categoryId: Long? = null,
+    /**
+     * Plain substring match on name, category, account or note.
+     *
+     * The search bar only ever ran the template NLU, which needs a full known
+     * merchant name in the phrase — so typing "swig" matched nothing and the
+     * bar read as broken. This filters as you type; the NLU still runs on
+     * submit for "dining last month" style questions.
+     */
+    val text: String = "",
     /**
      * An explicit date window, used when Home hands over its PERIOD.
      *
@@ -98,6 +119,7 @@ data class LedgerFilters(
     val activeCount: Int =
         listOfNotNull(
             accountId, month, categoryId, from,
+            text.takeIf { it.isNotBlank() },
             direction.takeIf { it != LedgerFilter.ALL },
         ).size
 }
@@ -111,6 +133,7 @@ data class LedgerUiState(
     /** Accounts and months present in the data, for the filter sheet. */
     val accounts: List<AccountEntity> = emptyList(),
     val availableMonths: List<YearMonth> = emptyList(),
+    val sort: LedgerSort = LedgerSort.NEWEST,
     /** True when rows exist but the current filters hide them all. */
     val hiddenByFilter: Boolean = false,
 ) {
@@ -160,6 +183,28 @@ class LedgerViewModel @Inject constructor(
     private val monthFormat = DateTimeFormatter.ofPattern("MMMM yyyy")
 
     private val _filters = MutableStateFlow(LedgerFilters())
+    private val _sort = MutableStateFlow(LedgerSort.NEWEST)
+    private val _undo = MutableStateFlow<UndoableAction?>(null)
+    val undo: StateFlow<UndoableAction?> = _undo.asStateFlow()
+
+    fun setSort(sort: LedgerSort) {
+        _sort.value = sort
+    }
+
+    fun setSearchText(text: String) {
+        _filters.value = _filters.value.copy(text = text)
+    }
+
+    /** Take back the last destructive action, then clear the offer. */
+    fun performUndo() {
+        val action = _undo.value ?: return
+        _undo.value = null
+        viewModelScope.launch { action.undo() }
+    }
+
+    fun dismissUndo() {
+        _undo.value = null
+    }
 
     /**
      * Arrive pre-filtered when a chart sent the user here. A chart slice is a
@@ -209,9 +254,9 @@ class LedgerViewModel @Inject constructor(
         categoryRepository.observeAll(),
         transactionDao.observeReviewCount(),
         accountRepository.observeActive(),
-        _filters,
-    ) { rows, categories, reviewCount, accounts, filters ->
-        val visible = rows.filter { row -> filters.matches(row) }
+        combine(_filters, _sort) { f, s -> f to s },
+    ) { rows, categories, reviewCount, accounts, (filters, sort) ->
+        val visible = rows.filter { row -> filters.matches(row) }.sortedWith(sort.comparator())
         // The same exclusions the savings gap and the charts use (spec G12).
         val excludedCategoryIds = categories
             .filter {
@@ -232,6 +277,7 @@ class LedgerViewModel @Inject constructor(
                 .map { YearMonth.from(localDate(it.txn.timestampMillis)) }
                 .distinct()
                 .sortedDescending(),
+            sort = sort,
             // "Nothing here" reads as a bug when the cause is a filter you
             // forgot you set, so the two empties say different things.
             hiddenByFilter = visible.isEmpty() && rows.isNotEmpty(),
@@ -248,6 +294,17 @@ class LedgerViewModel @Inject constructor(
         if (accountId != null && row.txn.accountId != accountId) return false
         if (categoryId != null && row.txn.categoryId != categoryId) return false
         if (month != null && YearMonth.from(localDate(row.txn.timestampMillis)) != month) return false
+        if (text.isNotBlank()) {
+            val needle = text.trim().lowercase()
+            val haystack = listOfNotNull(
+                row.txn.merchantRaw,
+                row.categoryName,
+                row.accountName,
+                row.txn.note,
+                row.txn.reference,
+            ).joinToString(" ").lowercase()
+            if (!haystack.contains(needle)) return false
+        }
         if (from != null || to != null) {
             val date = localDate(row.txn.timestampMillis)
             if (from != null && date < from) return false
@@ -295,6 +352,14 @@ class LedgerViewModel @Inject constructor(
                     },
                 )
             }
+    }
+
+    private fun LedgerSort.comparator(): Comparator<LedgerRow> = when (this) {
+        LedgerSort.NEWEST -> compareByDescending { it.txn.timestampMillis }
+        LedgerSort.OLDEST -> compareBy { it.txn.timestampMillis }
+        LedgerSort.LARGEST -> compareByDescending { it.txn.amountPaise }
+        LedgerSort.SMALLEST -> compareBy { it.txn.amountPaise }
+        LedgerSort.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.txn.merchantRaw ?: "" }
     }
 
     private fun localDate(epochMillis: Long): LocalDate =
@@ -368,7 +433,10 @@ class LedgerViewModel @Inject constructor(
             if (merchant.isNullOrBlank()) {
                 transactionRepository.recategorize(row.txn.id, categoryId)
             } else {
-                transactionRepository.recategorizeMerchant(merchant, categoryId)
+                val before = transactionRepository.recategorizeMerchantCapturing(merchant, categoryId)
+                _undo.value = UndoableAction(UndoKind.RECATEGORIZED) {
+                    transactionRepository.restoreCategories(before)
+                }
             }
         }
     }
@@ -392,7 +460,12 @@ class LedgerViewModel @Inject constructor(
     }
 
     fun delete(txnId: Long) {
-        viewModelScope.launch { transactionRepository.delete(txnId) }
+        viewModelScope.launch {
+            val deleted = transactionRepository.deleteCapturing(txnId) ?: return@launch
+            _undo.value = UndoableAction(UndoKind.DELETED) {
+                transactionRepository.restore(deleted)
+            }
+        }
     }
 
     fun updateNote(txnId: Long, note: String?) {

@@ -7,9 +7,13 @@ import androidx.room.Query
 import androidx.room.Transaction as RoomTransaction
 import androidx.room.Update
 import dev.kosha.core.database.model.TransactionEntity
+import dev.kosha.core.database.model.TxnStatus
 import dev.kosha.core.database.model.TransactionEvidenceEntity
 import dev.kosha.core.database.model.TransferEntity
 import kotlinx.coroutines.flow.Flow
+
+/** id → category, for restoring a bulk recategorization. */
+data class CategoryState(val id: Long, val categoryId: Long?)
 
 /** Row projection for the ledger list: transaction + display names. */
 data class LedgerRow(
@@ -169,6 +173,30 @@ interface TransactionDao {
         """
     )
     suspend fun uncategorizedWithMerchant(uncategorizedId: Long?): List<TransactionEntity>
+
+    /** Re-insert restored rows keeping their original ids (undo). */
+    @Insert
+    suspend fun insertAll(txns: List<TransactionEntity>): List<Long>
+
+    @Insert
+    suspend fun insertEvidenceAll(evidence: List<TransactionEvidenceEntity>): List<Long>
+
+    /** Put a row back in the review queue exactly as it was (undo). */
+    @Query(
+        """
+        UPDATE transactions SET status = :status, reviewReason = :reason,
+               updatedAtMillis = :now
+        WHERE id = :id
+        """
+    )
+    suspend fun restoreStatus(id: Long, status: TxnStatus, reason: String?, now: Long)
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE accountId = :accountId")
+    suspend fun countForAccount(accountId: Long): Int
+
+    /** Rows of a merchant with their current category, captured before a bulk change. */
+    @Query("SELECT id, categoryId FROM transactions WHERE merchantNormalized = :merchantNormalized")
+    suspend fun categoryStateForMerchant(merchantNormalized: String): List<CategoryState>
 
     /** Accounts touched by a set of rows, so balances can be recomputed once each. */
     @Query("SELECT DISTINCT accountId FROM transactions WHERE id IN (:ids)")

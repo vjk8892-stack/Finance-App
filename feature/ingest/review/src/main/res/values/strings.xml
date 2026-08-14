@@ -23,4 +23,7 @@
     <string name="review_group_account_tail">Account digits taken from a message</string>
     <string name="review_group_account_unknown">Account not named in the message</string>
     <string name="review_group_duplicates">Possible duplicates</string>
+    <string name="undo_action">Undo</string>
+    <string name="undo_approved">Added to your ledger</string>
+    <string name="undo_discarded">Entries discarded</string>
 </resources>

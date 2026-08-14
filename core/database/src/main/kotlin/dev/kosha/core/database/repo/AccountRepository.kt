@@ -36,4 +36,7 @@ class AccountRepository @Inject constructor(
     suspend fun update(account: AccountEntity) = accountDao.update(account)
 
     suspend fun deactivate(id: Long) = accountDao.deactivate(id)
+
+    /** Only safe for an account with no transactions — the FK is RESTRICT. */
+    suspend fun delete(account: AccountEntity) = accountDao.delete(account)
 }

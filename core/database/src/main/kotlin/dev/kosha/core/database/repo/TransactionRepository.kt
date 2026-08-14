@@ -2,8 +2,11 @@ package dev.kosha.core.database.repo
 
 import dev.kosha.core.database.dao.AccountDao
 import dev.kosha.core.database.dao.LedgerRow
+import dev.kosha.core.database.dao.CategoryState
 import dev.kosha.core.database.dao.TransactionDao
 import dev.kosha.core.database.model.TransactionEntity
+import dev.kosha.core.database.model.TransactionEvidenceEntity
+import dev.kosha.core.database.model.TxnStatus
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -40,6 +43,78 @@ class TransactionRepository @Inject constructor(
         val existing = transactionDao.byId(id) ?: return
         transactionDao.deleteWithChildren(id)
         accountDao.recomputeBalance(existing.accountId)
+    }
+
+    // --- Undo ---
+    //
+    // Every destructive action captures enough to put things back. Room only
+    // auto-generates an id when it is 0, so re-inserting a captured row with
+    // its original id restores it exactly — no schema change, no tombstones,
+    // and references elsewhere keep pointing at the right row.
+
+    /** A removed transaction, its split children and its evidence. */
+    data class DeletedTransaction(
+        val rows: List<TransactionEntity>,
+        val evidence: List<TransactionEvidenceEntity>,
+    )
+
+    suspend fun deleteCapturing(id: Long): DeletedTransaction? {
+        val parent = transactionDao.byId(id) ?: return null
+        val evidence = transactionDao.evidenceFor(id)
+        transactionDao.deleteWithChildren(id)
+        accountDao.recomputeBalance(parent.accountId)
+        return DeletedTransaction(listOf(parent), evidence)
+    }
+
+    suspend fun deleteAllCapturing(ids: List<Long>): DeletedTransaction? {
+        if (ids.isEmpty()) return null
+        val rows = ids.mapNotNull { transactionDao.byId(it) }
+        val evidence = ids.flatMap { transactionDao.evidenceFor(it) }
+        val accountIds = transactionDao.accountIdsFor(ids)
+        transactionDao.deleteBatch(ids)
+        accountIds.forEach { accountDao.recomputeBalance(it) }
+        return DeletedTransaction(rows, evidence)
+    }
+
+    suspend fun restore(deleted: DeletedTransaction) {
+        if (deleted.rows.isEmpty()) return
+        transactionDao.insertAll(deleted.rows)
+        if (deleted.evidence.isNotEmpty()) transactionDao.insertEvidenceAll(deleted.evidence)
+        deleted.rows.map { it.accountId }.distinct().forEach { accountDao.recomputeBalance(it) }
+    }
+
+    /** What a row looked like in the review queue, so approval is reversible. */
+    data class ReviewState(val id: Long, val status: TxnStatus, val reason: String?)
+
+    suspend fun approveAllCapturing(ids: List<Long>): List<ReviewState> {
+        if (ids.isEmpty()) return emptyList()
+        val before = ids.mapNotNull { id ->
+            transactionDao.byId(id)?.let { ReviewState(it.id, it.status, it.reviewReason) }
+        }
+        approveAll(ids)
+        return before
+    }
+
+    suspend fun restoreReviewStates(states: List<ReviewState>) {
+        if (states.isEmpty()) return
+        val now = System.currentTimeMillis()
+        states.forEach { transactionDao.restoreStatus(it.id, it.status, it.reason, now) }
+        val accountIds = transactionDao.accountIdsFor(states.map { it.id })
+        accountIds.forEach { accountDao.recomputeBalance(it) }
+    }
+
+    suspend fun recategorizeMerchantCapturing(
+        merchantNormalized: String,
+        categoryId: Long?,
+    ): List<CategoryState> {
+        val before = transactionDao.categoryStateForMerchant(merchantNormalized)
+        recategorizeMerchant(merchantNormalized, categoryId)
+        return before
+    }
+
+    suspend fun restoreCategories(states: List<CategoryState>) {
+        val now = System.currentTimeMillis()
+        states.forEach { transactionDao.recategorize(it.id, it.categoryId, now) }
     }
 
     suspend fun recategorize(id: Long, categoryId: Long?) {

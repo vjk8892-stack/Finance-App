@@ -44,6 +44,8 @@
     <string name="accounts_add">Add account</string>
     <string name="accounts_name">Name</string>
     <string name="accounts_last4">Last 4 digits (optional)</string>
+    <string name="accounts_remove">Remove account</string>
+    <string name="accounts_remove_confirm">If it has transactions it is hidden rather than deleted, so nothing loses its history.</string>
     <string name="accounts_total">Across all accounts</string>
     <string name="accounts_tap_hint">Tap an account to rename it or fix its digits.</string>
     <string name="accounts_no_tail">No digits saved — bank messages cannot be matched to this account</string>
@@ -79,6 +81,17 @@
     <string name="ledger_categorize_done">Sorted %1$d entries into categories.</string>
     <string name="ledger_categorize_none">Nothing left to sort automatically — the rest need a category by hand.</string>
     <string name="ledger_excludes_transfers">excludes %1$s moved between your accounts</string>
+    <string name="ledger_sort_title">Sort by</string>
+    <string name="ledger_sort_newest">Newest first</string>
+    <string name="ledger_sort_oldest">Oldest first</string>
+    <string name="ledger_sort_largest">Largest first</string>
+    <string name="ledger_sort_smallest">Smallest first</string>
+    <string name="ledger_sort_name">Name A–Z</string>
+    <string name="undo_action">Undo</string>
+    <string name="undo_deleted">Transaction deleted</string>
+    <string name="undo_recategorized">Category applied to every entry</string>
+    <string name="undo_approved">Added to your ledger</string>
+    <string name="undo_discarded">Entries discarded</string>
     <string name="ledger_filters_title">Filters</string>
     <string name="ledger_filters_active">Filters · %1$d</string>
     <string name="ledger_filters_clear">Clear all</string>

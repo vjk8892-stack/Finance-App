@@ -159,6 +159,10 @@ fun AccountsScreen(
                 viewModel.rename(account, name, type, last4)
                 editing = null
             },
+            onRemove = {
+                viewModel.remove(account)
+                editing = null
+            },
             onDismiss = { editing = null },
         )
     }
@@ -213,7 +217,9 @@ private fun AccountEditorSheet(
     onSave: (name: String, type: AccountType, last4: String, openingRupees: String) -> Unit,
     onDismiss: () -> Unit,
     existing: AccountEntity? = null,
+    onRemove: (() -> Unit)? = null,
 ) {
+    var confirmingRemove by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(existing?.name.orEmpty()) }
     var type by remember { mutableStateOf(existing?.type ?: AccountType.BANK) }
     var last4 by remember { mutableStateOf(existing?.last4.orEmpty()) }
@@ -292,6 +298,29 @@ private fun AccountEditorSheet(
                 enabled = name.isNotBlank(),
             ) {
                 Text(stringResource(R.string.accounts_save), color = KoshaColors.AccentTeal)
+            }
+            // Kosha creates accounts on its own from message tails, so it has
+            // to be possible to get rid of one it got wrong.
+            if (onRemove != null) {
+                if (!confirmingRemove) {
+                    TextButton(onClick = { confirmingRemove = true }) {
+                        Text(stringResource(R.string.accounts_remove), color = KoshaColors.Amber)
+                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.accounts_remove_confirm),
+                        style = KoshaType.Caption,
+                        color = KoshaColors.OffWhiteMuted,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.s)) {
+                        TextButton(onClick = onRemove) {
+                            Text(stringResource(R.string.accounts_remove), color = KoshaColors.Amber)
+                        }
+                        TextButton(onClick = { confirmingRemove = false }) {
+                            Text(stringResource(R.string.ledger_cancel), color = KoshaColors.OffWhiteMuted)
+                        }
+                    }
+                }
             }
             Spacer(Modifier.height(KoshaSpacing.l))
         }

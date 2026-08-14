@@ -12,8 +12,10 @@ import dev.kosha.core.database.model.TxnType
 import dev.kosha.core.database.repo.CategoryRepository
 import dev.kosha.core.database.repo.TransactionRepository
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -136,11 +138,30 @@ class ReviewQueueViewModel @Inject constructor(
         }
     }
 
+    private val _undo = MutableStateFlow<ReviewUndo?>(null)
+    val undo: StateFlow<ReviewUndo?> = _undo.asStateFlow()
+
+    /** A bulk action worth a few seconds of grace — see KoshaUndoBar. */
+    data class ReviewUndo(val approved: Boolean, val run: suspend () -> Unit)
+
+    fun performUndo() {
+        val action = _undo.value ?: return
+        _undo.value = null
+        viewModelScope.launch { action.run() }
+    }
+
+    fun dismissUndo() {
+        _undo.value = null
+    }
+
     /** Approve a whole group in one write, then fix the affected balances. */
     fun approveAll(group: ReviewGroup) {
         if (group.isDuplicateGroup) return
         viewModelScope.launch {
-            transactionRepository.approveAll(group.rows.map { it.txn.id })
+            val before = transactionRepository.approveAllCapturing(group.rows.map { it.txn.id })
+            _undo.value = ReviewUndo(approved = true) {
+                transactionRepository.restoreReviewStates(before)
+            }
         }
     }
 
@@ -156,7 +177,11 @@ class ReviewQueueViewModel @Inject constructor(
 
     fun discardAll(group: ReviewGroup) {
         viewModelScope.launch {
-            transactionRepository.deleteAll(group.rows.map { it.txn.id })
+            val deleted = transactionRepository.deleteAllCapturing(group.rows.map { it.txn.id })
+                ?: return@launch
+            _undo.value = ReviewUndo(approved = false) {
+                transactionRepository.restore(deleted)
+            }
         }
     }
 

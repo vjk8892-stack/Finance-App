@@ -1,6 +1,7 @@
 package dev.kosha.core.database.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
@@ -32,6 +33,9 @@ interface AccountDao {
 
     @Query("UPDATE accounts SET isActive = 0 WHERE id = :id")
     suspend fun deactivate(id: Long)
+
+    @Delete
+    suspend fun delete(account: AccountEntity)
 
     /**
      * currentBalance = openingBalance + Σ(parent txns), spec B5: recomputed,

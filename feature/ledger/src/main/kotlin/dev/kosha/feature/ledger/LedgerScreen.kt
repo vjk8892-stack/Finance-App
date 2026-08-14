@@ -49,6 +49,7 @@ import dev.kosha.core.database.model.TxnSource
 import dev.kosha.core.database.model.TxnType
 import dev.kosha.core.designsystem.component.AmountText
 import dev.kosha.core.designsystem.component.KoshaChip
+import dev.kosha.core.designsystem.component.KoshaUndoBar
 import dev.kosha.core.designsystem.component.KoshaIcons
 import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaSpacing
@@ -86,9 +87,12 @@ fun LedgerScreen(
     var recategorizing by remember { mutableStateOf<LedgerRow?>(null) }
     var acting by remember { mutableStateOf<LedgerRow?>(null) }
     var filtersOpen by remember { mutableStateOf(false) }
+    var sortOpen by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<LedgerRow?>(null) }
     val retroResult by viewModel.retroResult.collectAsState()
+    val undo by viewModel.undo.collectAsState()
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -129,7 +133,13 @@ fun LedgerScreen(
         // Search bar doubles as the query assistant (spec C3).
         QuerySearchBar(
             text = queryState.text,
-            onTextChange = viewModel::onQueryTextChange,
+            onTextChange = {
+                viewModel.onQueryTextChange(it)
+                // Filter as you type. The NLU still runs on submit, but it
+                // needs a full known merchant name in the phrase, so on its
+                // own the bar did nothing for "swig" and read as broken.
+                viewModel.setSearchText(it)
+            },
             onSubmit = viewModel::submitQuery,
             modifier = Modifier.padding(horizontal = KoshaSpacing.screenPadding),
         )
@@ -171,6 +181,11 @@ fun LedgerScreen(
                 },
                 selected = state.filters.activeCount > 0,
                 onClick = { filtersOpen = true },
+            )
+            KoshaChip(
+                label = stringResource(state.sort.labelRes()),
+                selected = state.sort != LedgerSort.NEWEST,
+                onClick = { sortOpen = true },
             )
             KoshaChip(
                 label = stringResource(R.string.ledger_budgets),
@@ -290,6 +305,27 @@ fun LedgerScreen(
         )
     }
 
+    KoshaUndoBar(
+        visible = undo != null,
+        message = stringResource(undo?.kind?.messageRes() ?: R.string.undo_deleted),
+        actionLabel = stringResource(R.string.undo_action),
+        onUndo = viewModel::performUndo,
+        onDismiss = viewModel::dismissUndo,
+        modifier = Modifier.align(Alignment.BottomCenter),
+    )
+    }
+
+    if (sortOpen) {
+        SortSheet(
+            current = state.sort,
+            onPick = {
+                viewModel.setSort(it)
+                sortOpen = false
+            },
+            onDismiss = { sortOpen = false },
+        )
+    }
+
     if (filtersOpen) {
         LedgerFilterSheet(
             filters = state.filters,
@@ -331,6 +367,54 @@ fun LedgerScreen(
             },
             onDismiss = { acting = null },
         )
+    }
+}
+
+private fun LedgerSort.labelRes(): Int = when (this) {
+    LedgerSort.NEWEST -> R.string.ledger_sort_newest
+    LedgerSort.OLDEST -> R.string.ledger_sort_oldest
+    LedgerSort.LARGEST -> R.string.ledger_sort_largest
+    LedgerSort.SMALLEST -> R.string.ledger_sort_smallest
+    LedgerSort.NAME -> R.string.ledger_sort_name
+}
+
+private fun UndoKind.messageRes(): Int = when (this) {
+    UndoKind.DELETED -> R.string.undo_deleted
+    UndoKind.RECATEGORIZED -> R.string.undo_recategorized
+    UndoKind.APPROVED -> R.string.undo_approved
+    UndoKind.DISCARDED -> R.string.undo_discarded
+}
+
+@Composable
+private fun SortSheet(
+    current: LedgerSort,
+    onPick: (LedgerSort) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = KoshaColors.CharcoalOverlay) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(KoshaSpacing.m),
+            verticalArrangement = Arrangement.spacedBy(KoshaSpacing.xs),
+        ) {
+            Text(
+                text = stringResource(R.string.ledger_sort_title),
+                style = KoshaType.Title,
+                color = KoshaColors.OffWhite,
+            )
+            Spacer(Modifier.height(KoshaSpacing.xs))
+            LedgerSort.entries.forEach { option ->
+                KoshaChip(
+                    label = stringResource(option.labelRes()),
+                    selected = option == current,
+                    onClick = { onPick(option) },
+                    modifier = Modifier.fillMaxWidth(),
+                    accent = KoshaColors.AccentTeal,
+                )
+            }
+            Spacer(Modifier.height(KoshaSpacing.xl))
+        }
     }
 }
 

@@ -36,6 +36,7 @@ import dev.kosha.core.database.model.TxnType
 import dev.kosha.core.designsystem.component.AmountText
 import dev.kosha.core.designsystem.component.KoshaCard
 import dev.kosha.core.designsystem.component.KoshaChip
+import dev.kosha.core.designsystem.component.KoshaUndoBar
 import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaSpacing
 import dev.kosha.core.designsystem.token.KoshaType
@@ -54,7 +55,9 @@ fun ReviewQueueScreen(
     viewModel: ReviewQueueViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val undo by viewModel.undo.collectAsState()
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -116,6 +119,18 @@ fun ReviewQueueScreen(
                 }
             }
         }
+    }
+
+    KoshaUndoBar(
+        visible = undo != null,
+        message = stringResource(
+            if (undo?.approved == true) R.string.undo_approved else R.string.undo_discarded,
+        ),
+        actionLabel = stringResource(R.string.undo_action),
+        onUndo = viewModel::performUndo,
+        onDismiss = viewModel::dismissUndo,
+        modifier = Modifier.align(Alignment.BottomCenter),
+    )
     }
 }
 
