@@ -49,7 +49,8 @@ import java.time.format.DateTimeFormatter
  */
 @Composable
 fun HomeScreen(
-    onOpenLedger: () -> Unit,
+    /** Opens the ledger showing exactly the rows behind this period's figures. */
+    onOpenLedger: (fromIso: String?, toIso: String?) -> Unit,
     onOpenBudgets: () -> Unit,
     onOpenIncome: () -> Unit,
     onQuickAdd: (categoryId: Long) -> Unit,
@@ -72,9 +73,20 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
         ) {
+            // A period is anchored on payday, so "August" here can mean
+            // 5 Aug – 4 Sep while the ledger's "August 2026" means the
+            // calendar month. Same word, different windows — which is how two
+            // screens end up quoting different totals for the same month. Say
+            // the range whenever it is not simply a calendar month.
             Text(
-                text = state.period?.let {
-                    DateTimeFormatter.ofPattern("MMMM").format(it.start)
+                text = state.period?.let { period ->
+                    val monthName = DateTimeFormatter.ofPattern("MMMM").format(period.start)
+                    if (period.start.dayOfMonth == 1) {
+                        monthName
+                    } else {
+                        monthName + " · " + RANGE_FORMAT.format(period.start) +
+                            " – " + RANGE_FORMAT.format(period.endInclusive)
+                    }
                 } ?: "",
                 style = KoshaType.Label,
                 color = KoshaColors.OffWhiteFaint,
@@ -91,7 +103,7 @@ fun HomeScreen(
 
         WeatherLine(state)
         Spacer(Modifier.height(KoshaSpacing.l))
-        Pulse(state, onOpenLedger = onOpenLedger)
+        Pulse(state, onOpenLedger = { openPeriodInLedger(state, onOpenLedger) })
         Spacer(Modifier.height(KoshaSpacing.s))
         // The two things anyone wants after reading the gap: see what made it,
         // and do something about it. Both belong here, not further down.
@@ -101,7 +113,7 @@ fun HomeScreen(
         ) {
             KoshaChip(
                 label = stringResource(R.string.home_see_transactions),
-                onClick = onOpenLedger,
+                onClick = { openPeriodInLedger(state, onOpenLedger) },
                 modifier = Modifier.weight(1f),
             )
             KoshaChip(
@@ -156,6 +168,17 @@ fun HomeScreen(
         }
         Spacer(Modifier.height(KoshaSpacing.xxl))
     }
+}
+
+private val RANGE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM")
+
+/**
+ * Hand the ledger this period's exact window, so the figure above can be
+ * checked against the rows that produced it rather than taken on trust.
+ */
+private fun openPeriodInLedger(state: HomeUiState, onOpenLedger: (String?, String?) -> Unit) {
+    val period = state.period
+    onOpenLedger(period?.start?.toString(), period?.endInclusive?.toString())
 }
 
 @Composable

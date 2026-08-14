@@ -82,6 +82,7 @@
     <string name="ledger_filters_title">Filters</string>
     <string name="ledger_filters_active">Filters · %1$d</string>
     <string name="ledger_filters_clear">Clear all</string>
+    <string name="ledger_filter_period">Period from Home</string>
     <string name="ledger_filter_month">Month</string>
     <string name="ledger_filter_account">Account</string>
     <string name="ledger_filter_category">Category</string>

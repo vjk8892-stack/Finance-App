@@ -359,3 +359,16 @@ Format: date · decision · alternatives · why.
   which also makes a wrong-looking number diagnosable instead of merely
   annoying. The month key travels on the bar rather than being looked up by
   index, because the bar list is a filtered view of the trend.
+- **2026-08-14 · Home states its period's actual dates, and hands them to the
+  ledger** · both screens saying "August" and meaning different windows · A
+  period is anchored on the user's salary day, so Home's "August" can be
+  5 Aug – 4 Sep while the ledger's "August 2026" is the calendar month. Same
+  word, different windows, nothing on screen to tell them apart — which is a
+  standing generator of "these two totals disagree" reports whatever else is
+  fixed. Home now spells out the range whenever it is not a calendar month,
+  and "See transactions" (and the gap ring) carry that exact window into the
+  ledger, so the figure can be checked against the rows that produced it.
+  Recorded because the FIRST diagnosis of the reported mismatch — a transfer
+  counted in one place and not the other — was inference from a coincidence
+  and turned out to rest on a false premise; the user had already deleted the
+  transaction in question.

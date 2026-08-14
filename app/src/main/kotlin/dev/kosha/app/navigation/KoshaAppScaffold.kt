@@ -74,6 +74,8 @@ const val ARG_QUICK_CATEGORY = "quickCategoryId"
 /** Chart → ledger deep links, so a slice can show the rows behind it. */
 const val ARG_LEDGER_CATEGORY = "ledgerCategory"
 const val ARG_LEDGER_MONTH = "ledgerMonth"
+const val ARG_LEDGER_FROM = "ledgerFrom"
+const val ARG_LEDGER_TO = "ledgerTo"
 
 @Composable
 fun KoshaAppScaffold(startAction: String? = null) {
@@ -131,12 +133,14 @@ fun KoshaAppScaffold(startAction: String? = null) {
         ) {
             composable(KoshaDestination.HOME.route) {
                 HomeScreen(
-                    onOpenLedger = {
-                        navController.navigate(KoshaDestination.LEDGER.route) {
-                            popUpTo(KoshaDestination.HOME.route) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                    onOpenLedger = { from, to ->
+                        val args = listOfNotNull(
+                            from?.let { "$ARG_LEDGER_FROM=$it" },
+                            to?.let { "$ARG_LEDGER_TO=$it" },
+                        ).joinToString("&")
+                        navController.navigate(
+                            KoshaDestination.LEDGER.route + if (args.isEmpty()) "" else "?$args",
+                        )
                     },
                     onOpenBudgets = { navController.navigate(ROUTE_BUDGETS) },
                     onOpenIncome = { navController.navigate(ROUTE_INCOME) },
@@ -152,7 +156,8 @@ fun KoshaAppScaffold(startAction: String? = null) {
             }
             composable(
                 route = "${KoshaDestination.LEDGER.route}" +
-                    "?$ARG_LEDGER_CATEGORY={$ARG_LEDGER_CATEGORY}&$ARG_LEDGER_MONTH={$ARG_LEDGER_MONTH}",
+                    "?$ARG_LEDGER_CATEGORY={$ARG_LEDGER_CATEGORY}&$ARG_LEDGER_MONTH={$ARG_LEDGER_MONTH}" +
+                    "&$ARG_LEDGER_FROM={$ARG_LEDGER_FROM}&$ARG_LEDGER_TO={$ARG_LEDGER_TO}",
                 arguments = listOf(
                     navArgument(ARG_LEDGER_CATEGORY) {
                         type = NavType.StringType
@@ -160,6 +165,16 @@ fun KoshaAppScaffold(startAction: String? = null) {
                         defaultValue = null
                     },
                     navArgument(ARG_LEDGER_MONTH) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                    navArgument(ARG_LEDGER_FROM) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                    navArgument(ARG_LEDGER_TO) {
                         type = NavType.StringType
                         nullable = true
                         defaultValue = null
@@ -173,6 +188,8 @@ fun KoshaAppScaffold(startAction: String? = null) {
                     onOpenBudgets = { navController.navigate(ROUTE_BUDGETS) },
                     incomingCategory = entry.arguments?.getString(ARG_LEDGER_CATEGORY),
                     incomingMonth = entry.arguments?.getString(ARG_LEDGER_MONTH),
+                    incomingFrom = entry.arguments?.getString(ARG_LEDGER_FROM),
+                    incomingTo = entry.arguments?.getString(ARG_LEDGER_TO),
                 )
             }
             composable(

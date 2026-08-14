@@ -68,6 +68,20 @@ fun LedgerFilterSheet(
                 }
             }
 
+            // A range handed over by Home is a filter like any other, and an
+            // invisible filter is indistinguishable from missing data.
+            filters.from?.let { from ->
+                FilterGroup(stringResource(R.string.ledger_filter_period)) {
+                    KoshaChip(
+                        label = RANGE_FORMAT.format(from) + " – " +
+                            RANGE_FORMAT.format(filters.to ?: from),
+                        selected = true,
+                        onClick = onClearAll,
+                        accent = KoshaColors.AccentTeal,
+                    )
+                }
+            }
+
             if (months.isNotEmpty()) {
                 FilterGroup(stringResource(R.string.ledger_filter_month)) {
                     KoshaChip(
@@ -141,6 +155,7 @@ private fun FilterGroup(title: String, content: @Composable () -> Unit) {
 }
 
 private val MONTH_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM yyyy")
+private val RANGE_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM")
 
 /**
  * Accounts Kosha discovered from a message are already named "•• 1234", so

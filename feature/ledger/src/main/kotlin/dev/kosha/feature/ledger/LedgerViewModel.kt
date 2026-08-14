@@ -83,10 +83,21 @@ data class LedgerFilters(
     val accountId: Long? = null,
     val month: YearMonth? = null,
     val categoryId: Long? = null,
+    /**
+     * An explicit date window, used when Home hands over its PERIOD.
+     *
+     * A period is anchored on the user's salary day, so "August" on Home can
+     * mean 5 Aug – 4 Sep while "August 2026" in the ledger means the calendar
+     * month. Same word, different windows, and no way to tell — which is how
+     * two screens end up quoting different totals for "August". Passing the
+     * actual range makes Home's number checkable against its own rows.
+     */
+    val from: LocalDate? = null,
+    val to: LocalDate? = null,
 ) {
     val activeCount: Int =
         listOfNotNull(
-            accountId, month, categoryId,
+            accountId, month, categoryId, from,
             direction.takeIf { it != LedgerFilter.ALL },
         ).size
 }
@@ -156,13 +167,20 @@ class LedgerViewModel @Inject constructor(
      * only way to check a claim is to see the rows behind it, so tapping one
      * has to land on exactly those rows rather than on everything.
      */
-    fun applyIncomingFilter(categoryName: String?, monthKey: String?) {
-        if (categoryName == null && monthKey == null) return
+    fun applyIncomingFilter(categoryName: String?, monthKey: String?, from: String?, to: String?) {
+        if (categoryName == null && monthKey == null && from == null) return
         val month = monthKey?.let { runCatching { YearMonth.parse(it) }.getOrNull() }
+        val fromDate = from?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+        val toDate = to?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
         viewModelScope.launch {
             val categoryId = categoryName
                 ?.let { name -> categoryRepository.observeAll().first().firstOrNull { it.name == name }?.id }
-            _filters.value = LedgerFilters(categoryId = categoryId, month = month)
+            _filters.value = LedgerFilters(
+                categoryId = categoryId,
+                month = month,
+                from = fromDate,
+                to = toDate,
+            )
         }
     }
 
@@ -230,6 +248,11 @@ class LedgerViewModel @Inject constructor(
         if (accountId != null && row.txn.accountId != accountId) return false
         if (categoryId != null && row.txn.categoryId != categoryId) return false
         if (month != null && YearMonth.from(localDate(row.txn.timestampMillis)) != month) return false
+        if (from != null || to != null) {
+            val date = localDate(row.txn.timestampMillis)
+            if (from != null && date < from) return false
+            if (to != null && date > to) return false
+        }
         return true
     }
 
