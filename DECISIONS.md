@@ -474,3 +474,63 @@ they are whole, and has silently lost data.
   totals, so a month whose only exclusion was an ATM visit was labelled "moved
   between your accounts" — a caption that explains the wrong thing is worse
   than none.
+
+## Seven-phase pass (2026-08-14)
+
+- **2026-08-14 · Backups need no passphrase, and go to one folder the user
+  picks once** · keep the passphrase requirement · Backup did nothing at all:
+  both buttons stayed disabled until a passphrase was typed twice at eight
+  characters or more, and `performBackup` returned early on a blank one. A
+  feature that silently no-ops is worse than an absent one. Files stay
+  encrypted under a key stretched from a secret compiled into Kosha — which is
+  extractable from a downloadable APK, and the UI copy says so rather than
+  implying more. A passphrase is still available for real strength, and a
+  header byte records which key a file needs so restore can distinguish "needs
+  your passphrase" from "damaged". The Android Keystore would be stronger and
+  is deliberately NOT used: a Keystore key dies with the install, so backups
+  would be unrestorable after exactly the events people take backups for.
+  Destination is a persisted SAF tree — no storage permission, works on every
+  supported version, and survives uninstalling Kosha.
+- **2026-08-14 · The statement is assembled from chosen sections** · one fixed
+  three-page layout · Charts are why people export a statement rather than a
+  spreadsheet, and there was no way to ask for one. Pages are emitted only for
+  the sections requested and numbered as emitted, since a page 3 with no page 2
+  reads as a printing failure. Charts are drawn as vector rather than handed in
+  as a screen-resolution bitmap, and the pie ramps LIGHTNESS rather than hue so
+  it survives the black-and-white printer statements usually meet.
+- **2026-08-14 · Numeric CSV cells skip the formula guard** · guard every cell ·
+  The guard prefixes anything starting with `-`, so every debit exported as
+  TEXT and the Amount column would not sum — the single thing a CSV export
+  exists for. Numeric cells are generated from Long paise and never carry user
+  text, so exempting them adds no injection surface.
+- **2026-08-14 · Amount and name orderings drop the date sections** · keep the
+  month/day grouping always · The list groups by month and day, so an amount
+  sort only ordered rows within a day while the sections stayed chronological:
+  "Largest first" left the largest transaction wherever its date fell. Flat
+  orderings print the date on the row instead.
+- **2026-08-14 · Active filters are named in a bar, each removable** · the
+  count-behind-a-sheet chip · "Filters · 3" says something is hiding rows
+  without saying what, and a ledger quietly showing a third of itself is how a
+  total comes to look wrong for no visible reason.
+- **2026-08-14 · Rows excluded from the totals are dimmed and labelled** ·
+  leave them looking like every other row · They belong in the list because
+  they happened, but a row counted differently while looking identical is
+  exactly what makes a month header look wrong to someone adding up the rows.
+- **2026-08-14 · A drill-down is a typed LedgerTarget, built by a factory that
+  knows what the slice is** · three loose nullable arguments · Every chart had
+  to squeeze itself into category/month/search. A heatmap day became its whole
+  month, and treemap slices always went out as categories even when their
+  labels were merchant names lifted from the uncategorized pile — matching no
+  category, so the small slices appeared to do nothing. Slices now carry their
+  kind, and the bad shapes are no longer expressible.
+- **2026-08-14 · The bottom bar drops saveState/restoreState** · keep scroll
+  restoration · Opening the ledger from a chart put it on top of Insights;
+  tapping Insights popped that stack, saved it, and restored it — landing back
+  on the filtered ledger. A tab that will not go to its own tab is broken, and
+  scroll position is not worth that.
+- **2026-08-14 · Seeded categories added after release are backfilled by name**
+  · ship a migration, or only seed fresh installs · Adding a row is not a
+  schema change, so the freeze does not apply; but seeding only on an empty
+  table means an existing user never sees a new category, with nothing to
+  explain the difference. Backfill is inserts-only and leaves renamed or
+  reordered categories alone.
