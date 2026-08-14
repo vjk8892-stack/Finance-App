@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
@@ -51,6 +52,7 @@ import dev.kosha.feature.ledger.displayName
 @Composable
 fun AccountsScreen(
     onBack: () -> Unit,
+    onOpenStatement: (Long) -> Unit = {},
     viewModel: AccountsViewModel = hiltViewModel(),
 ) {
     val accounts by viewModel.accounts.collectAsState()
@@ -128,7 +130,11 @@ fun AccountsScreen(
                     }
                 }
                 items(accounts.size) { i ->
-                    AccountCard(accounts[i], onClick = { editing = accounts[i] })
+                    AccountCard(
+                        account = accounts[i],
+                        onClick = { onOpenStatement(accounts[i].id) },
+                        onEdit = { editing = accounts[i] },
+                    )
                 }
                 item {
                     Text(
@@ -169,7 +175,7 @@ fun AccountsScreen(
 }
 
 @Composable
-private fun AccountCard(account: AccountEntity, onClick: () -> Unit) {
+private fun AccountCard(account: AccountEntity, onClick: () -> Unit, onEdit: () -> Unit) {
     KoshaCard(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -207,7 +213,19 @@ private fun AccountCard(account: AccountEntity, onClick: () -> Unit) {
             AmountText(
                 amount = Money(account.currentBalancePaise),
                 style = KoshaType.AmountBody,
+                color = if (account.currentBalancePaise < 0) {
+                    KoshaColors.AmberBright
+                } else {
+                    KoshaColors.OffWhite
+                },
             )
+            IconButton(onClick = onEdit) {
+                Icon(
+                    Icons.Outlined.Edit,
+                    contentDescription = stringResource(R.string.accounts_edit),
+                    tint = KoshaColors.OffWhiteFaint,
+                )
+            }
         }
     }
 }

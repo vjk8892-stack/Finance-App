@@ -76,10 +76,17 @@ fun LedgerScreen(
     incomingMonth: String? = null,
     incomingFrom: String? = null,
     incomingTo: String? = null,
+    incomingSearch: String? = null,
     viewModel: LedgerViewModel = hiltViewModel(),
 ) {
-    androidx.compose.runtime.LaunchedEffect(incomingCategory, incomingMonth, incomingFrom) {
-        viewModel.applyIncomingFilter(incomingCategory, incomingMonth, incomingFrom, incomingTo)
+    androidx.compose.runtime.LaunchedEffect(incomingCategory, incomingMonth, incomingFrom, incomingSearch) {
+        viewModel.applyIncomingFilter(
+            incomingCategory,
+            incomingMonth,
+            incomingFrom,
+            incomingTo,
+            incomingSearch,
+        )
     }
     val state by viewModel.uiState.collectAsState()
     val queryState by viewModel.query.collectAsState()

@@ -1,11 +1,16 @@
 package dev.kosha.feature.insights.charts
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -31,6 +36,7 @@ fun CalendarHeatmap(
     monthStart: LocalDate,
     monthEnd: LocalDate,
     modifier: Modifier = Modifier,
+    onSelectDay: ((LocalDate) -> Unit)? = null,
 ) {
     val max = dailySpend.values.maxOfOrNull { it.paise } ?: 0L
     val days = ChronoUnit.DAYS.between(monthStart, monthEnd).toInt() + 1
@@ -50,6 +56,34 @@ fun CalendarHeatmap(
         modifier
             .fillMaxWidth()
             .height(184.dp)
+            // A dark cell is a claim that a lot happened that day; tapping it
+            // should show what.
+            .then(
+                if (onSelectDay != null) {
+                    Modifier.pointerInput(monthStart, days) {
+                        detectTapGestures { offset ->
+                            val columns = 7
+                            val cellGap = 3.dp.toPx()
+                            val cellWidth = (size.width - cellGap * (columns - 1)) / columns
+                            val header = size.height * HEADER_FRACTION
+                            val rows = ((days + (monthStart.dayOfWeek.value - 1) + columns - 1) / columns)
+                                .coerceAtLeast(1)
+                            val cellHeight = ((size.height - header - cellGap * (rows - 1)) / rows)
+                                .coerceAtMost(cellWidth)
+                            if (offset.y < header) return@detectTapGestures
+                            val column = (offset.x / (cellWidth + cellGap)).toInt()
+                            val rowIndex = ((offset.y - header) / (cellHeight + cellGap)).toInt()
+                            val slot = rowIndex * columns + column
+                            val dayIndex = slot - (monthStart.dayOfWeek.value - 1)
+                            if (dayIndex in 0 until days) {
+                                onSelectDay(monthStart.plusDays(dayIndex.toLong()))
+                            }
+                        }
+                    }
+                } else {
+                    Modifier
+                },
+            )
             .semantics { contentDescription = description },
     ) {
         val columns = 7
@@ -59,7 +93,7 @@ fun CalendarHeatmap(
 
         // Without a weekday strip the grid reads as scattered squares rather
         // than a month — the whole point is spotting "my weekends are heavy".
-        val headerHeight = textMeasurer.measure("M", weekdayStyle).size.height + 6.dp.toPx()
+        val headerHeight = size.height * HEADER_FRACTION
         WEEKDAYS.forEachIndexed { index, initial ->
             val layout = textMeasurer.measure(initial, weekdayStyle)
             drawText(
@@ -98,6 +132,13 @@ fun CalendarHeatmap(
 private val WEEKDAYS = listOf("M", "T", "W", "T", "F", "S", "S")
 
 /**
+ * Share of the canvas the weekday strip takes. Hit-testing runs outside the
+ * DrawScope that measures it, so the two agree via this constant rather than
+ * by both guessing.
+ */
+private const val HEADER_FRACTION = 0.14f
+
+/**
  * A no-spend day still has to be VISIBLE, or the month has holes in it and
  * the grid stops reading as a calendar. The empty tone was `CharcoalRaised` —
  * the card's own background — so those cells were invisible, and the lower
@@ -117,13 +158,11 @@ private fun heatColor(intensity: Float): Color = when {
  */
 data class TreemapSlice(val label: String, val amount: Money)
 
-/** Lightest treemap tone — clearly above the card, still monochrome. */
-private val SLICE_TOP = Color(0xFF3B424B)
-
 @Composable
 fun CategoryTreemap(
     slices: List<TreemapSlice>,
     modifier: Modifier = Modifier,
+    onSelect: ((String) -> Unit)? = null,
 ) {
     val textMeasurer = rememberTextMeasurer()
     val ordered = slices.filter { it.amount.paise > 0 }.sortedByDescending { it.amount.paise }
@@ -132,12 +171,29 @@ fun CategoryTreemap(
     val description = "Category treemap: " +
         ordered.joinToString { "${it.label} ${it.amount.format(withPaise = false)}" }
 
+    // Slice geometry is computed during the draw pass; hit-testing reads the
+    // same rectangles rather than recomputing the layout and drifting from it.
+    val hitBoxes = remember(ordered) { mutableStateListOf<Pair<String, Rect>>() }
+
     Canvas(
         modifier
             .fillMaxWidth()
             .height(220.dp)
+            .then(
+                if (onSelect != null) {
+                    Modifier.pointerInput(ordered) {
+                        detectTapGestures { offset ->
+                            hitBoxes.firstOrNull { it.second.contains(offset) }
+                                ?.let { onSelect(it.first) }
+                        }
+                    }
+                } else {
+                    Modifier
+                },
+            )
             .semantics { contentDescription = description },
     ) {
+        hitBoxes.clear()
         var x = 0f
         var y = 0f
         var remainingWidth = size.width
@@ -176,9 +232,11 @@ fun CategoryTreemap(
             // A lone slice sits mid-ramp: the bottom of the ramp is close
             // enough to the card that a single-category chart would look
             // blank again.
-            val step = if (ordered.size <= 1) 0.5f else index.toFloat() / (ordered.size - 1)
+            hitBoxes += slice.label to Rect(x, y, x + rectWidth, y + rectHeight)
+            // Same colour the category wears in the ledger, so the eye can
+            // carry a category between screens without re-reading labels.
             drawRect(
-                color = lerp(KoshaColors.CharcoalOverlay, SLICE_TOP, step),
+                color = KoshaColors.categoryColor(slice.label).copy(alpha = 0.55f),
                 topLeft = Offset(x, y),
                 size = sliceSize,
             )

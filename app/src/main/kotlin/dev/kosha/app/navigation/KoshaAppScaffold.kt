@@ -43,6 +43,7 @@ import dev.kosha.feature.ingest.sms.SmsScanScreen
 import dev.kosha.feature.insights.home.HomeScreen
 import dev.kosha.feature.insights.hub.InsightsScreen
 import dev.kosha.feature.ledger.LedgerScreen
+import dev.kosha.feature.ledger.accounts.AccountStatementScreen
 import dev.kosha.feature.ledger.accounts.AccountsScreen
 import dev.kosha.feature.ledger.add.AddScreen
 import dev.kosha.feature.vault.VaultScreen
@@ -61,6 +62,8 @@ enum class KoshaDestination(val route: String, val labelRes: Int, val icon: Imag
 }
 
 const val ROUTE_ACCOUNTS = "accounts"
+const val ROUTE_STATEMENT = "statement"
+const val ARG_ACCOUNT_ID = "accountId"
 const val ROUTE_REVIEW = "review"
 const val ROUTE_BUDGETS = "budgets"
 const val ROUTE_INCOME = "income"
@@ -76,6 +79,7 @@ const val ARG_LEDGER_CATEGORY = "ledgerCategory"
 const val ARG_LEDGER_MONTH = "ledgerMonth"
 const val ARG_LEDGER_FROM = "ledgerFrom"
 const val ARG_LEDGER_TO = "ledgerTo"
+const val ARG_LEDGER_SEARCH = "ledgerSearch"
 
 @Composable
 fun KoshaAppScaffold(startAction: String? = null) {
@@ -157,7 +161,8 @@ fun KoshaAppScaffold(startAction: String? = null) {
             composable(
                 route = "${KoshaDestination.LEDGER.route}" +
                     "?$ARG_LEDGER_CATEGORY={$ARG_LEDGER_CATEGORY}&$ARG_LEDGER_MONTH={$ARG_LEDGER_MONTH}" +
-                    "&$ARG_LEDGER_FROM={$ARG_LEDGER_FROM}&$ARG_LEDGER_TO={$ARG_LEDGER_TO}",
+                    "&$ARG_LEDGER_FROM={$ARG_LEDGER_FROM}&$ARG_LEDGER_TO={$ARG_LEDGER_TO}" +
+                    "&$ARG_LEDGER_SEARCH={$ARG_LEDGER_SEARCH}",
                 arguments = listOf(
                     navArgument(ARG_LEDGER_CATEGORY) {
                         type = NavType.StringType
@@ -179,6 +184,11 @@ fun KoshaAppScaffold(startAction: String? = null) {
                         nullable = true
                         defaultValue = null
                     },
+                    navArgument(ARG_LEDGER_SEARCH) {
+                        type = NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
                 ),
             ) { entry ->
                 LedgerScreen(
@@ -190,6 +200,7 @@ fun KoshaAppScaffold(startAction: String? = null) {
                     incomingMonth = entry.arguments?.getString(ARG_LEDGER_MONTH),
                     incomingFrom = entry.arguments?.getString(ARG_LEDGER_FROM),
                     incomingTo = entry.arguments?.getString(ARG_LEDGER_TO),
+                    incomingSearch = entry.arguments?.getString(ARG_LEDGER_SEARCH),
                 )
             }
             composable(
@@ -210,10 +221,11 @@ fun KoshaAppScaffold(startAction: String? = null) {
             }
             composable(KoshaDestination.INSIGHTS.route) {
                 InsightsScreen(
-                    onOpenLedger = { category, month ->
+                    onOpenLedger = { category, month, search ->
                         val args = listOfNotNull(
                             category?.let { "$ARG_LEDGER_CATEGORY=${Uri.encode(it)}" },
                             month?.let { "$ARG_LEDGER_MONTH=$it" },
+                            search?.let { "$ARG_LEDGER_SEARCH=${Uri.encode(it)}" },
                         ).joinToString("&")
                         navController.navigate(
                             "${KoshaDestination.LEDGER.route}" + if (args.isEmpty()) "" else "?$args",
@@ -225,7 +237,19 @@ fun KoshaAppScaffold(startAction: String? = null) {
                 VaultScreen()
             }
             composable(ROUTE_ACCOUNTS) {
-                AccountsScreen(onBack = { navController.popBackStack() })
+                AccountsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenStatement = { id -> navController.navigate("$ROUTE_STATEMENT/$id") },
+                )
+            }
+            composable(
+                route = "$ROUTE_STATEMENT/{$ARG_ACCOUNT_ID}",
+                arguments = listOf(navArgument(ARG_ACCOUNT_ID) { type = NavType.LongType }),
+            ) { entry ->
+                AccountStatementScreen(
+                    accountId = entry.arguments?.getLong(ARG_ACCOUNT_ID) ?: 0L,
+                    onBack = { navController.popBackStack() },
+                )
             }
             composable(ROUTE_REVIEW) {
                 ReviewQueueScreen(onBack = { navController.popBackStack() })

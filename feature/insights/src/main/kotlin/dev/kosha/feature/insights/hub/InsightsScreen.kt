@@ -60,7 +60,7 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun InsightsScreen(
-    onOpenLedger: (categoryName: String?, monthKey: String?) -> Unit = { _, _ -> },
+    onOpenLedger: (categoryName: String?, monthKey: String?, search: String?) -> Unit = { _, _, _ -> },
     viewModel: InsightsViewModel = hiltViewModel(),
 ) {
     val insights by viewModel.insights.collectAsState()
@@ -96,12 +96,12 @@ fun InsightsScreen(
         // which is exactly why it belongs first.
         item { MonthlyComparisonSection(data, onOpenLedger) }
         item { FlowSection(data, onOpenLedger) }
-        item { RhythmSection(data) }
+        item { RhythmSection(data, onOpenLedger) }
         item { ShapeSection(data, onOpenLedger) }
         item { TrajectorySection(data) }
         item { HealthSection(data) }
         item { AdvisorSection(data) }
-        item { LeaksAndAnomaliesSection(data) }
+        item { LeaksAndAnomaliesSection(data, onOpenLedger) }
         item { WhatIfSection(data, whatIf, viewModel) }
         item { OpportunityCostSection(data, opportunity, viewModel) }
         item { Spacer(Modifier.height(KoshaSpacing.xxl)) }
@@ -181,7 +181,7 @@ private fun AmountLine(
 @Composable
 private fun MonthlyComparisonSection(
     data: InsightsRepository.Insights,
-    onOpenLedger: (String?, String?) -> Unit,
+    onOpenLedger: (String?, String?, String?) -> Unit,
 ) {
     Section(
         title = stringResource(R.string.insights_monthly),
@@ -211,7 +211,7 @@ private fun MonthlyComparisonSection(
             budget = data.monthlyBudget,
             // `bars` is a filtered view of `trend`, so the key travels on the
             // bar itself rather than being looked up by index.
-            onSelect = { index -> bars.getOrNull(index)?.let { onOpenLedger(null, it.monthKey) } },
+            onSelect = { index -> bars.getOrNull(index)?.let { onOpenLedger(null, it.monthKey, null) } },
         )
         Spacer(Modifier.height(KoshaSpacing.s))
 
@@ -254,7 +254,7 @@ private val MONTH_LABEL = java.time.format.DateTimeFormatter.ofPattern("MMM")
 @Composable
 private fun FlowSection(
     data: InsightsRepository.Insights,
-    onOpenLedger: (String?, String?) -> Unit,
+    onOpenLedger: (String?, String?, String?) -> Unit,
 ) {
     Section(
         title = stringResource(R.string.insights_flow),
@@ -285,7 +285,10 @@ private fun FlowSection(
 }
 
 @Composable
-private fun RhythmSection(data: InsightsRepository.Insights) {
+private fun RhythmSection(
+    data: InsightsRepository.Insights,
+    onOpenLedger: (String?, String?, String?) -> Unit,
+) {
     Section(
         title = stringResource(R.string.insights_rhythm),
         subtitle = stringResource(R.string.insights_rhythm_sub),
@@ -298,6 +301,9 @@ private fun RhythmSection(data: InsightsRepository.Insights) {
             dailySpend = data.dailySpend,
             monthStart = data.period.start,
             monthEnd = data.period.endInclusive,
+            // A dark cell says "a lot happened here"; the follow-up question is
+            // always "what?".
+            onSelectDay = { day -> onOpenLedger(null, YearMonth.from(day).toString(), null) },
         )
         Spacer(Modifier.height(KoshaSpacing.xs))
         data.dailySpend.maxByOrNull { it.value.paise }?.let { (date, amount) ->
@@ -313,7 +319,7 @@ private fun RhythmSection(data: InsightsRepository.Insights) {
 @Composable
 private fun ShapeSection(
     data: InsightsRepository.Insights,
-    onOpenLedger: (String?, String?) -> Unit,
+    onOpenLedger: (String?, String?, String?) -> Unit,
 ) {
     Section(
         title = stringResource(R.string.insights_shape),
@@ -326,6 +332,7 @@ private fun ShapeSection(
 
         CategoryTreemap(
             slices = data.spendByCategoryName.map { TreemapSlice(it.first, it.second) },
+            onSelect = { label -> onOpenLedger(label, null, null) },
         )
         Spacer(Modifier.height(KoshaSpacing.s))
         // The treemap shows proportion; this shows what each slice cost.
@@ -334,7 +341,7 @@ private fun ShapeSection(
                 label = name,
                 amount = amount,
                 color = KoshaColors.OffWhite,
-                onClick = { onOpenLedger(name, null) },
+                onClick = { onOpenLedger(name, null, null) },
             )
         }
         Spacer(Modifier.height(KoshaSpacing.xxs))
@@ -478,7 +485,10 @@ private fun AdvisorSection(data: InsightsRepository.Insights) {
 }
 
 @Composable
-private fun LeaksAndAnomaliesSection(data: InsightsRepository.Insights) {
+private fun LeaksAndAnomaliesSection(
+    data: InsightsRepository.Insights,
+    onOpenLedger: (String?, String?, String?) -> Unit,
+) {
     Section(title = stringResource(R.string.insights_leaks)) {
         if (data.leaks.isEmpty() && data.anomalies.isEmpty()) {
             Text(
@@ -488,7 +498,11 @@ private fun LeaksAndAnomaliesSection(data: InsightsRepository.Insights) {
             )
         }
         data.leaks.take(3).forEach { leak ->
-            Row(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenLedger(null, null, leak.merchant) },
+            ) {
                 Column(Modifier.weight(1f)) {
                     Text(leak.merchant, style = KoshaType.Body, color = KoshaColors.OffWhite)
                     Text(
@@ -511,7 +525,13 @@ private fun LeaksAndAnomaliesSection(data: InsightsRepository.Insights) {
             Spacer(Modifier.height(KoshaSpacing.xs))
         }
         data.anomalies.forEach { flag ->
-            Row(Modifier.fillMaxWidth()) {
+            // "Bigger than usual, ₹16,173" is only actionable if you can reach
+            // the transaction it is about.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenLedger(flag.label, null) },
+            ) {
                 Column(Modifier.weight(1f)) {
                     Text(
                         // Name the spend. Three rows all reading "Bigger than

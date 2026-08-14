@@ -212,8 +212,14 @@ class LedgerViewModel @Inject constructor(
      * only way to check a claim is to see the rows behind it, so tapping one
      * has to land on exactly those rows rather than on everything.
      */
-    fun applyIncomingFilter(categoryName: String?, monthKey: String?, from: String?, to: String?) {
-        if (categoryName == null && monthKey == null && from == null) return
+    fun applyIncomingFilter(
+        categoryName: String?,
+        monthKey: String?,
+        from: String?,
+        to: String?,
+        search: String? = null,
+    ) {
+        if (categoryName == null && monthKey == null && from == null && search == null) return
         val month = monthKey?.let { runCatching { YearMonth.parse(it) }.getOrNull() }
         val fromDate = from?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
         val toDate = to?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
@@ -225,6 +231,7 @@ class LedgerViewModel @Inject constructor(
                 month = month,
                 from = fromDate,
                 to = toDate,
+                text = search.orEmpty(),
             )
         }
     }

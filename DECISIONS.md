@@ -390,3 +390,38 @@ Format: date · decision · alternatives · why.
 - **2026-08-14 · Screen titles get their own type token** · one `Title` for
   screens and card headings alike · Identical weight for "Ledger" and a card
   heading flattens the hierarchy; a screen should announce itself.
+
+## Phases A–D (2026-08-14)
+
+- **2026-08-14 · Undo is a captured snapshot re-inserted at its original id** ·
+  a soft-delete column and a migration · Room only auto-generates an id when it
+  is 0, so re-inserting a captured row with its id restores it exactly and
+  anything still referencing it stays valid — no schema change, and the schema
+  is frozen after Phase 2. Time-boxed on purpose: it covers the slip, not the
+  change of mind.
+- **2026-08-14 · Search filters as you type, alongside the NLU** · NLU only ·
+  The template NLU needs a full known merchant name inside the phrase, so
+  "swig" matched nothing and the search bar read as broken to anyone who tried
+  it. Substring matching over name, category, account, note and reference runs
+  live; the NLU still runs on submit for "dining last month".
+- **2026-08-14 · An account with history is deactivated, not deleted** ·
+  refusing removal, or cascading · The transactions FK is RESTRICT, so deleting
+  an account with rows would fail — but Kosha CREATES accounts on its own from
+  message tails, so a wrong one must be removable. Deactivating hides it
+  everywhere while its rows stay attributable; only a genuinely empty account
+  is deleted, which is the common case for a mis-parsed tail.
+- **2026-08-14 · The account statement shows the balance as arithmetic** · a
+  bare list of transactions · Several balances looked wrong and there was no
+  way to find out why — a number you distrust and cannot audit is the worst
+  combination. The statement states `opening + in − out = now` with real
+  figures, drawn from the same committed-parents set the stored balance is
+  computed from, so the two reconcile by construction rather than by
+  coincidence.
+- **2026-08-14 · Every chart slice is a link** · the bar chart only · A slice
+  is a claim about part of the ledger. Heatmap day, treemap slice, month bar,
+  category line, leak and anomaly rows all open the transactions behind them.
+  Treemap hit-testing records the rectangles during the draw pass rather than
+  recomputing the layout, so taps cannot drift from what is on screen.
+- **2026-08-14 · Treemap slices wear the category colour** · a grey ramp ·
+  Same colour as the ledger icon for that category, so the eye can carry a
+  category between screens without re-reading labels.
