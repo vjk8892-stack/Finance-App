@@ -13,9 +13,31 @@ import dev.kosha.core.database.model.SystemCategoryKey
 object CategorySeeder {
 
     suspend fun ensureSeeded(dao: CategoryDao) {
-        if (dao.count() > 0) return
-        dao.insertAll(seedCategories())
+        if (dao.count() == 0) {
+            dao.insertAll(seedCategories())
+            return
+        }
+        // Categories added after the first release would otherwise only ever
+        // reach people installing fresh — an existing user would never see
+        // them, with no way to tell why. Adding a ROW is not a schema change,
+        // so this backfills by name rather than shipping a migration, and it
+        // deliberately does not touch anything the user has renamed or
+        // reordered.
+        val existing = dao.observeAllOnce()
+        val existingNames = existing.map { it.name }.toSet()
+        val missing = seedCategories().filter { it.name in BACKFILL_NAMES && it.name !in existingNames }
+        if (missing.isNotEmpty()) {
+            val nextOrder = (existing.maxOfOrNull { it.sortOrder } ?: 0) + 1
+            dao.insertAll(
+                missing.mapIndexed { index, category ->
+                    category.copy(sortOrder = nextOrder + index)
+                },
+            )
+        }
     }
+
+    /** Seeded categories introduced after the first release. */
+    private val BACKFILL_NAMES = setOf("Personal")
 
     fun seedCategories(): List<CategoryEntity> {
         var order = 0
@@ -38,6 +60,7 @@ object CategorySeeder {
             expense("Subscriptions", "subscriptions"),
             expense("Travel", "travel"),
             expense("Personal Care", "personalcare"),
+            expense("Personal", "personal"),
             expense("Construction & Home", "construction"),
         )
 

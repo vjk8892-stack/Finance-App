@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -86,6 +87,21 @@ fun EditTransactionSheet(
     val parsedAmount = Money.parseOrNull(amountText)
     val canSave = parsedAmount != null && parsedAmount.paise > 0
 
+    fun save() {
+        val amount = parsedAmount ?: return
+        onSave(
+            EditedTransaction(
+                id = txn.id,
+                amountPaise = amount.paise,
+                type = type,
+                merchantRaw = merchant.trim().takeIf { it.isNotBlank() },
+                note = note.trim().takeIf { it.isNotBlank() },
+                timestampMillis = timestamp,
+                categoryId = if (isTransfer) transfersCategoryId else categoryId,
+            ),
+        )
+    }
+
     if (showDatePicker) {
         val pickerState = rememberDatePickerState(initialSelectedDateMillis = timestamp)
         DatePickerDialog(
@@ -123,11 +139,32 @@ fun EditTransactionSheet(
                 .padding(horizontal = KoshaSpacing.m),
             verticalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
         ) {
-            Text(
-                text = stringResource(R.string.edit_title),
-                style = KoshaType.Title,
-                color = KoshaColors.OffWhite,
-            )
+            // Save lived at the very bottom, under the amount, the date, the
+            // note, the transfer toggle and a two-column grid of every
+            // category — so committing a one-tap change meant scrolling past
+            // everything you had just decided not to touch. The primary action
+            // belongs where it is reachable the moment you are done.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.ledger_cancel), color = KoshaColors.OffWhiteMuted)
+                }
+                Text(
+                    text = stringResource(R.string.edit_title),
+                    style = KoshaType.SectionHeader,
+                    color = KoshaColors.OffWhite,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(enabled = canSave, onClick = { save() }) {
+                    Text(
+                        text = stringResource(R.string.edit_save),
+                        style = KoshaType.LabelStrong,
+                        color = if (canSave) KoshaColors.AccentTealBright else KoshaColors.OffWhiteFaint,
+                    )
+                }
+            }
 
             TextField(
                 value = amountText,
@@ -189,7 +226,17 @@ fun EditTransactionSheet(
                 selected = isTransfer,
                 onClick = {
                     isTransfer = !isTransfer
-                    if (isTransfer) categoryId = transfersCategoryId
+                    // Turning it OFF has to release the category too. It only
+                    // cleared on the way in, so un-marking a transfer left
+                    // categoryId still pointing at Transfers — the row saved
+                    // itself back into the excluded category and went on being
+                    // left out of every total, which looks exactly like the
+                    // toggle not working.
+                    categoryId = if (isTransfer) {
+                        transfersCategoryId
+                    } else {
+                        categoryId.takeIf { it != transfersCategoryId }
+                    }
                 },
                 accent = KoshaColors.AccentTeal,
             )
@@ -212,34 +259,6 @@ fun EditTransactionSheet(
                 )
             }
 
-            Spacer(Modifier.height(KoshaSpacing.xs))
-            Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.s)) {
-                TextButton(
-                    enabled = canSave,
-                    onClick = {
-                        val amount = parsedAmount ?: return@TextButton
-                        onSave(
-                            EditedTransaction(
-                                id = txn.id,
-                                amountPaise = amount.paise,
-                                type = type,
-                                merchantRaw = merchant.trim().takeIf { it.isNotBlank() },
-                                note = note.trim().takeIf { it.isNotBlank() },
-                                timestampMillis = timestamp,
-                                categoryId = if (isTransfer) transfersCategoryId else categoryId,
-                            ),
-                        )
-                    },
-                ) {
-                    Text(
-                        text = stringResource(R.string.edit_save),
-                        color = if (canSave) KoshaColors.AccentTeal else KoshaColors.OffWhiteFaint,
-                    )
-                }
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.ledger_cancel), color = KoshaColors.OffWhiteMuted)
-                }
-            }
             Spacer(Modifier.height(KoshaSpacing.xl))
         }
     }

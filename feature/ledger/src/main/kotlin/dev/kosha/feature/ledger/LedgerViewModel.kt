@@ -140,7 +140,23 @@ data class LedgerUiState(
     /** System Transfers row — the "this is my own account" shortcut. */
     val transfersCategoryId: Long?
         get() = categories.firstOrNull { it.systemKey == SystemCategoryKey.TRANSFERS }?.id
+
+    /**
+     * Categories the month and day totals leave out (spec G12). The rows are
+     * still listed — they happened — so the list has to SAY which ones are not
+     * being counted, or the totals look wrong to anyone adding up the rows.
+     */
+    val excludedCategoryIds: Set<Long> get() = excludedCategoryIdsOf(categories)
 }
+
+/** Spec G12: money that moved without being income or spending. */
+internal fun excludedCategoryIdsOf(categories: List<CategoryEntity>): Set<Long> = categories
+    .filter {
+        it.systemKey == SystemCategoryKey.TRANSFERS ||
+            it.systemKey == SystemCategoryKey.CASH_WITHDRAWAL
+    }
+    .map { it.id }
+    .toSet()
 
 /**
  * What is behind one ledger row. The original bank message is the point: a
@@ -264,14 +280,10 @@ class LedgerViewModel @Inject constructor(
         combine(_filters, _sort) { f, s -> f to s },
     ) { rows, categories, reviewCount, accounts, (filters, sort) ->
         val visible = rows.filter { row -> filters.matches(row) }.sortedWith(sort.comparator())
-        // The same exclusions the savings gap and the charts use (spec G12).
-        val excludedCategoryIds = categories
-            .filter {
-                it.systemKey == SystemCategoryKey.TRANSFERS ||
-                    it.systemKey == SystemCategoryKey.CASH_WITHDRAWAL
-            }
-            .map { it.id }
-            .toSet()
+        // The same exclusions the savings gap and the charts use (spec G12),
+        // and the same set the rows are dimmed by — one definition, so the
+        // totals and the list can never disagree about what was left out.
+        val excludedCategoryIds = excludedCategoryIdsOf(categories)
         LedgerUiState(
             months = group(visible, excludedCategoryIds),
             categories = categories,

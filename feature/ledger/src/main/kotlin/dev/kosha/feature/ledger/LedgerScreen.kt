@@ -246,6 +246,7 @@ fun LedgerScreen(
                     val row = queryState.rows[i]
                     TransactionRow(
                         row = row,
+                        isExcluded = row.txn.categoryId in state.excludedCategoryIds,
                         onOpen = { viewModel.openDetail(row) },
                         onRecategorize = { recategorizing = row },
                         onActions = { acting = row },
@@ -282,6 +283,7 @@ fun LedgerScreen(
                             val row = day.rows[i]
                             TransactionRow(
                                 row = row,
+                                isExcluded = row.txn.categoryId in state.excludedCategoryIds,
                                 onOpen = { viewModel.openDetail(row) },
                                 onRecategorize = { recategorizing = row },
                                 onActions = { acting = row },
@@ -533,6 +535,8 @@ private fun MonthHeader(label: String, total: Money, excludedTransfers: Money) {
 @Composable
 private fun TransactionRow(
     row: LedgerRow,
+    /** True when this row sits in a category the totals leave out. */
+    isExcluded: Boolean,
     onOpen: () -> Unit,
     onRecategorize: () -> Unit,
     onActions: () -> Unit,
@@ -588,17 +592,23 @@ private fun TransactionRow(
                 .clickable(onClick = onOpen)
                 .padding(horizontal = KoshaSpacing.screenPadding, vertical = KoshaSpacing.s),
         ) {
+            // An excluded row still moved money, so it belongs in the list —
+            // but it is NOT part of the total printed above it, and a row that
+            // looks identical to its neighbours while being counted differently
+            // is how the month header comes to look wrong. Dim everything and
+            // say why in words; there is no colour that means "ignored".
+            val dim = if (isExcluded) EXCLUDED_ALPHA else 1f
             // Account color tick (spec G3: ledger row left-edge tick)
             Box(
                 Modifier
                     .size(width = 3.dp, height = 32.dp)
-                    .background(KoshaColors.accountColor(row.accountColorToken)),
+                    .background(KoshaColors.accountColor(row.accountColorToken).copy(alpha = dim)),
             )
             Spacer(Modifier.width(KoshaSpacing.s))
             // Every row used the same grey disc, so a screen of thirty rows
             // had nothing to scan by. A stable per-category colour gives the
             // eye something to group on before it reads a single word.
-            val categoryTint = KoshaColors.categoryColor(row.categoryName)
+            val categoryTint = KoshaColors.categoryColor(row.categoryName).copy(alpha = dim)
             Icon(
                 imageVector = KoshaIcons.forToken(row.categoryIcon),
                 contentDescription = row.categoryName,
@@ -606,7 +616,7 @@ private fun TransactionRow(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(categoryTint.copy(alpha = 0.16f))
+                    .background(categoryTint.copy(alpha = 0.16f * dim))
                     .padding(8.dp),
             )
             Spacer(Modifier.width(KoshaSpacing.s))
@@ -617,11 +627,13 @@ private fun TransactionRow(
                     // which reads like a bug. Say what is actually true.
                     text = row.txn.merchantRaw ?: stringResource(R.string.ledger_no_name),
                     style = KoshaType.Body,
-                    color = if (row.txn.merchantRaw != null) {
-                        KoshaColors.OffWhite
-                    } else {
-                        KoshaColors.OffWhiteMuted
-                    },
+                    color = (
+                        if (row.txn.merchantRaw != null) {
+                            KoshaColors.OffWhite
+                        } else {
+                            KoshaColors.OffWhiteMuted
+                        }
+                        ).copy(alpha = dim),
                     maxLines = 1,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -634,19 +646,30 @@ private fun TransactionRow(
                     Text(
                         text = row.categoryName ?: "",
                         style = KoshaType.Caption,
-                        color = categoryTint.copy(alpha = 0.85f),
+                        color = categoryTint.copy(alpha = 0.85f * dim),
                         maxLines = 1,
                     )
+                    if (isExcluded) {
+                        Spacer(Modifier.width(KoshaSpacing.xxs))
+                        Text(
+                            text = stringResource(R.string.ledger_not_in_total),
+                            style = KoshaType.Caption,
+                            color = KoshaColors.OffWhiteFaint,
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
             AmountText(
                 amount = if (row.txn.type == TxnType.DEBIT) Money(-row.txn.amountPaise) else Money(row.txn.amountPaise),
                 style = KoshaType.AmountBody,
-                color = if (row.txn.type == TxnType.CREDIT) {
-                    KoshaColors.AccentTealBright
-                } else {
-                    KoshaColors.OffWhite
-                },
+                color = (
+                    if (row.txn.type == TxnType.CREDIT) {
+                        KoshaColors.AccentTealBright
+                    } else {
+                        KoshaColors.OffWhite
+                    }
+                    ).copy(alpha = dim),
                 signed = row.txn.type == TxnType.CREDIT,
             )
         }
@@ -675,11 +698,27 @@ private fun RecategorizeSheet(
                 .padding(KoshaSpacing.m),
             verticalArrangement = Arrangement.spacedBy(KoshaSpacing.xs),
         ) {
-            Text(
-                text = stringResource(R.string.ledger_recategorize),
-                style = KoshaType.Title,
-                color = KoshaColors.OffWhite,
-            )
+            // Picking a category applies immediately, so there is no Save
+            // here — but the way out belongs at the top with it, not below a
+            // grid of twenty categories.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.ledger_recategorize),
+                    style = KoshaType.SectionHeader,
+                    color = KoshaColors.OffWhite,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onDismiss) {
+                    Text(
+                        text = stringResource(R.string.ledger_done),
+                        style = KoshaType.LabelStrong,
+                        color = KoshaColors.AccentTealBright,
+                    )
+                }
+            }
             if (merchantName != null) {
                 Spacer(Modifier.height(KoshaSpacing.xxs))
                 KoshaChip(
@@ -790,3 +829,11 @@ private fun ActionsSheet(
         }
     }
 }
+
+/**
+ * How far an excluded row fades. Enough to read as "set aside" at a glance,
+ * not so far that the amount becomes unreadable — these rows still have to be
+ * checkable, since deciding a transfer was wrongly marked is the whole reason
+ * for opening one.
+ */
+private const val EXCLUDED_ALPHA = 0.45f

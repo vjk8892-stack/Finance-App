@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.LocalGasStation
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Redeem
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Shield
@@ -48,6 +49,7 @@ object KoshaIcons {
         "subscriptions" -> Icons.Outlined.Subscriptions
         "travel" -> Icons.Outlined.Flight
         "personalcare" -> Icons.Outlined.Face
+        "personal" -> Icons.Outlined.Person
         "construction" -> Icons.Outlined.Construction
         "transfer" -> Icons.Outlined.SwapHoriz
         "atm" -> Icons.Outlined.LocalAtm
