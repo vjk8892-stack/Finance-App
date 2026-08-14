@@ -232,9 +232,11 @@ class InsightsRepository @Inject constructor(
         // The line the monthly bars are judged against. An overall budget
         // (categoryId == null) is the whole allowance; otherwise the per
         // category limits added up is the closest honest equivalent.
-        val budgets = planningDao.budgetsOnce().filter { it.isActive }
-        val monthlyBudget = budgets.firstOrNull { it.categoryId == null }?.let { Money(it.limitPaise) }
-            ?: budgets.takeIf { it.isNotEmpty() }?.let { list -> Money(list.sumOf { it.limitPaise }) }
+        val activeBudgets = budgets.filter { it.isActive }
+        val monthlyBudget = activeBudgets.firstOrNull { it.categoryId == null }
+            ?.let { Money(it.limitPaise) }
+            ?: activeBudgets.takeIf { it.isNotEmpty() }
+                ?.let { list -> Money(list.sumOf { it.limitPaise }) }
 
         return Insights(
             period = period,

@@ -27,17 +27,27 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Engine unit tests (pure JVM)
-        run: ./gradlew -p engines test --stacktrace
+        run: ./gradlew -p engines test --console=plain 2>&1 | tee -a build.log; exit ${PIPESTATUS[0]}
 
       - name: Unit tests (Android modules)
-        run: ./gradlew test --stacktrace
+        run: ./gradlew test --console=plain 2>&1 | tee -a build.log; exit ${PIPESTATUS[0]}
 
       # Product flavors make the variant-specific lint task flavor-qualified.
       - name: Lint (full debug)
-        run: ./gradlew :app:lintFullDebug --stacktrace
+        run: ./gradlew :app:lintFullDebug --console=plain 2>&1 | tee -a build.log; exit ${PIPESTATUS[0]}
 
       - name: Assemble debug APKs (both flavors, per-ABI + universal)
-        run: ./gradlew :app:assembleDebug --stacktrace
+        run: ./gradlew :app:assembleDebug --console=plain 2>&1 | tee -a build.log; exit ${PIPESTATUS[0]}
+
+      # A Kotlin failure buries its "e:" lines under a ~300-line Gradle stack
+      # trace, and log APIs hand back the tail — so the one thing worth reading
+      # is the one thing that gets truncated away. Repeat it at the very end.
+      - name: Compile errors
+        if: failure()
+        run: |
+          echo "::group::Kotlin/KSP errors"
+          grep -E "^e: |^w: .*error|FAILED$|Execution failed for task" build.log | head -60 || true
+          echo "::endgroup::"
 
       # Spec B1 is a structural guarantee, and manifest merger can break it
       # from a transitive dependency without any code change.
