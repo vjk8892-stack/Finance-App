@@ -34,9 +34,29 @@ object KoshaType {
         lineHeight = 26.sp,
     )
 
-    val Title = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+    val Title = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+
+    /**
+     * Screen titles. Bigger and heavier than section titles so a screen
+     * announces itself — the previous single Title style made "Ledger" and a
+     * card heading identical, which flattened the whole hierarchy.
+     */
+    val ScreenTitle = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 28.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.5).sp,
+    )
     val Body = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 15.sp, lineHeight = 22.sp)
     val Label = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 12.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.4.sp)
+
+    /** Label for a state that is ON — selected chips, active filters. */
+    val LabelStrong = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.4.sp,
+    )
 
     /**
      * Date headers in a list. The date is how you navigate a ledger, so it

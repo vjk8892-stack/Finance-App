@@ -67,7 +67,7 @@ fun ReviewQueueScreen(
             }
             Text(
                 text = stringResource(R.string.review_title),
-                style = KoshaType.Title,
+                style = KoshaType.ScreenTitle,
                 color = KoshaColors.OffWhite,
                 modifier = Modifier.weight(1f),
             )

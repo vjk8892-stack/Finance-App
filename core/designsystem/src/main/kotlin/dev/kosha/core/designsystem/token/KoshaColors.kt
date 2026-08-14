@@ -20,12 +20,56 @@ object KoshaColors {
     val OffWhiteFaint = Color(0xFF6E6A64)   // hints, disabled
     val Outline = Color(0xFF2A2E35)
 
-    // Accent — money-flow visuals ONLY
+    // Accent — money-flow visuals, and now selection state (see below).
     val AccentTeal = Color(0xFF2DD4BF)
     val AccentViolet = Color(0xFF8B5CF6)
+    /** Brighter teal for text and fills that must read on charcoal. */
+    val AccentTealBright = Color(0xFF5EEAD4)
+    val AccentVioletBright = Color(0xFFA78BFA)
 
     // Caution — the only non-monochrome semantic color. Never red.
     val Amber = Color(0xFFD97706)
+    /** Amber that survives being small text on a dark card. */
+    val AmberBright = Color(0xFFFBBF24)
+
+    /**
+     * Category identity colors.
+     *
+     * The original palette was eight desaturated greys for ACCOUNTS only, and
+     * categories had no color at all — so a treemap or a ledger of thirty rows
+     * was one undifferentiated wash and nothing drew the eye to anything. These
+     * are saturated enough to tell apart at icon size while staying inside the
+     * one hard rule: no red. The warm end stops at orange.
+     */
+    val CategoryPalette = listOf(
+        Color(0xFFF97316), // orange   — dining
+        Color(0xFF22C55E), // green    — groceries
+        Color(0xFF38BDF8), // sky      — transport
+        Color(0xFFFACC15), // yellow   — fuel
+        Color(0xFFE879F9), // fuchsia  — shopping
+        Color(0xFF2DD4BF), // teal     — bills
+        Color(0xFFA78BFA), // violet   — rent
+        Color(0xFFFB923C), // amber-o  — emi
+        Color(0xFF4ADE80), // mint     — health
+        Color(0xFF60A5FA), // blue     — insurance
+        Color(0xFFC084FC), // purple   — education
+        Color(0xFFF472B6), // pink     — entertainment
+        Color(0xFF34D399), // emerald  — subscriptions
+        Color(0xFF818CF8), // indigo   — travel
+        Color(0xFFFDE047), // lemon    — personal care
+        Color(0xFF94A3B8), // slate    — construction
+    )
+
+    /**
+     * Stable color for a category NAME, so the same category is the same color
+     * everywhere — chart slice, ledger icon, budget ring — without needing a
+     * column in the database.
+     */
+    fun categoryColor(name: String?): Color {
+        if (name.isNullOrBlank()) return OffWhiteFaint
+        val hash = name.fold(0) { acc, c -> acc * 31 + c.code }
+        return CategoryPalette[hash.mod(CategoryPalette.size)]
+    }
 
     // Vault skin (darker variant)
     val VaultBackground = Color(0xFF0A0C0E)

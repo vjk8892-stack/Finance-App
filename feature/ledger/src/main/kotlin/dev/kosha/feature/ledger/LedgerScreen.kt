@@ -98,7 +98,7 @@ fun LedgerScreen(
         ) {
             Text(
                 text = stringResource(R.string.ledger_title),
-                style = KoshaType.Title,
+                style = KoshaType.ScreenTitle,
                 color = KoshaColors.OffWhite,
                 modifier = Modifier.weight(1f),
             )
@@ -491,15 +491,19 @@ private fun TransactionRow(
                     .background(KoshaColors.accountColor(row.accountColorToken)),
             )
             Spacer(Modifier.width(KoshaSpacing.s))
+            // Every row used the same grey disc, so a screen of thirty rows
+            // had nothing to scan by. A stable per-category colour gives the
+            // eye something to group on before it reads a single word.
+            val categoryTint = KoshaColors.categoryColor(row.categoryName)
             Icon(
                 imageVector = KoshaIcons.forToken(row.categoryIcon),
                 contentDescription = row.categoryName,
-                tint = KoshaColors.OffWhiteMuted,
+                tint = categoryTint,
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
-                    .background(KoshaColors.CharcoalRaised)
-                    .padding(7.dp),
+                    .background(categoryTint.copy(alpha = 0.16f))
+                    .padding(8.dp),
             )
             Spacer(Modifier.width(KoshaSpacing.s))
             Column(Modifier.weight(1f)) {
@@ -526,7 +530,7 @@ private fun TransactionRow(
                     Text(
                         text = row.categoryName ?: "",
                         style = KoshaType.Caption,
-                        color = KoshaColors.OffWhiteFaint,
+                        color = categoryTint.copy(alpha = 0.85f),
                         maxLines = 1,
                     )
                 }
@@ -534,7 +538,11 @@ private fun TransactionRow(
             AmountText(
                 amount = if (row.txn.type == TxnType.DEBIT) Money(-row.txn.amountPaise) else Money(row.txn.amountPaise),
                 style = KoshaType.AmountBody,
-                color = if (row.txn.type == TxnType.CREDIT) KoshaColors.AccentTeal else KoshaColors.OffWhite,
+                color = if (row.txn.type == TxnType.CREDIT) {
+                    KoshaColors.AccentTealBright
+                } else {
+                    KoshaColors.OffWhite
+                },
                 signed = row.txn.type == TxnType.CREDIT,
             )
         }

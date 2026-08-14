@@ -77,7 +77,7 @@ fun AccountsScreen(
             }
             Text(
                 text = stringResource(R.string.accounts_title),
-                style = KoshaType.Title,
+                style = KoshaType.ScreenTitle,
                 color = KoshaColors.OffWhite,
                 modifier = Modifier.weight(1f),
             )

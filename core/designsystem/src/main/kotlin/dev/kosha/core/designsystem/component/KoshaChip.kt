@@ -20,7 +20,14 @@ import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaSpacing
 import dev.kosha.core.designsystem.token.KoshaType
 
-/** Quiet monochrome chip; selection is shown by outline+fill, never color shouting. */
+/**
+ * Pill chip. Selection is a FILLED accent pill, not a slightly different grey.
+ *
+ * The quiet version was unreadable in practice: on a charcoal card, "selected"
+ * differed from "not selected" by one step of grey on both border and fill, so
+ * users could not tell which filter was active — and an invisible active filter
+ * looks exactly like missing data.
+ */
 @Composable
 fun KoshaChip(
     label: String,
@@ -30,16 +37,18 @@ fun KoshaChip(
     leading: (@Composable () -> Unit)? = null,
     accent: Color = KoshaColors.OffWhite,
 ) {
-    val shape = RoundedCornerShape(KoshaSpacing.chipRadius)
+    val shape = RoundedCornerShape(percent = 50)
     val border = BorderStroke(
-        1.dp,
-        if (selected) KoshaColors.OffWhiteFaint else KoshaColors.Outline,
+        if (selected) 1.5.dp else 1.dp,
+        if (selected) accent else KoshaColors.Outline,
     )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .clip(shape)
-            .background(if (selected) KoshaColors.CharcoalOverlay else KoshaColors.CharcoalRaised)
+            // 18% accent reads clearly as "on" while staying calm enough for a
+            // row of six chips.
+            .background(if (selected) accent.copy(alpha = 0.18f) else KoshaColors.CharcoalRaised)
             .border(border, shape)
             .clickable(onClick = onClick)
             .padding(horizontal = KoshaSpacing.s, vertical = KoshaSpacing.xs),
@@ -50,7 +59,7 @@ fun KoshaChip(
         }
         Text(
             text = label,
-            style = KoshaType.Label,
+            style = if (selected) KoshaType.LabelStrong else KoshaType.Label,
             color = if (selected) accent else KoshaColors.OffWhiteMuted,
         )
     }

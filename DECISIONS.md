@@ -372,3 +372,21 @@ Format: date · decision · alternatives · why.
   counted in one place and not the other — was inference from a coincidence
   and turned out to rest on a false premise; the user had already deleted the
   transaction in question.
+
+## Design pass and the remaining gaps (2026-08-14)
+
+- **2026-08-14 · Categories get identity colours; the account palette stays
+  desaturated** · monochrome everything (spec A2) · Thirty ledger rows with the
+  same grey disc give the eye nothing to group on, and a treemap of one hue is
+  a wash. Category colour is derived from the category NAME, so the same
+  category is the same colour in the ledger, the charts and the budgets without
+  a schema change. The one hard rule holds: no red anywhere — the warm end of
+  the palette stops at orange. Recorded as a deliberate widening of spec A2 at
+  the product owner's request.
+- **2026-08-14 · A selected chip is a filled accent pill** · one step of grey ·
+  Selected and unselected differed by a single tone on border and fill, so the
+  active filter was invisible — and an invisible active filter is
+  indistinguishable from missing data, which is a bug report waiting to happen.
+- **2026-08-14 · Screen titles get their own type token** · one `Title` for
+  screens and card headings alike · Identical weight for "Ledger" and a card
+  heading flattens the hierarchy; a screen should announce itself.
