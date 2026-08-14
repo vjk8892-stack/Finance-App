@@ -37,5 +37,17 @@ object KoshaType {
     val Title = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
     val Body = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 15.sp, lineHeight = 22.sp)
     val Label = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 12.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.4.sp)
+
+    /**
+     * Date headers in a list. The date is how you navigate a ledger, so it
+     * needs to out-rank the rows beneath it — `Label` at 12sp in a muted tone
+     * made the spine of the list its faintest element.
+     */
+    val SectionHeader = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontSize = 15.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.2.sp,
+    )
     val Caption = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 11.sp)
 }

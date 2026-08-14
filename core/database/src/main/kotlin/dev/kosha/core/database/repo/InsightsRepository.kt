@@ -46,6 +46,8 @@ class InsightsRepository @Inject constructor(
         val dnaCurrent: List<Pair<String, Money>>,
         val dnaBaseline: List<Pair<String, Money>>,
         val trend: List<TrendPoint>,
+        /** Sum of active monthly budget limits — the line to compare against. */
+        val monthlyBudget: Money?,
         val health: HealthScore.Result,
         val leaks: List<LeakDetector.Leak>,
         val anomalies: List<AnomalyEngine.Flag>,
@@ -227,6 +229,13 @@ class InsightsRepository @Inject constructor(
             )
         }
 
+        // The line the monthly bars are judged against. An overall budget
+        // (categoryId == null) is the whole allowance; otherwise the per
+        // category limits added up is the closest honest equivalent.
+        val budgets = planningDao.budgetsOnce().filter { it.isActive }
+        val monthlyBudget = budgets.firstOrNull { it.categoryId == null }?.let { Money(it.limitPaise) }
+            ?: budgets.takeIf { it.isNotEmpty() }?.let { list -> Money(list.sumOf { it.limitPaise }) }
+
         return Insights(
             period = period,
             income = snapshot.totals.actualIncome,
@@ -237,6 +246,7 @@ class InsightsRepository @Inject constructor(
             dnaCurrent = spendByName.take(DNA_AXES),
             dnaBaseline = baseline,
             trend = trend,
+            monthlyBudget = monthlyBudget,
             health = health,
             leaks = leaks,
             anomalies = anomalies,

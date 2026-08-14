@@ -43,6 +43,8 @@ import dev.kosha.feature.insights.R
 import dev.kosha.feature.insights.charts.CalendarHeatmap
 import dev.kosha.feature.insights.charts.CategoryTreemap
 import dev.kosha.feature.insights.charts.RadarAxis
+import dev.kosha.feature.insights.charts.MonthBar
+import dev.kosha.feature.insights.charts.MonthlyBars
 import dev.kosha.feature.insights.charts.SankeyChart
 import dev.kosha.feature.insights.charts.SankeyFlow
 import dev.kosha.feature.insights.charts.SpendingDnaRadar
@@ -85,6 +87,10 @@ fun InsightsScreen(viewModel: InsightsViewModel = hiltViewModel()) {
             )
         }
 
+        // Before anything category-shaped: am I spending more than usual,
+        // and more than I meant to? That question needs no categories at all,
+        // which is exactly why it belongs first.
+        item { MonthlyComparisonSection(data) }
         item { FlowSection(data) }
         item { RhythmSection(data) }
         item { ShapeSection(data) }
@@ -157,6 +163,63 @@ private fun AmountLine(label: String, amount: Money, color: androidx.compose.ui.
         AmountText(amount = amount, style = KoshaType.AmountBody, color = color, withPaise = false)
     }
 }
+
+@Composable
+private fun MonthlyComparisonSection(data: InsightsRepository.Insights) {
+    Section(
+        title = stringResource(R.string.insights_monthly),
+        subtitle = stringResource(R.string.insights_monthly_sub),
+    ) {
+        // Oldest first, so time runs left to right.
+        val bars = data.trend.reversed().mapIndexed { index, point ->
+            MonthBar(
+                label = MONTH_LABEL.format(point.period.start),
+                spent = point.expense,
+                income = point.income,
+                isCurrent = index == data.trend.lastIndex,
+            )
+        }.filter { it.spent.paise > 0 || it.income.paise > 0 || it.isCurrent }
+
+        if (bars.isEmpty()) {
+            EmptyNote(stringResource(R.string.insights_empty_trajectory))
+            return@Section
+        }
+
+        MonthlyBars(months = bars, budget = data.monthlyBudget)
+        Spacer(Modifier.height(KoshaSpacing.s))
+
+        val previous = bars.dropLast(1).lastOrNull { it.spent.paise > 0 }
+        val current = bars.last()
+        Text(
+            text = when {
+                data.monthlyBudget != null && current.spent.paise > data.monthlyBudget.paise ->
+                    stringResource(
+                        R.string.insights_monthly_over,
+                        Money(current.spent.paise - data.monthlyBudget.paise).format(withPaise = false),
+                    )
+                data.monthlyBudget != null -> stringResource(
+                    R.string.insights_monthly_under,
+                    Money(data.monthlyBudget.paise - current.spent.paise).format(withPaise = false),
+                )
+                previous == null -> stringResource(R.string.insights_monthly_no_history)
+                current.spent.paise > previous.spent.paise -> stringResource(
+                    R.string.insights_monthly_more_than_last,
+                    Money(current.spent.paise - previous.spent.paise).format(withPaise = false),
+                    previous.label,
+                )
+                else -> stringResource(
+                    R.string.insights_monthly_less_than_last,
+                    Money(previous.spent.paise - current.spent.paise).format(withPaise = false),
+                    previous.label,
+                )
+            },
+            style = KoshaType.InsightSerif,
+            color = KoshaColors.OffWhiteMuted,
+        )
+    }
+}
+
+private val MONTH_LABEL = java.time.format.DateTimeFormatter.ofPattern("MMM")
 
 @Composable
 private fun FlowSection(data: InsightsRepository.Insights) {

@@ -228,3 +228,44 @@ Format: date · decision · alternatives · why.
 - **2026-08-14 · What-if and Opportunity cost prompt for a category** · a bare
   chip row · Both cards rendered as a title and three chips with no indication
   they did anything until one was tapped, which read as unfinished.
+
+## Second refinement pass (2026-08-14)
+
+- **2026-08-14 · The original message is read back from the INBOX, not from a
+  stored copy** · the spec-B4 retention toggle · Showing the message only
+  worked if the user had switched on a debug setting BEFORE the message
+  arrived, which is exactly backwards from when they need it — so in practice
+  the detail sheet always said "not kept". The transaction already stores the
+  receipt time, so the message can be found again on demand via
+  `OriginalMessageSource`. Nothing extra is written, B4's promise is intact,
+  and it works for every SMS row rather than only future ones. The interface
+  lives in `:core:database`, the implementation in `:feature:ingest:sms` (which
+  owns the permission), bound in `:app`; the lite build degrades to null.
+- **2026-08-14 · Ledger totals are net CHANGE, not spend-positive** ·
+  debits − credits · With the "Money in" filter on, a screen showing +₹15,000
+  and +₹6,386 was headed "−₹21,386" — the header contradicted every row under
+  it. Credits positive / debits negative matches the sign the rows already
+  use, so the header agrees under every filter.
+- **2026-08-14 · Date headers get their own type token and full contrast** ·
+  `Label` at 12sp in a muted tone · Dimming older days was still dimming the
+  thing you scan a ledger by. `KoshaType.SectionHeader` (15sp semibold), full
+  `OffWhite`, plus a teal tick — the first attempt only lifted the tone and
+  the user reported it still did not read.
+- **2026-08-14 · Month / account / category filters live in a sheet** · more
+  inline chip rows · Three scrolling rows above the list would push the
+  transactions off screen, which defeats the point of filtering them. The
+  direction filter stays inline because it is flipped constantly; the rest sit
+  behind one chip that shows how many are active.
+- **2026-08-14 · Month-by-month bars with a budget line lead the Insights tab** ·
+  opening with the Sankey · Sankey, treemap and radar all answer "how is this
+  month divided?", which needs categories to mean anything and says nothing on
+  a fresh install. "Am I spending more than usual, and more than I meant to?"
+  needs no categories at all, so it goes first.
+- **2026-08-14 · One place decides how an account is written** ·
+  `name + last4` at each call site · Discovered accounts are already named
+  "•• 1234", so appending the tail printed "•• 5272 ·· 5272". `displayName()`
+  appends only when the name does not already carry the tail.
+- **2026-08-14 · The accounts screen shows the total and flags untailed
+  accounts** · a bare list of balances · The total is what people open the
+  screen for, and an account with no digits silently cannot be matched to any
+  bank message — worth saying where it is fixable.

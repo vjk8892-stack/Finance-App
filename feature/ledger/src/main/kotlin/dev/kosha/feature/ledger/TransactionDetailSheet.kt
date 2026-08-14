@@ -40,17 +40,16 @@ import java.time.format.DateTimeFormatter
  * "this app is wrong" into "this message is phrased unusually", which is
  * something either of us can act on.
  *
- * The message is only here when raw retention was on at capture time (spec B4
- * keeps it off by default). When it is missing we say so plainly and offer the
- * toggle, while being clear that it only affects FUTURE scans.
+ * The message is read back from the inbox on demand rather than from a stored
+ * copy, so it works for every SMS row instead of only ones captured after a
+ * debug setting was switched on. Spec B4 is untouched: nothing extra is
+ * written to the database.
  */
 @Composable
 fun TransactionDetailSheet(
     detail: TransactionDetail,
-    retainRawSms: Boolean,
     onDismiss: () -> Unit,
     onRecategorize: () -> Unit,
-    onSetRetainRawSms: (Boolean) -> Unit,
 ) {
     val row = detail.row
     val txn = row.txn
@@ -76,7 +75,7 @@ fun TransactionDetailSheet(
             )
 
             DetailRow(stringResource(R.string.detail_when), timestamp)
-            DetailRow(stringResource(R.string.detail_account), "${row.accountName} · ${txn.type.label()}")
+            DetailRow(stringResource(R.string.detail_account), row.accountName + " · " + txn.type.label())
             DetailRow(
                 stringResource(R.string.detail_category),
                 row.categoryName ?: stringResource(R.string.detail_uncategorized),
@@ -114,25 +113,23 @@ fun TransactionDetailSheet(
                     )
                 }
 
+                detail.loadingMessage -> {
+                    Text(
+                        text = stringResource(R.string.detail_message_loading),
+                        style = KoshaType.Caption,
+                        color = KoshaColors.OffWhiteFaint,
+                    )
+                }
+
                 detail.photoUri != null -> {
                     DetailRow(stringResource(R.string.detail_photo), detail.photoUri)
                 }
 
-                detail.messageNotRetained -> {
+                detail.messageUnavailable -> {
                     Text(
                         text = stringResource(R.string.detail_message_missing),
                         style = KoshaType.Caption,
                         color = KoshaColors.OffWhiteMuted,
-                    )
-                    KoshaChip(
-                        label = if (retainRawSms) {
-                            stringResource(R.string.detail_keep_messages_on)
-                        } else {
-                            stringResource(R.string.detail_keep_messages_off)
-                        },
-                        selected = retainRawSms,
-                        onClick = { onSetRetainRawSms(!retainRawSms) },
-                        accent = KoshaColors.Amber,
                     )
                 }
 

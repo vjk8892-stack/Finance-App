@@ -224,6 +224,9 @@ object TransactionClassifier {
         if (BANK_WORDS.containsMatchIn(candidate)) return true
         // "XX0773", "1234567890" — an identifier, whatever else is around it.
         if (MASKED_TAIL.containsMatchIn(candidate)) return true
+        // A currency marker that lost its amount ("Rs", "INR") is not a payee;
+        // it slipped through as a two-letter "name" and titled ledger rows.
+        if (CURRENCY_ONLY.matches(candidate)) return true
         // Needs at least a couple of letters to be a name at all.
         return candidate.count { it.isLetter() } < 2
     }
@@ -279,6 +282,12 @@ object TransactionClassifier {
             "au small|bandhan|equitas|ujjivan|paytm payments|airtel payments)\\b",
     )
     private val MASKED_TAIL = Regex("(?i)[Xx*]{2,}\\s*\\d{3,}|\\b\\d{6,}\\b")
+
+    /** Whole capture is just a currency marker or filler. */
+    private val CURRENCY_ONLY = Regex(
+        "(?i)(rs|inr|₹|amt|amount|txn|transaction|payment|debit|credit|" +
+            "you|us|it|the|and|for|via|by|to|from)[.\\s]*",
+    )
 
     /** How far back to look for balance wording introducing a figure. */
     private const val BALANCE_LOOKBEHIND = 24

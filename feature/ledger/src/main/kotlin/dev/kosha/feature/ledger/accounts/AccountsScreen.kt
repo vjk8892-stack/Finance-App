@@ -46,6 +46,7 @@ import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaSpacing
 import dev.kosha.core.designsystem.token.KoshaType
 import dev.kosha.feature.ledger.R
+import dev.kosha.feature.ledger.displayName
 
 @Composable
 fun AccountsScreen(
@@ -103,8 +104,39 @@ fun AccountsScreen(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(KoshaSpacing.screenPadding),
                 verticalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
             ) {
+                item {
+                    // The list showed per-account balances but never the thing
+                    // people open this screen for.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = KoshaSpacing.xs),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.accounts_total),
+                            style = KoshaType.Label,
+                            color = KoshaColors.OffWhiteFaint,
+                            modifier = Modifier.weight(1f),
+                        )
+                        AmountText(
+                            amount = Money(accounts.sumOf { it.currentBalancePaise }),
+                            style = KoshaType.AmountBody,
+                            color = KoshaColors.OffWhite,
+                            withPaise = false,
+                        )
+                    }
+                }
                 items(accounts.size) { i ->
                     AccountCard(accounts[i], onClick = { editing = accounts[i] })
+                }
+                item {
+                    Text(
+                        text = stringResource(R.string.accounts_tap_hint),
+                        style = KoshaType.Caption,
+                        color = KoshaColors.OffWhiteFaint,
+                        modifier = Modifier.padding(top = KoshaSpacing.s),
+                    )
                 }
             }
         }
@@ -145,14 +177,27 @@ private fun AccountCard(account: AccountEntity, onClick: () -> Unit) {
             Spacer(Modifier.width(KoshaSpacing.s))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = account.name + (account.last4?.let { " ·· $it" } ?: ""),
+                    // Discovered accounts are already named "•• 1234", so
+                    // appending the tail printed "•• 5272 ·· 5272".
+                    text = account.displayName(),
                     style = KoshaType.Body,
                     color = KoshaColors.OffWhite,
                 )
                 Text(
-                    text = account.type.name.lowercase().replaceFirstChar { it.uppercase() },
+                    text = if (account.last4.isNullOrBlank()) {
+                        // Without a tail this account cannot be matched to any
+                        // bank message, which is worth saying where it is
+                        // fixable rather than leaving it to be discovered.
+                        stringResource(R.string.accounts_no_tail)
+                    } else {
+                        account.type.name.lowercase().replaceFirstChar { it.uppercase() }
+                    },
                     style = KoshaType.Caption,
-                    color = KoshaColors.OffWhiteFaint,
+                    color = if (account.last4.isNullOrBlank()) {
+                        KoshaColors.Amber
+                    } else {
+                        KoshaColors.OffWhiteFaint
+                    },
                 )
             }
             AmountText(

@@ -167,6 +167,21 @@ class TransactionClassifierTest {
     }
 
     @Test
+    fun `a stray currency marker is never a merchant name`() {
+        // "Rs" survived as a two-letter "name" and titled ledger rows.
+        listOf(
+            "Rs.15,000.00 credited to a/c XX7376 by Rs on 02-08-26",
+            "Credited Rs 500 to your a/c XX1234 by transfer",
+        ).forEach { body ->
+            val merchant = extraction(body).merchant
+            assertTrue(
+                "currency marker captured as merchant: $merchant",
+                merchant == null || !merchant.equals("rs", ignoreCase = true),
+            )
+        }
+    }
+
+    @Test
     fun `atm withdrawals are flagged for the cash-transfer path`() {
         assertTrue(extraction("Rs.2000.00 withdrawn at ATM from a/c x4321 on 12-08-26").isAtmWithdrawal)
         assertFalse(extraction("Rs.2000.00 debited from a/c x4321 to SHOP on 12-08-26").isAtmWithdrawal)

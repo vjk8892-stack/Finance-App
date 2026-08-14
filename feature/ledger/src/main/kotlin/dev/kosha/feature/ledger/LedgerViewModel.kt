@@ -7,12 +7,15 @@ import dev.kosha.core.common.Money
 import dev.kosha.core.database.dao.LedgerRow
 import dev.kosha.core.database.dao.MetaDao
 import dev.kosha.core.database.dao.TransactionDao
+import dev.kosha.core.database.model.AccountEntity
 import dev.kosha.core.database.model.CategoryEntity
 import dev.kosha.core.database.model.EvidenceKind
 import dev.kosha.core.database.model.SavedQueryEntity
 import dev.kosha.core.database.model.TxnSource
 import dev.kosha.core.database.model.TxnType
+import dev.kosha.core.database.repo.AccountRepository
 import dev.kosha.core.database.repo.CategoryRepository
+import dev.kosha.core.database.repo.OriginalMessageSource
 import dev.kosha.core.database.repo.QueryRepository
 import dev.kosha.core.database.repo.TransactionRepository
 import dev.kosha.core.database.settings.SettingsRepository
@@ -23,6 +26,7 @@ import dev.kosha.core.engine.query.QueryFilter
 import dev.kosha.core.engine.query.TemplateNlu
 import dev.kosha.feature.ledger.query.QueryUiState
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
@@ -32,7 +36,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -40,28 +43,55 @@ import kotlinx.serialization.json.Json
 data class LedgerDayGroup(
     val date: LocalDate,
     val label: String,
-    /** Net for the day: debits − credits. Answers "what did today cost?". */
+    /** Net change for the day: credits positive, debits negative. */
     val total: Money,
     val rows: List<LedgerRow>,
 )
 
 data class LedgerMonthGroup(
     val monthLabel: String,
-    /** Net spend for the month: debits − credits, parents only. */
-    val totalSpend: Money,
+    /**
+     * Net CHANGE for the month: credits positive, debits negative.
+     *
+     * It used to be spend-positive (debits − credits), which rendered a screen
+     * of nothing but credits as "−₹21,386" — the exact opposite of what the
+     * rows said. Matching the sign convention the rows already use means the
+     * header agrees with them under every filter.
+     */
+    val total: Money,
     val days: List<LedgerDayGroup>,
 )
 
 /** Ledger direction filter — "what came in" vs "what went out". */
 enum class LedgerFilter { ALL, OUT, IN }
 
+/**
+ * Everything narrowing the ledger at once. Kept as one object so the screen
+ * can say how many narrowings are active without inspecting each field.
+ */
+data class LedgerFilters(
+    val direction: LedgerFilter = LedgerFilter.ALL,
+    val accountId: Long? = null,
+    val month: YearMonth? = null,
+    val categoryId: Long? = null,
+) {
+    val activeCount: Int =
+        listOfNotNull(
+            accountId, month, categoryId,
+            direction.takeIf { it != LedgerFilter.ALL },
+        ).size
+}
+
 data class LedgerUiState(
     val months: List<LedgerMonthGroup> = emptyList(),
     val categories: List<CategoryEntity> = emptyList(),
     val isEmpty: Boolean = false,
     val reviewCount: Int = 0,
-    val filter: LedgerFilter = LedgerFilter.ALL,
-    /** True when rows exist but the current filter hides them all. */
+    val filters: LedgerFilters = LedgerFilters(),
+    /** Accounts and months present in the data, for the filter sheet. */
+    val accounts: List<AccountEntity> = emptyList(),
+    val availableMonths: List<YearMonth> = emptyList(),
+    /** True when rows exist but the current filters hide them all. */
     val hiddenByFilter: Boolean = false,
 )
 
@@ -72,15 +102,20 @@ data class LedgerUiState(
  */
 data class TransactionDetail(
     val row: LedgerRow,
-    /** The SMS body, when raw retention was on at capture time (spec B4). */
+    /**
+     * The bank message. Read back from the inbox on demand, falling back to a
+     * stored copy when raw retention happened to be on (spec B4).
+     */
     val originalMessage: String? = null,
     /** Photo evidence URI for OCR captures. */
     val photoUri: String? = null,
+    /** Still loading the message — distinct from "there isn't one". */
+    val loadingMessage: Boolean = false,
     /**
-     * True when the message could have been kept but the setting was off, so
-     * the UI can offer to turn it on rather than looking broken.
+     * SMS-sourced, but the message could not be read back — no permission, a
+     * lite build, or the user deleted it from their inbox.
      */
-    val messageNotRetained: Boolean = false,
+    val messageUnavailable: Boolean = false,
 )
 
 @HiltViewModel
@@ -91,42 +126,74 @@ class LedgerViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val metaDao: MetaDao,
     private val categoryRepository: CategoryRepository,
+    private val originalMessageSource: OriginalMessageSource,
+    accountRepository: AccountRepository,
 ) : ViewModel() {
 
     private val zone: ZoneId = ZoneId.systemDefault()
     private val dayFormat = DateTimeFormatter.ofPattern("EEE d MMM")
     private val monthFormat = DateTimeFormatter.ofPattern("MMMM yyyy")
 
-    private val _filter = MutableStateFlow(LedgerFilter.ALL)
+    private val _filters = MutableStateFlow(LedgerFilters())
 
-    fun setFilter(filter: LedgerFilter) {
-        _filter.value = filter
+    fun setDirection(direction: LedgerFilter) {
+        _filters.value = _filters.value.copy(direction = direction)
+    }
+
+    fun setAccount(accountId: Long?) {
+        _filters.value = _filters.value.copy(accountId = accountId)
+    }
+
+    fun setMonth(month: YearMonth?) {
+        _filters.value = _filters.value.copy(month = month)
+    }
+
+    fun setCategory(categoryId: Long?) {
+        _filters.value = _filters.value.copy(categoryId = categoryId)
+    }
+
+    fun clearFilters() {
+        _filters.value = LedgerFilters()
     }
 
     val uiState: StateFlow<LedgerUiState> = combine(
         transactionRepository.observeLedger(),
         categoryRepository.observeAll(),
         transactionDao.observeReviewCount(),
-        _filter,
-    ) { rows, categories, reviewCount, filter ->
-        val visible = rows.filter { row ->
-            when (filter) {
-                LedgerFilter.ALL -> true
-                LedgerFilter.OUT -> row.txn.type == TxnType.DEBIT
-                LedgerFilter.IN -> row.txn.type == TxnType.CREDIT
-            }
-        }
+        accountRepository.observeActive(),
+        _filters,
+    ) { rows, categories, reviewCount, accounts, filters ->
+        val visible = rows.filter { row -> filters.matches(row) }
         LedgerUiState(
             months = group(visible),
             categories = categories,
             isEmpty = visible.isEmpty(),
             reviewCount = reviewCount,
-            filter = filter,
+            filters = filters,
+            accounts = accounts,
+            // Only offer months that actually contain something.
+            availableMonths = rows
+                .map { YearMonth.from(localDate(it.txn.timestampMillis)) }
+                .distinct()
+                .sortedDescending(),
             // "Nothing here" reads as a bug when the cause is a filter you
             // forgot you set, so the two empties say different things.
             hiddenByFilter = visible.isEmpty() && rows.isNotEmpty(),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LedgerUiState())
+
+    private fun LedgerFilters.matches(row: LedgerRow): Boolean {
+        val directionOk = when (direction) {
+            LedgerFilter.ALL -> true
+            LedgerFilter.OUT -> row.txn.type == TxnType.DEBIT
+            LedgerFilter.IN -> row.txn.type == TxnType.CREDIT
+        }
+        if (!directionOk) return false
+        if (accountId != null && row.txn.accountId != accountId) return false
+        if (categoryId != null && row.txn.categoryId != categoryId) return false
+        if (month != null && YearMonth.from(localDate(row.txn.timestampMillis)) != month) return false
+        return true
+    }
 
     private fun group(rows: List<LedgerRow>): List<LedgerMonthGroup> {
         val today = LocalDate.now(zone)
@@ -139,12 +206,12 @@ class LedgerViewModel @Inject constructor(
             .sortedByDescending { it.key }
             .map { (month, dayEntries) ->
                 val allRows = dayEntries.flatMap { it.value }
-                val spend = allRows.sumOf { row ->
-                    if (row.txn.type == TxnType.DEBIT) row.txn.amountPaise else -row.txn.amountPaise
+                val net = allRows.sumOf { row ->
+                    if (row.txn.type == TxnType.DEBIT) -row.txn.amountPaise else row.txn.amountPaise
                 }
                 LedgerMonthGroup(
                     monthLabel = month.format(monthFormat),
-                    totalSpend = Money(spend),
+                    total = Money(net),
                     days = dayEntries.map { (date, dayRows) ->
                         LedgerDayGroup(
                             date = date,
@@ -155,7 +222,7 @@ class LedgerViewModel @Inject constructor(
                             },
                             total = Money(
                                 dayRows.sumOf {
-                                    if (it.txn.type == TxnType.DEBIT) it.txn.amountPaise else -it.txn.amountPaise
+                                    if (it.txn.type == TxnType.DEBIT) -it.txn.amountPaise else it.txn.amountPaise
                                 },
                             ),
                             rows = dayRows,
@@ -174,18 +241,24 @@ class LedgerViewModel @Inject constructor(
     val detail: StateFlow<TransactionDetail?> = _detail.asStateFlow()
 
     fun openDetail(row: LedgerRow) {
-        // Show the row immediately; the evidence lookup is a DB round-trip.
-        _detail.value = TransactionDetail(row = row)
+        val isSms = row.txn.source == TxnSource.SMS
+        // Show the row immediately; the lookups are IO.
+        _detail.value = TransactionDetail(row = row, loadingMessage = isSms)
         viewModelScope.launch {
             val evidence = transactionDao.evidenceFor(row.txn.id)
-            val message = evidence.firstOrNull { it.kind == EvidenceKind.SMS_TEXT }
+            val stored = evidence.firstOrNull { it.kind == EvidenceKind.SMS_TEXT }
                 ?.payload
                 ?.takeIf { it.isNotBlank() }
+            // Prefer the inbox: it works for every SMS row, whereas the stored
+            // copy only exists when the retention setting happened to be on
+            // BEFORE the message arrived — which is never when you need it.
+            val message = stored ?: if (isSms) originalMessageSource.messageAt(row.txn.timestampMillis) else null
             _detail.value = TransactionDetail(
                 row = row,
                 originalMessage = message,
                 photoUri = evidence.firstOrNull { it.kind == EvidenceKind.PHOTO_URI }?.payload,
-                messageNotRetained = message == null && row.txn.source == TxnSource.SMS,
+                loadingMessage = false,
+                messageUnavailable = message == null && isSms,
             )
         }
     }
@@ -193,18 +266,6 @@ class LedgerViewModel @Inject constructor(
     fun closeDetail() {
         _detail.value = null
     }
-
-    /**
-     * Turning retention on cannot recover a message already discarded — only
-     * a re-scan can — so the UI has to say that rather than implying a fix.
-     */
-    fun setRetainRawSms(retain: Boolean) {
-        viewModelScope.launch { settingsRepository.setRetainRawSms(retain) }
-    }
-
-    val retainRawSms: StateFlow<Boolean> = settingsRepository.settings
-        .map { it.retainRawSms }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     fun recategorize(txnId: Long, categoryId: Long) {
         viewModelScope.launch { transactionRepository.recategorize(txnId, categoryId) }

@@ -37,6 +37,13 @@
     <string name="insights_empty_shape">No categorised spending yet — the mix appears once you log a few entries.</string>
     <string name="insights_empty_trajectory">Not enough history yet. This needs a couple of months to say anything useful.</string>
     <string name="insights_busiest_day">Busiest day — the %1$d</string>
+    <string name="insights_monthly">Month by month</string>
+    <string name="insights_monthly_sub">Spending against your budget</string>
+    <string name="insights_monthly_over">%1$s past your budget this month.</string>
+    <string name="insights_monthly_under">%1$s of budget still unspent.</string>
+    <string name="insights_monthly_no_history">Set a budget and this line becomes something to aim at.</string>
+    <string name="insights_monthly_more_than_last">%1$s more than %2$s.</string>
+    <string name="insights_monthly_less_than_last">%1$s less than %2$s.</string>
     <string name="insights_flow">Flow</string>
     <string name="insights_flow_sub">Where income goes</string>
     <string name="insights_rhythm">Rhythm</string>

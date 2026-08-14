@@ -74,9 +74,9 @@ fun LedgerScreen(
     val state by viewModel.uiState.collectAsState()
     val queryState by viewModel.query.collectAsState()
     val detail by viewModel.detail.collectAsState()
-    val retainRawSms by viewModel.retainRawSms.collectAsState()
     var recategorizing by remember { mutableStateOf<LedgerRow?>(null) }
     var acting by remember { mutableStateOf<LedgerRow?>(null) }
+    var filtersOpen by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -146,10 +146,21 @@ fun LedgerScreen(
             LedgerFilter.entries.forEach { option ->
                 KoshaChip(
                     label = stringResource(option.labelRes()),
-                    selected = state.filter == option,
-                    onClick = { viewModel.setFilter(option) },
+                    selected = state.filters.direction == option,
+                    onClick = { viewModel.setDirection(option) },
                 )
             }
+            // Month / account / category live behind this so the list itself
+            // keeps the screen.
+            KoshaChip(
+                label = if (state.filters.activeCount > 0) {
+                    stringResource(R.string.ledger_filters_active, state.filters.activeCount)
+                } else {
+                    stringResource(R.string.ledger_filters_title)
+                },
+                selected = state.filters.activeCount > 0,
+                onClick = { filtersOpen = true },
+            )
             KoshaChip(
                 label = stringResource(R.string.ledger_budgets),
                 onClick = onOpenBudgets,
@@ -187,7 +198,7 @@ fun LedgerScreen(
             LazyColumn(Modifier.fillMaxSize()) {
                 state.months.forEach { month ->
                     item(key = "month-${month.monthLabel}") {
-                        MonthHeader(month.monthLabel, month.totalSpend)
+                        MonthHeader(month.monthLabel, month.total)
                     }
                     month.days.forEach { day ->
                         item(key = "day-${day.date}") {
@@ -220,16 +231,31 @@ fun LedgerScreen(
         )
     }
 
+    if (filtersOpen) {
+        LedgerFilterSheet(
+            filters = state.filters,
+            accounts = state.accounts,
+            months = state.availableMonths,
+            categories = state.categories.filter { !it.isSystem },
+            onSetAccount = viewModel::setAccount,
+            onSetMonth = viewModel::setMonth,
+            onSetCategory = viewModel::setCategory,
+            onClearAll = {
+                viewModel.clearFilters()
+                filtersOpen = false
+            },
+            onDismiss = { filtersOpen = false },
+        )
+    }
+
     detail?.let { open ->
         TransactionDetailSheet(
             detail = open,
-            retainRawSms = retainRawSms,
             onDismiss = viewModel::closeDetail,
             onRecategorize = {
                 recategorizing = open.row
                 viewModel.closeDetail()
             },
-            onSetRetainRawSms = viewModel::setRetainRawSms,
         )
     }
 
@@ -260,7 +286,6 @@ private fun LedgerFilter.labelRes(): Int = when (this) {
  */
 @Composable
 private fun DayHeader(label: String, total: Money) {
-    val isRecent = label == "Today" || label == "Yesterday"
     Column(Modifier.fillMaxWidth()) {
         Box(
             Modifier
@@ -272,18 +297,27 @@ private fun DayHeader(label: String, total: Money) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = KoshaSpacing.screenPadding, vertical = KoshaSpacing.xs),
+                .padding(horizontal = KoshaSpacing.screenPadding, vertical = KoshaSpacing.s),
         ) {
+            // A teal tick and full-contrast text. Dimming older days was still
+            // dimming the thing you scan the list by, so every date now reads
+            // at full strength.
+            Box(
+                Modifier
+                    .size(width = 3.dp, height = 14.dp)
+                    .background(KoshaColors.AccentTeal),
+            )
+            Spacer(Modifier.width(KoshaSpacing.xs))
             Text(
                 text = label,
-                style = KoshaType.Label,
-                color = if (isRecent) KoshaColors.OffWhite else KoshaColors.OffWhiteMuted,
+                style = KoshaType.SectionHeader,
+                color = KoshaColors.OffWhite,
                 modifier = Modifier.weight(1f),
             )
             AmountText(
                 amount = total,
                 style = KoshaType.AmountSmall,
-                color = KoshaColors.OffWhiteFaint,
+                color = KoshaColors.OffWhiteMuted,
                 withPaise = false,
             )
         }
@@ -291,7 +325,7 @@ private fun DayHeader(label: String, total: Money) {
 }
 
 @Composable
-private fun MonthHeader(label: String, totalSpend: Money) {
+private fun MonthHeader(label: String, total: Money) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -305,7 +339,13 @@ private fun MonthHeader(label: String, totalSpend: Money) {
             color = KoshaColors.OffWhite,
             modifier = Modifier.weight(1f),
         )
-        AmountText(amount = totalSpend, style = KoshaType.AmountSmall, color = KoshaColors.OffWhiteMuted, withPaise = false)
+        AmountText(
+            amount = total,
+            style = KoshaType.AmountSmall,
+            color = if (total.isNegative) KoshaColors.OffWhiteMuted else KoshaColors.AccentTeal,
+            withPaise = false,
+            signed = !total.isNegative,
+        )
     }
 }
 

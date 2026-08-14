@@ -44,6 +44,9 @@
     <string name="accounts_add">Add account</string>
     <string name="accounts_name">Name</string>
     <string name="accounts_last4">Last 4 digits (optional)</string>
+    <string name="accounts_total">Across all accounts</string>
+    <string name="accounts_tap_hint">Tap an account to rename it or fix its digits.</string>
+    <string name="accounts_no_tail">No digits saved — bank messages cannot be matched to this account</string>
     <string name="accounts_last4_help">Bank messages quote these. Kosha matches alerts to this account by them.</string>
     <string name="accounts_edit">Edit account</string>
     <string name="accounts_opening_balance">Opening balance (₹)</string>
@@ -57,8 +60,15 @@
     <string name="ledger_filter_all">All</string>
     <string name="ledger_filter_out">Money out</string>
     <string name="ledger_filter_in">Money in</string>
+    <string name="ledger_filters_title">Filters</string>
+    <string name="ledger_filters_active">Filters · %1$d</string>
+    <string name="ledger_filters_clear">Clear all</string>
+    <string name="ledger_filter_month">Month</string>
+    <string name="ledger_filter_account">Account</string>
+    <string name="ledger_filter_category">Category</string>
+    <string name="ledger_filter_any">Any</string>
     <string name="ledger_budgets">Budgets</string>
-    <string name="ledger_empty_filtered">Nothing matches this filter — try “All”.</string>
+    <string name="ledger_empty_filtered">Nothing matches these filters — clear them to see everything.</string>
     <string name="ledger_no_name">No name in the message</string>
     <string name="detail_no_merchant">No name in the message</string>
     <string name="detail_when">When</string>
@@ -72,7 +82,8 @@
     <string name="detail_status_review">Waiting for review</string>
     <string name="detail_original_message">Original message</string>
     <string name="detail_photo">Photo</string>
-    <string name="detail_message_missing">Kosha did not keep this message — by default it stores only the amount, account, name and reference. Turn keeping on and re-scan to see the text behind future entries. It never leaves the device either way.</string>
+    <string name="detail_message_missing">The message could not be read back — either it is no longer in your inbox, or SMS access is off for this build.</string>
+    <string name="detail_message_loading">Reading the message…</string>
     <string name="detail_keep_messages_on">Keeping message text</string>
     <string name="detail_keep_messages_off">Not keeping message text</string>
     <string name="detail_no_evidence">No message was stored for this entry.</string>
