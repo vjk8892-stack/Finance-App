@@ -86,3 +86,14 @@ Format: date · decision · alternatives · why.
   quietly marking phases done · `docs/DEVICE_GATES.md` lists every gate that
   needs real hardware (SMS under doze, OCR accuracy on real screenshots,
   vault crypto, PDF viewers, backup round-trip, perf/size baselines).
+- **2026-08-13 · `INTERNET` is explicitly removed via `tools:node="remove"`,
+  and a CI check fails the build if it reappears** · trusting that we never
+  declare it · Verifying a real APK showed `android.permission.INTERNET` in
+  the merged manifest: manifest merger pulls it from a transitive dependency
+  (ML Kit / Play Services), so the app COULD open sockets despite the spec-B1
+  claim that it cannot. Nobody typed it, and no code review would have caught
+  it — which is precisely why `scripts/check_no_internet.py` now inspects
+  every built APK in CI. On-device ML Kit text recognition works without it.
+  `ACCESS_NETWORK_STATE` is left in place: it only permits *querying*
+  connectivity, WorkManager needs it, and without INTERNET it grants no
+  ability to transmit.

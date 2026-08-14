@@ -39,6 +39,13 @@ jobs:
       - name: Assemble debug APKs (both flavors, per-ABI + universal)
         run: ./gradlew :app:assembleDebug --stacktrace
 
+      # Spec B1 is a structural guarantee, and manifest merger can break it
+      # from a transitive dependency without any code change.
+      - name: Verify no network permission in any APK
+        run: |
+          find app/build/outputs/apk -name "*.apk" -print0 \
+            | xargs -0 python3 scripts/check_no_internet.py
+
       - name: Record APK size baseline
         run: find app/build/outputs/apk -name "*.apk" -printf "%s\t%p\n" | sort -rn
 

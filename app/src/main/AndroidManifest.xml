@@ -11,6 +11,19 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
+    <!--
+      Kosha must be STRUCTURALLY unable to reach the network (spec B1) — the
+      privacy claim is that the app cannot phone home, not that it chooses
+      not to. We never declare INTERNET, but manifest merger pulls it in from
+      a transitive dependency (ML Kit / Play Services), so it has to be
+      removed explicitly. On-device text recognition does not need it.
+
+      `scripts/check_no_internet.py` fails CI if it ever reappears in a built
+      APK — this is exactly the kind of invariant that erodes silently via a
+      dependency bump rather than a code change.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+
     <application
         android:name=".KoshaApp"
         android:label="@string/app_name"
