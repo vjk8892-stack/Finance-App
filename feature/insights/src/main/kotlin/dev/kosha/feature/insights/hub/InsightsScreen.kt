@@ -190,16 +190,19 @@ private fun MonthlyComparisonSection(data: InsightsRepository.Insights) {
 
         val previous = bars.dropLast(1).lastOrNull { it.spent.paise > 0 }
         val current = bars.last()
+        // Local copy: `Insights` lives in another module, so its properties
+        // cannot be smart-cast after a null check.
+        val budget = data.monthlyBudget
         Text(
             text = when {
-                data.monthlyBudget != null && current.spent.paise > data.monthlyBudget.paise ->
+                budget != null && current.spent.paise > budget.paise ->
                     stringResource(
                         R.string.insights_monthly_over,
-                        Money(current.spent.paise - data.monthlyBudget.paise).format(withPaise = false),
+                        Money(current.spent.paise - budget.paise).format(withPaise = false),
                     )
-                data.monthlyBudget != null -> stringResource(
+                budget != null -> stringResource(
                     R.string.insights_monthly_under,
-                    Money(data.monthlyBudget.paise - current.spent.paise).format(withPaise = false),
+                    Money(budget.paise - current.spent.paise).format(withPaise = false),
                 )
                 previous == null -> stringResource(R.string.insights_monthly_no_history)
                 current.spent.paise > previous.spent.paise -> stringResource(
