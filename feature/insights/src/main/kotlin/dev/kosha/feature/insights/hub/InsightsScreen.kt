@@ -530,7 +530,7 @@ private fun LeaksAndAnomaliesSection(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .clickable { onOpenLedger(flag.label, null) },
+                    .clickable { onOpenLedger(null, null, flag.label) },
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
