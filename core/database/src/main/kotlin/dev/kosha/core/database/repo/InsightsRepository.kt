@@ -255,7 +255,7 @@ class InsightsRepository @Inject constructor(
             spendByCategoryName = spendByName.map { it.label to it.amount },
             spendSlices = spendByName,
             dailySpend = dailySpend,
-            dnaCurrent = spendByName.take(DNA_AXES),
+            dnaCurrent = spendByName.take(DNA_AXES).map { it.label to it.amount },
             dnaBaseline = baseline,
             trend = trend,
             monthlyBudget = monthlyBudget,
