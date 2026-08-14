@@ -455,3 +455,22 @@ all in the new undo path, which is exactly where a silent defect is worst:
 Pinned by `UndoRestoreTest` (`:core:database` androidTest — needs a device).
 An undo that ALMOST restores is worse than no undo: the user taps it, believes
 they are whole, and has silently lost data.
+
+- **2026-08-14 · Only the card must be the TARGET of a payment for it to count
+  as a transfer** · anchoring on the word "card" near a payment verb · The
+  previous rule allowed a bare `to`/`for` with a 40-character gap before the
+  word "card", so "Paid Rs.500 to SWIGGY using your HDFC Bank Card ending 4321"
+  read as a credit-card bill payment: a genuine expense force-filed into
+  Transfers and therefore dropped from the month total, the savings gap and
+  every chart, while the balance still fell. A total that is quietly too small
+  is the worst failure this app has. Now only `towards`/`toward` may span a
+  gap; after a plain `to`/`for` at most two words may stand before the card,
+  which is room for a bank name and nothing else. Pinned by
+  `SelfTransferScopeTest`, whose negative cases (money that actually left) are
+  the point — including the plain bank-to-bank and UPI-to-a-person messages,
+  which are NOT transfers and must keep counting as spend.
+- **2026-08-14 · The ledger's exclusion caption names cash withdrawals too** ·
+  keep the transfers-only wording · Cash withdrawals are excluded from the same
+  totals, so a month whose only exclusion was an ATM visit was labelled "moved
+  between your accounts" — a caption that explains the wrong thing is worse
+  than none.

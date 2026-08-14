@@ -298,15 +298,23 @@ object TransactionClassifier {
     private val ATM = Regex("(?i)\\b(atm|cash withdrawal|w/d)\\b")
 
     /**
-     * "payment ... towards your ... card" in either direction, plus the
-     * shorthands issuers use. Anchored on the payment-towards-a-card idea
-     * rather than the word "card" alone, so a card SPEND is untouched.
+     * Paying OFF a card, which is not spending. The hard part is that a card
+     * spend says "card" too — "Paid Rs.500 to SWIGGY using your HDFC Bank Card"
+     * matched an earlier version of this through the bare `to` alternation and
+     * a payee sitting in the gap, which quietly dropped a real expense out of
+     * the month total. So the card has to be the TARGET of the payment, never
+     * merely the instrument: only `towards`/`toward` may span an arbitrary gap,
+     * and after a plain `to`/`for` at most two words may stand between it and
+     * the card, which is room for a bank name and nothing else. A payee plus an
+     * instrument phrase ("to SWIGGY using your HDFC Bank Card") cannot fit.
      */
     private val CARD_BILL_PAYMENT = Regex(
-        "(?i)(payment|paid|received).{0,40}\\b(towards|toward|for|to)\\b.{0,40}" +
-            "\\b(credit card|cc|card)\\b|" +
-            "\\b(credit card|card)\\s*(bill|payment|paymt)\\b|" +
-            "\\bcard\\s*payment\\s*(received|made)\\b|" +
+        "(?i)\\b(payment|paid|received|credited)\\b.{0,40}\\b(towards|toward)\\b.{0,25}" +
+            "\\b(credit\\s*card|cc|card)\\b|" +
+            "\\b(payment|paid|received)\\b.{0,25}\\b(to|for)\\s+(?:your\\s+|ur\\s+|the\\s+)?" +
+            "(?:[a-z]{2,12}\\s+){0,2}(credit\\s*card|card)\\b|" +
+            "\\b(credit\\s*card|card)\\s*(bill|payment|paymt|pymt)\\b|" +
+            "\\bcard\\s*payment\\s*(received|made|successful)\\b|" +
             "\\bbill\\s*payment\\s*(received|towards)\\b",
     )
 
