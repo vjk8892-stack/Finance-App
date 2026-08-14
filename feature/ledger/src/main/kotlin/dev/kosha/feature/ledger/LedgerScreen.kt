@@ -218,6 +218,21 @@ fun LedgerScreen(
                 onClick = viewModel::categorizeExisting,
             )
         }
+        // What is actually narrowing the list, named, each one removable on
+        // its own. A count behind a sheet ("Filters · 3") tells you that
+        // something is hiding rows without telling you what — and a ledger
+        // quietly showing a third of itself is how a total comes to look
+        // wrong for no visible reason.
+        ActiveFilterBar(
+            state = state,
+            onClearDirection = { viewModel.setDirection(LedgerFilter.ALL) },
+            onClearAccount = { viewModel.setAccount(null) },
+            onClearMonth = { viewModel.setMonth(null) },
+            onClearCategory = { viewModel.setCategory(null) },
+            onClearText = { viewModel.setSearchText("") },
+            onClearRange = viewModel::clearDateRange,
+            onClearAll = viewModel::clearFilters,
+        )
         Spacer(Modifier.height(KoshaSpacing.xs))
 
         retroResult?.let { result ->
@@ -265,6 +280,29 @@ fun LedgerScreen(
                     color = KoshaColors.OffWhiteMuted,
                     modifier = Modifier.padding(KoshaSpacing.xl),
                 )
+            }
+        } else if (!state.sort.groupsByDate) {
+            // Sorted by amount or name: no date sections, or the sections
+            // would put the biggest transaction back wherever its date fell.
+            LazyColumn(Modifier.fillMaxSize()) {
+                item(key = "flat-header") {
+                    FlatSortHeader(state.sort, state.flatRows.size, state.flatTotal)
+                }
+                items(
+                    count = state.flatRows.size,
+                    key = { i -> state.flatRows[i].txn.id },
+                ) { i ->
+                    val row = state.flatRows[i]
+                    TransactionRow(
+                        row = row,
+                        isExcluded = row.txn.categoryId in state.excludedCategoryIds,
+                        showDate = true,
+                        onOpen = { viewModel.openDetail(row) },
+                        onRecategorize = { recategorizing = row },
+                        onActions = { acting = row },
+                    )
+                }
+                item { Spacer(Modifier.height(KoshaSpacing.xxl)) }
             }
         } else {
             LazyColumn(Modifier.fillMaxSize()) {
@@ -537,6 +575,12 @@ private fun TransactionRow(
     row: LedgerRow,
     /** True when this row sits in a category the totals leave out. */
     isExcluded: Boolean,
+    /**
+     * Print the date on the row itself. Needed by the flat orderings, which
+     * have no day headers — without it a list sorted by amount gives no way to
+     * tell when anything happened.
+     */
+    showDate: Boolean = false,
     onOpen: () -> Unit,
     onRecategorize: () -> Unit,
     onActions: () -> Unit,
@@ -649,6 +693,18 @@ private fun TransactionRow(
                         color = categoryTint.copy(alpha = 0.85f * dim),
                         maxLines = 1,
                     )
+                    if (showDate) {
+                        Spacer(Modifier.width(KoshaSpacing.xxs))
+                        Text(
+                            text = "· " + ROW_DATE.format(
+                                java.time.Instant.ofEpochMilli(row.txn.timestampMillis)
+                                    .atZone(java.time.ZoneId.systemDefault()),
+                            ),
+                            style = KoshaType.Caption,
+                            color = KoshaColors.OffWhiteMuted,
+                            maxLines = 1,
+                        )
+                    }
                     if (isExcluded) {
                         Spacer(Modifier.width(KoshaSpacing.xxs))
                         Text(
@@ -837,3 +893,130 @@ private fun ActionsSheet(
  * for opening one.
  */
 private const val EXCLUDED_ALPHA = 0.45f
+
+private val ROW_DATE: java.time.format.DateTimeFormatter =
+    java.time.format.DateTimeFormatter.ofPattern("d MMM")
+
+/**
+ * Stands in for the month header when the ordering is not chronological, so
+ * the list still says what it is showing and what it adds up to.
+ */
+@Composable
+private fun FlatSortHeader(sort: LedgerSort, count: Int, total: Money) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(KoshaColors.Charcoal)
+            .padding(horizontal = KoshaSpacing.screenPadding, vertical = KoshaSpacing.s),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = stringResource(sort.labelRes()),
+                style = KoshaType.SectionHeader,
+                color = KoshaColors.OffWhite,
+            )
+            Text(
+                text = stringResource(R.string.ledger_flat_count, count),
+                style = KoshaType.Caption,
+                color = KoshaColors.OffWhiteFaint,
+            )
+        }
+        AmountText(
+            amount = total,
+            style = KoshaType.AmountSmall,
+            color = if (total.isNegative) KoshaColors.OffWhiteMuted else KoshaColors.AccentTeal,
+            withPaise = false,
+            signed = !total.isNegative,
+        )
+    }
+}
+
+/**
+ * The filters currently in force, spelled out.
+ *
+ * Renders nothing when nothing is filtered, so the ledger keeps its full
+ * height in the normal case. Each chip removes only itself — dropping one
+ * narrowing should never silently drop the others — and "Clear all" is only
+ * offered once there is more than one thing to clear.
+ */
+@Composable
+private fun ActiveFilterBar(
+    state: LedgerUiState,
+    onClearDirection: () -> Unit,
+    onClearAccount: () -> Unit,
+    onClearMonth: () -> Unit,
+    onClearCategory: () -> Unit,
+    onClearText: () -> Unit,
+    onClearRange: () -> Unit,
+    onClearAll: () -> Unit,
+) {
+    val filters = state.filters
+    if (filters.activeCount == 0) return
+
+    Spacer(Modifier.height(KoshaSpacing.xs))
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = KoshaSpacing.screenPadding),
+    ) {
+        Text(
+            text = stringResource(R.string.ledger_showing),
+            style = KoshaType.Caption,
+            color = KoshaColors.OffWhiteFaint,
+        )
+        if (filters.direction != LedgerFilter.ALL) {
+            RemovableFilterChip(stringResource(filters.direction.labelRes()), onClearDirection)
+        }
+        filters.accountId?.let { id ->
+            val name = state.accounts.firstOrNull { it.id == id }?.name
+                ?: stringResource(R.string.ledger_filter_account)
+            RemovableFilterChip(name, onClearAccount)
+        }
+        filters.month?.let { month ->
+            RemovableFilterChip(FILTER_MONTH.format(month.atDay(1)), onClearMonth)
+        }
+        filters.categoryId?.let { id ->
+            val name = state.categories.firstOrNull { it.id == id }?.name
+                ?: stringResource(R.string.ledger_filter_category)
+            RemovableFilterChip(name, onClearCategory)
+        }
+        filters.from?.let { from ->
+            // One day and a span read very differently; say which this is.
+            val label = if (filters.to == from) {
+                FILTER_DAY.format(from)
+            } else {
+                FILTER_DAY.format(from) + " – " + filters.to?.let(FILTER_DAY::format).orEmpty()
+            }
+            RemovableFilterChip(label, onClearRange)
+        }
+        filters.text.takeIf { it.isNotBlank() }?.let { text ->
+            RemovableFilterChip("“$text”", onClearText)
+        }
+        if (filters.activeCount > 1) {
+            KoshaChip(
+                label = stringResource(R.string.ledger_filters_clear),
+                onClick = onClearAll,
+                accent = KoshaColors.Amber,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RemovableFilterChip(label: String, onRemove: () -> Unit) {
+    KoshaChip(
+        label = "$label  ✕",
+        selected = true,
+        onClick = onRemove,
+        accent = KoshaColors.AccentTeal,
+    )
+}
+
+private val FILTER_MONTH: java.time.format.DateTimeFormatter =
+    java.time.format.DateTimeFormatter.ofPattern("MMM yyyy")
+private val FILTER_DAY: java.time.format.DateTimeFormatter =
+    java.time.format.DateTimeFormatter.ofPattern("d MMM")

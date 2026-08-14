@@ -80,8 +80,23 @@ data class UndoableAction(val kind: UndoKind, val undo: suspend () -> Unit)
 /** What was undone — the screen turns this into wording. */
 enum class UndoKind { DELETED, RECATEGORIZED, APPROVED, DISCARDED }
 
-/** How the ledger is ordered. */
-enum class LedgerSort { NEWEST, OLDEST, LARGEST, SMALLEST, NAME }
+/**
+ * How the ledger is ordered.
+ *
+ * [groupsByDate] is the part that was missing. The list is grouped into month
+ * and day sections, so sorting by amount sorted only WITHIN each day and the
+ * sections stayed in date order — picking "Largest first" left the biggest
+ * transaction wherever its date happened to fall, which is not a sort at all.
+ * Amount and name orderings now drop the date sections and run flat across
+ * everything, which is what "largest, regardless of when" has to mean.
+ */
+enum class LedgerSort(val groupsByDate: Boolean) {
+    NEWEST(true),
+    OLDEST(true),
+    LARGEST(false),
+    SMALLEST(false),
+    NAME(false),
+}
 
 /** Ledger direction filter — "what came in" vs "what went out". */
 enum class LedgerFilter { ALL, OUT, IN }
@@ -126,6 +141,10 @@ data class LedgerFilters(
 
 data class LedgerUiState(
     val months: List<LedgerMonthGroup> = emptyList(),
+    /** Populated instead of [months] when the sort ignores dates. */
+    val flatRows: List<LedgerRow> = emptyList(),
+    /** Net across [flatRows], same exclusions as a month header. */
+    val flatTotal: Money = Money.ZERO,
     val categories: List<CategoryEntity> = emptyList(),
     val isEmpty: Boolean = false,
     val reviewCount: Int = 0,
@@ -272,6 +291,11 @@ class LedgerViewModel @Inject constructor(
         _filters.value = LedgerFilters()
     }
 
+    /** Drops a date window handed over by Home or a chart, keeping the rest. */
+    fun clearDateRange() {
+        _filters.value = _filters.value.copy(from = null, to = null)
+    }
+
     val uiState: StateFlow<LedgerUiState> = combine(
         transactionRepository.observeLedger(),
         categoryRepository.observeAll(),
@@ -285,7 +309,9 @@ class LedgerViewModel @Inject constructor(
         // totals and the list can never disagree about what was left out.
         val excludedCategoryIds = excludedCategoryIdsOf(categories)
         LedgerUiState(
-            months = group(visible, excludedCategoryIds),
+            months = if (sort.groupsByDate) group(visible, excludedCategoryIds) else emptyList(),
+            flatRows = if (sort.groupsByDate) emptyList() else visible,
+            flatTotal = if (sort.groupsByDate) Money.ZERO else net(visible, excludedCategoryIds),
             categories = categories,
             isEmpty = visible.isEmpty(),
             reviewCount = reviewCount,

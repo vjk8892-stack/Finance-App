@@ -105,6 +105,8 @@
     <string name="ledger_filters_title">Filters</string>
     <string name="ledger_filters_active">Filters · %1$d</string>
     <string name="ledger_filters_clear">Clear all</string>
+    <string name="ledger_showing">Showing</string>
+    <string name="ledger_flat_count">%1$d transactions, any date</string>
     <string name="ledger_filter_period">Period from Home</string>
     <string name="ledger_filter_month">Month</string>
     <string name="ledger_filter_account">Account</string>
