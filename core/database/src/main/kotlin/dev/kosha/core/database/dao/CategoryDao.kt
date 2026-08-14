@@ -32,6 +32,10 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE systemKey = :key LIMIT 1")
     suspend fun bySystemKey(key: SystemCategoryKey): CategoryEntity?
 
+    /** For resolving a keyword rule's category name to a row (spec G7). */
+    @Query("SELECT * FROM categories WHERE name = :name LIMIT 1")
+    suspend fun byName(name: String): CategoryEntity?
+
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun count(): Int
 

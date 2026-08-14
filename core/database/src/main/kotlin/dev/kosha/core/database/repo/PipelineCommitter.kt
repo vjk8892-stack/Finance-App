@@ -13,6 +13,7 @@ import dev.kosha.core.database.model.TransferEntity
 import dev.kosha.core.database.model.TxnSource
 import dev.kosha.core.database.model.TxnStatus
 import dev.kosha.core.database.model.TxnType
+import dev.kosha.core.engine.merchant.MerchantCategoryRules
 import dev.kosha.core.engine.pipeline.DedupEngine
 import dev.kosha.core.engine.pipeline.IngestionPipeline.Outcome
 import dev.kosha.core.engine.pipeline.ParsedTransaction
@@ -304,7 +305,8 @@ class PipelineCommitter @Inject constructor(
             else -> null
         }
         val effectiveStatus = if (attributionReason != null) TxnStatus.PENDING_REVIEW else status
-        val categoryId = forcedCategoryId ?: autoCategory(merchantNormalized)
+        val isCredit = txn.type == dev.kosha.core.engine.pipeline.TxnType.CREDIT
+        val categoryId = forcedCategoryId ?: autoCategory(merchantNormalized, isCredit)
         val now = System.currentTimeMillis()
         val id = transactionDao.insert(
             TransactionEntity(
@@ -333,14 +335,30 @@ class PipelineCommitter @Inject constructor(
         return Inserted(id, effectiveStatus)
     }
 
-    /** G7 rule 4: ≥3 of the last 4 txns of this merchant share a category → inherit it. */
-    private suspend fun autoCategory(merchantNormalized: String?): Long? {
+    /**
+     * G7 rule 4: ≥3 of the last 4 txns of this merchant share a category →
+     * inherit it. The user's own history is authoritative and is checked
+     * first.
+     *
+     * Falling straight to Uncategorized when there is no history yet meant a
+     * fresh install put ALL its spending in one category, which makes every
+     * category-shaped chart a single 100% slice and leaves the user sorting
+     * hundreds of rows by hand before the app can say anything. So a keyword
+     * guess fills the gap — ranked strictly below the learned rule, so
+     * recategorizing a merchant still wins from then on.
+     */
+    private suspend fun autoCategory(merchantNormalized: String?, isCredit: Boolean): Long? {
         val uncategorized = categoryDao.bySystemKey(SystemCategoryKey.UNCATEGORIZED)?.id
         if (merchantNormalized.isNullOrBlank()) return uncategorized
+
         val recent = transactionDao.recentCategoriesForMerchant(merchantNormalized)
-        val dominant = recent.groupingBy { it }.eachCount().entries
+        recent.groupingBy { it }.eachCount().entries
             .firstOrNull { it.value >= 3 }
-        return dominant?.key ?: uncategorized
+            ?.let { return it.key }
+
+        val guess = MerchantCategoryRules.categoryNameFor(merchantNormalized, isCredit)
+            ?: return uncategorized
+        return categoryDao.byName(guess)?.id ?: uncategorized
     }
 
     private suspend fun attachEvidence(

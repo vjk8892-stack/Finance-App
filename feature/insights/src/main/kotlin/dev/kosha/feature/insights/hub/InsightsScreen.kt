@@ -404,7 +404,9 @@ private fun LeaksAndAnomaliesSection(data: InsightsRepository.Insights) {
             Row(Modifier.fillMaxWidth()) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = stringResource(R.string.insights_anomaly),
+                        // Name the spend. Three rows all reading "Bigger than
+                        // usual" tell the reader nothing about which one.
+                        text = flag.label,
                         style = KoshaType.Body,
                         color = KoshaColors.OffWhite,
                     )

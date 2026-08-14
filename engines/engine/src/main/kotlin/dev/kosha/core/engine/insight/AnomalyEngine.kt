@@ -35,6 +35,8 @@ object AnomalyEngine {
         val amount: Money,
         val merchantNormalized: String?,
         val categoryId: Long?,
+        /** Display name for the category, so a flag can say what it is about. */
+        val categoryName: String? = null,
         val timestampMillis: Long,
     )
 
@@ -50,6 +52,12 @@ object AnomalyEngine {
         val median: Money,
         val robustZ: Double,
         val scope: Scope,
+        /**
+         * What the flag is ABOUT. Every anomaly row used to read the same
+         * "Bigger than usual", which is unreadable once there are three of
+         * them — the user cannot tell which spend is being questioned.
+         */
+        val label: String,
         val explanation: String,
     )
 
@@ -98,7 +106,7 @@ object AnomalyEngine {
         val scopeLabel = if (scope == Scope.MERCHANT) {
             candidate.merchantNormalized ?: "this merchant"
         } else {
-            "this category"
+            candidate.categoryName ?: "this category"
         }
         return Flag(
             transactionId = candidate.transactionId,
@@ -106,6 +114,7 @@ object AnomalyEngine {
             median = Money(median),
             robustZ = robustZ,
             scope = scope,
+            label = scopeLabel,
             explanation = "usually around ${Money(median).format(withPaise = false)} at $scopeLabel",
         )
     }

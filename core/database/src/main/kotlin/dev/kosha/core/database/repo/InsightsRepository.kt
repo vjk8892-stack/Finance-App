@@ -142,6 +142,7 @@ class InsightsRepository @Inject constructor(
                     amount = Money(txn.amountPaise),
                     merchantNormalized = txn.merchantNormalized,
                     categoryId = txn.categoryId,
+                    categoryName = txn.categoryId?.let { categories[it]?.name },
                     timestampMillis = txn.timestampMillis,
                 ),
                 merchantHistory = priorMerchant

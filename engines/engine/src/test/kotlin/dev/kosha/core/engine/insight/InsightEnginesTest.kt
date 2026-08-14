@@ -110,6 +110,7 @@ class AnomalyEngineTest {
                 median = Money.ofRupees(300),
                 robustZ = 5.0,
                 scope = AnomalyEngine.Scope.MERCHANT,
+                label = "MERCHANT $it",
                 explanation = "",
             )
         }

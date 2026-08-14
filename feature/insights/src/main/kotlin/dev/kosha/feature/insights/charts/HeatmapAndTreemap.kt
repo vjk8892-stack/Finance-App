@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -42,17 +43,36 @@ fun CalendarHeatmap(
             busiest.value.format(withPaise = false)
     }
 
+    val textMeasurer = rememberTextMeasurer()
+    val weekdayStyle = KoshaType.Caption.copy(color = KoshaColors.OffWhiteFaint)
+
     Canvas(
         modifier
             .fillMaxWidth()
-            .height(140.dp)
+            .height(184.dp)
             .semantics { contentDescription = description },
     ) {
         val columns = 7
         val rows = ((days + (monthStart.dayOfWeek.value - 1) + columns - 1) / columns).coerceAtLeast(1)
         val cellGap = 3.dp.toPx()
         val cellWidth = (size.width - cellGap * (columns - 1)) / columns
-        val cellHeight = ((size.height - cellGap * (rows - 1)) / rows).coerceAtMost(cellWidth)
+
+        // Without a weekday strip the grid reads as scattered squares rather
+        // than a month — the whole point is spotting "my weekends are heavy".
+        val headerHeight = textMeasurer.measure("M", weekdayStyle).size.height + 6.dp.toPx()
+        WEEKDAYS.forEachIndexed { index, initial ->
+            val layout = textMeasurer.measure(initial, weekdayStyle)
+            drawText(
+                layout,
+                topLeft = Offset(
+                    index * (cellWidth + cellGap) + (cellWidth - layout.size.width) / 2f,
+                    0f,
+                ),
+            )
+        }
+
+        val gridHeight = size.height - headerHeight
+        val cellHeight = ((gridHeight - cellGap * (rows - 1)) / rows).coerceAtMost(cellWidth)
         val leadingBlanks = monthStart.dayOfWeek.value - 1 // Monday-first grid
 
         for (dayIndex in 0 until days) {
@@ -65,16 +85,28 @@ fun CalendarHeatmap(
 
             drawRect(
                 color = heatColor(intensity),
-                topLeft = Offset(column * (cellWidth + cellGap), row * (cellHeight + cellGap)),
+                topLeft = Offset(
+                    column * (cellWidth + cellGap),
+                    headerHeight + row * (cellHeight + cellGap),
+                ),
                 size = Size(cellWidth, cellHeight),
             )
         }
     }
 }
 
+private val WEEKDAYS = listOf("M", "T", "W", "T", "F", "S", "S")
+
+/**
+ * A no-spend day still has to be VISIBLE, or the month has holes in it and
+ * the grid stops reading as a calendar. The empty tone was `CharcoalRaised` —
+ * the card's own background — so those cells were invisible, and the lower
+ * half of the ramp started from `CharcoalOverlay`, barely better. The ramp now
+ * starts above the card surface.
+ */
 private fun heatColor(intensity: Float): Color = when {
-    intensity <= 0f -> KoshaColors.CharcoalRaised
-    intensity < 0.5f -> lerp(KoshaColors.CharcoalOverlay, KoshaColors.AccentTeal, intensity * 2f)
+    intensity <= 0f -> KoshaColors.Outline
+    intensity < 0.5f -> lerp(KoshaColors.Outline, KoshaColors.AccentTeal, intensity * 2f)
     else -> lerp(KoshaColors.AccentTeal, KoshaColors.AccentViolet, (intensity - 0.5f) * 2f)
 }
 
@@ -84,6 +116,9 @@ private fun heatColor(intensity: Float): Color = when {
  * gradient remains reserved for money-flow visuals.
  */
 data class TreemapSlice(val label: String, val amount: Money)
+
+/** Lightest treemap tone — clearly above the card, still monochrome. */
+private val SLICE_TOP = Color(0xFF3B424B)
 
 @Composable
 fun CategoryTreemap(
@@ -128,17 +163,36 @@ fun CategoryTreemap(
                 rectHeight = remainingHeight * fraction
             }
 
-            // Alternating tones keep neighbours distinguishable without color.
+            val sliceSize = Size(
+                (rectWidth - gap).coerceAtLeast(0f),
+                (rectHeight - gap).coerceAtLeast(0f),
+            )
+            // Graduated tones ABOVE the card surface. The previous alternation
+            // used CharcoalRaised, which IS the card background, so every
+            // even-index slice was invisible — with a single category the
+            // whole chart rendered as an empty box. Accent colours stay
+            // reserved for money-flow visuals, so this ramps grey and leans on
+            // an outline to separate neighbours.
+            // A lone slice sits mid-ramp: the bottom of the ramp is close
+            // enough to the card that a single-category chart would look
+            // blank again.
+            val step = if (ordered.size <= 1) 0.5f else index.toFloat() / (ordered.size - 1)
             drawRect(
-                color = if (index % 2 == 0) KoshaColors.CharcoalRaised else KoshaColors.CharcoalOverlay,
+                color = lerp(KoshaColors.CharcoalOverlay, SLICE_TOP, step),
                 topLeft = Offset(x, y),
-                size = Size((rectWidth - gap).coerceAtLeast(0f), (rectHeight - gap).coerceAtLeast(0f)),
+                size = sliceSize,
+            )
+            drawRect(
+                color = KoshaColors.Outline,
+                topLeft = Offset(x, y),
+                size = sliceSize,
+                style = Stroke(width = 1.dp.toPx()),
             )
 
             if (rectWidth > 56.dp.toPx() && rectHeight > 26.dp.toPx()) {
                 val layout = textMeasurer.measure(
                     text = slice.label,
-                    style = KoshaType.Caption.copy(color = KoshaColors.OffWhiteMuted),
+                    style = KoshaType.Caption.copy(color = KoshaColors.OffWhite),
                 )
                 drawText(layout, topLeft = Offset(x + 6.dp.toPx(), y + 6.dp.toPx()))
             }

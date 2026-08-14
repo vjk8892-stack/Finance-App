@@ -54,4 +54,21 @@
     <string name="accounts_type_card">Card</string>
     <string name="accounts_type_wallet">Wallet</string>
     <string name="accounts_type_mealcard">Meal card</string>
+    <string name="ledger_no_name">No name in the message</string>
+    <string name="detail_no_merchant">No name in the message</string>
+    <string name="detail_when">When</string>
+    <string name="detail_account">Account</string>
+    <string name="detail_category">Category</string>
+    <string name="detail_uncategorized">Not categorized yet</string>
+    <string name="detail_captured_by">Captured from</string>
+    <string name="detail_reference">Reference</string>
+    <string name="detail_note">Note</string>
+    <string name="detail_status">Status</string>
+    <string name="detail_status_review">Waiting for review</string>
+    <string name="detail_original_message">Original message</string>
+    <string name="detail_photo">Photo</string>
+    <string name="detail_message_missing">Kosha did not keep this message — by default it stores only the amount, account, name and reference. Turn keeping on and re-scan to see the text behind future entries. It never leaves the device either way.</string>
+    <string name="detail_keep_messages_on">Keeping message text</string>
+    <string name="detail_keep_messages_off">Not keeping message text</string>
+    <string name="detail_no_evidence">Entered by hand, so there is no message behind it.</string>
 </resources>

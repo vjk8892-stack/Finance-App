@@ -8,7 +8,9 @@ import dev.kosha.core.database.dao.LedgerRow
 import dev.kosha.core.database.dao.MetaDao
 import dev.kosha.core.database.dao.TransactionDao
 import dev.kosha.core.database.model.CategoryEntity
+import dev.kosha.core.database.model.EvidenceKind
 import dev.kosha.core.database.model.SavedQueryEntity
+import dev.kosha.core.database.model.TxnSource
 import dev.kosha.core.database.model.TxnType
 import dev.kosha.core.database.repo.CategoryRepository
 import dev.kosha.core.database.repo.QueryRepository
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -52,6 +55,24 @@ data class LedgerUiState(
     val categories: List<CategoryEntity> = emptyList(),
     val isEmpty: Boolean = false,
     val reviewCount: Int = 0,
+)
+
+/**
+ * What is behind one ledger row. The original bank message is the point: a
+ * merchant name Kosha read wrong is impossible to correct — or even to judge —
+ * without seeing the text it came from.
+ */
+data class TransactionDetail(
+    val row: LedgerRow,
+    /** The SMS body, when raw retention was on at capture time (spec B4). */
+    val originalMessage: String? = null,
+    /** Photo evidence URI for OCR captures. */
+    val photoUri: String? = null,
+    /**
+     * True when the message could have been kept but the setting was off, so
+     * the UI can offer to turn it on rather than looking broken.
+     */
+    val messageNotRetained: Boolean = false,
 )
 
 @HiltViewModel
@@ -115,6 +136,44 @@ class LedgerViewModel @Inject constructor(
 
     private fun localDate(epochMillis: Long): LocalDate =
         java.time.Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDate()
+
+    // --- Row detail, including the message that produced the row ---
+
+    private val _detail = MutableStateFlow<TransactionDetail?>(null)
+    val detail: StateFlow<TransactionDetail?> = _detail.asStateFlow()
+
+    fun openDetail(row: LedgerRow) {
+        // Show the row immediately; the evidence lookup is a DB round-trip.
+        _detail.value = TransactionDetail(row = row)
+        viewModelScope.launch {
+            val evidence = transactionDao.evidenceFor(row.txn.id)
+            val message = evidence.firstOrNull { it.kind == EvidenceKind.SMS_TEXT }
+                ?.payload
+                ?.takeIf { it.isNotBlank() }
+            _detail.value = TransactionDetail(
+                row = row,
+                originalMessage = message,
+                photoUri = evidence.firstOrNull { it.kind == EvidenceKind.PHOTO_URI }?.payload,
+                messageNotRetained = message == null && row.txn.source == TxnSource.SMS,
+            )
+        }
+    }
+
+    fun closeDetail() {
+        _detail.value = null
+    }
+
+    /**
+     * Turning retention on cannot recover a message already discarded — only
+     * a re-scan can — so the UI has to say that rather than implying a fix.
+     */
+    fun setRetainRawSms(retain: Boolean) {
+        viewModelScope.launch { settingsRepository.setRetainRawSms(retain) }
+    }
+
+    val retainRawSms: StateFlow<Boolean> = settingsRepository.settings
+        .map { it.retainRawSms }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     fun recategorize(txnId: Long, categoryId: Long) {
         viewModelScope.launch { transactionRepository.recategorize(txnId, categoryId) }

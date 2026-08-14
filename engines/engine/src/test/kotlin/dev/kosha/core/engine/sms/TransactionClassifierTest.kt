@@ -138,6 +138,35 @@ class TransactionClassifierTest {
     }
 
     @Test
+    fun `the users own account is never captured as the counterparty`() {
+        // "debited from HDFC Bank XX0773" names where the money LEFT. Reading
+        // it as a payee produced ledger rows titled after the user's own bank
+        // and a "leak report" about A C NO.
+        val e = extraction("Rs.16,173.00 debited from HDFC Bank XX0773 on 10-08-25")
+        assertNull("captured the source account as a merchant: ${e.merchant}", e.merchant)
+        assertEquals("0773", e.accountLast4)
+
+        assertNull(extraction("Rs.189.00 debited to a/c no XX4455 on 11-08-25").merchant)
+        assertNull(extraction("Rs.500.00 debited from your account. Ref 519912345678").merchant)
+    }
+
+    @Test
+    fun `a credit does name who paid`() {
+        // The same "from X" phrasing IS the counterparty on money coming in.
+        val e = extraction("Rs.85,000.00 credited to a/c XX1234 from ACME PAYROLL on 01-08-26")
+        assertEquals("ACME PAYROLL", e.merchant)
+        assertEquals(TxnType.CREDIT, e.direction)
+    }
+
+    @Test
+    fun `towards phrasing names the payee`() {
+        assertEquals(
+            "SHOPPERS STOP",
+            extraction("Your A/C XX7788 is debited by Rs.1,250.00 towards SHOPPERS STOP. Ref 601122334455").merchant,
+        )
+    }
+
+    @Test
     fun `atm withdrawals are flagged for the cash-transfer path`() {
         assertTrue(extraction("Rs.2000.00 withdrawn at ATM from a/c x4321 on 12-08-26").isAtmWithdrawal)
         assertFalse(extraction("Rs.2000.00 debited from a/c x4321 to SHOP on 12-08-26").isAtmWithdrawal)

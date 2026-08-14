@@ -1,6 +1,7 @@
 package dev.kosha.feature.ledger
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,6 +70,8 @@ fun LedgerScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val queryState by viewModel.query.collectAsState()
+    val detail by viewModel.detail.collectAsState()
+    val retainRawSms by viewModel.retainRawSms.collectAsState()
     var recategorizing by remember { mutableStateOf<LedgerRow?>(null) }
     var acting by remember { mutableStateOf<LedgerRow?>(null) }
 
@@ -133,6 +136,7 @@ fun LedgerScreen(
                 items(queryState.rows.size) { i ->
                     TransactionRow(
                         row = queryState.rows[i],
+                        onOpen = { viewModel.openDetail(queryState.rows[i]) },
                         onRecategorize = { recategorizing = queryState.rows[i] },
                         onActions = { acting = queryState.rows[i] },
                     )
@@ -169,6 +173,7 @@ fun LedgerScreen(
                             val row = day.rows[i]
                             TransactionRow(
                                 row = row,
+                                onOpen = { viewModel.openDetail(row) },
                                 onRecategorize = { recategorizing = row },
                                 onActions = { acting = row },
                             )
@@ -188,6 +193,19 @@ fun LedgerScreen(
                 recategorizing = null
             },
             onDismiss = { recategorizing = null },
+        )
+    }
+
+    detail?.let { open ->
+        TransactionDetailSheet(
+            detail = open,
+            retainRawSms = retainRawSms,
+            onDismiss = viewModel::closeDetail,
+            onRecategorize = {
+                recategorizing = open.row
+                viewModel.closeDetail()
+            },
+            onSetRetainRawSms = viewModel::setRetainRawSms,
         )
     }
 
@@ -225,6 +243,7 @@ private fun MonthHeader(label: String, totalSpend: Money) {
 @Composable
 private fun TransactionRow(
     row: LedgerRow,
+    onOpen: () -> Unit,
     onRecategorize: () -> Unit,
     onActions: () -> Unit,
 ) {
@@ -267,6 +286,7 @@ private fun TransactionRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(KoshaColors.Charcoal)
+                .clickable(onClick = onOpen)
                 .padding(horizontal = KoshaSpacing.screenPadding, vertical = KoshaSpacing.s),
         ) {
             // Account color tick (spec G3: ledger row left-edge tick)
@@ -289,9 +309,16 @@ private fun TransactionRow(
             Spacer(Modifier.width(KoshaSpacing.s))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = row.txn.merchantRaw ?: row.categoryName ?: "—",
+                    // Falling back to the category name printed "Uncategorized"
+                    // as the merchant AND again as the category underneath,
+                    // which reads like a bug. Say what is actually true.
+                    text = row.txn.merchantRaw ?: stringResource(R.string.ledger_no_name),
                     style = KoshaType.Body,
-                    color = KoshaColors.OffWhite,
+                    color = if (row.txn.merchantRaw != null) {
+                        KoshaColors.OffWhite
+                    } else {
+                        KoshaColors.OffWhiteMuted
+                    },
                     maxLines = 1,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -397,7 +424,7 @@ private fun ActionsSheet(
             verticalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
         ) {
             Text(
-                text = row.txn.merchantRaw ?: row.categoryName ?: "—",
+                text = row.txn.merchantRaw ?: stringResource(R.string.ledger_no_name),
                 style = KoshaType.Title,
                 color = KoshaColors.OffWhite,
             )

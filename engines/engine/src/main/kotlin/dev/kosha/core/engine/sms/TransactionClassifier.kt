@@ -106,7 +106,7 @@ object TransactionClassifier {
                 amount = amount,
                 direction = direction.type,
                 accountLast4 = extractLast4(text),
-                merchant = extractMerchant(text),
+                merchant = extractMerchant(text, direction.type),
                 reference = extractReference(text),
                 isAtmWithdrawal = ATM.containsMatchIn(text),
                 directionExplicit = direction.explicit,
@@ -185,19 +185,47 @@ object TransactionClassifier {
             pattern.find(text)?.groups?.get("ref")?.value?.takeIf { it.isNotBlank() }
         }
 
-    fun extractMerchant(text: String): String? {
-        for (pattern in MERCHANT_PATTERNS) {
+    /**
+     * The counterparty — who was paid, or who paid.
+     *
+     * [direction] matters: on a DEBIT, "from HDFC Bank XX0773" names the
+     * user's own account, not a payee, and capturing it produced ledger rows
+     * titled after the bank and leak reports about "A C NO". Inbound-only
+     * phrasings are therefore only tried on credits.
+     */
+    fun extractMerchant(text: String, direction: TxnType): String? {
+        val patterns = if (direction == TxnType.CREDIT) {
+            MERCHANT_PATTERNS + INBOUND_MERCHANT_PATTERNS
+        } else {
+            MERCHANT_PATTERNS
+        }
+        for (pattern in patterns) {
             val candidate = pattern.find(text)?.groups?.get("merchant")?.value
                 ?.trim()
                 ?.trim('.', ',', ';', '-', ':')
                 ?.takeIf { it.isNotBlank() && it.length in 2..60 }
                 ?: continue
-            if (candidate.all { it.isDigit() }) continue
-            if (DATE_LIKE.containsMatchIn(candidate)) continue
-            if (NOISE_CAPTURE.matches(candidate)) continue
+            if (isNotAName(candidate)) continue
             return candidate
         }
         return null
+    }
+
+    /**
+     * Rejects captures that are structure rather than a counterparty. The
+     * earlier check only rejected a candidate that was ENTIRELY one noise
+     * word, so "a/c no" and "HDFC Bank XX0773" sailed through and became
+     * merchant names.
+     */
+    private fun isNotAName(candidate: String): Boolean {
+        if (candidate.all { !it.isLetter() }) return true
+        if (DATE_LIKE.containsMatchIn(candidate)) return true
+        if (ACCOUNT_WORDS.containsMatchIn(candidate)) return true
+        if (BANK_WORDS.containsMatchIn(candidate)) return true
+        // "XX0773", "1234567890" — an identifier, whatever else is around it.
+        if (MASKED_TAIL.containsMatchIn(candidate)) return true
+        // Needs at least a couple of letters to be a name at all.
+        return candidate.count { it.isLetter() } < 2
     }
 
     private val WHITESPACE = Regex("\\s+")
@@ -240,7 +268,17 @@ object TransactionClassifier {
 
     private val ATM = Regex("(?i)\\b(atm|cash withdrawal|w/d)\\b")
     private val DATE_LIKE = Regex("\\d{1,2}[-/][A-Za-z0-9]{2,4}[-/]\\d{2,4}|\\d{2}[-/]\\d{2}")
-    private val NOISE_CAPTURE = Regex("(?i)(your|the|a|an|account|a/c|bank|upi|vpa|card)")
+
+    /** Words that mean the capture is describing an account, not a payee. */
+    private val ACCOUNT_WORDS = Regex(
+        "(?i)\\b(a/?c|ac|acct|account|a c no|card|no\\.?|number|wallet)\\b",
+    )
+    private val BANK_WORDS = Regex(
+        "(?i)\\b(bank|hdfc|icici|sbi|axis|kotak|yes ?bank|idfc|indusind|federal|" +
+            "canara|union|pnb|bob|boi|uco|iob|rbl|dbs|citi|hsbc|standard chartered|" +
+            "au small|bandhan|equitas|ujjivan|paytm payments|airtel payments)\\b",
+    )
+    private val MASKED_TAIL = Regex("(?i)[Xx*]{2,}\\s*\\d{3,}|\\b\\d{6,}\\b")
 
     /** How far back to look for balance wording introducing a figure. */
     private const val BALANCE_LOOKBEHIND = 24
@@ -269,9 +307,21 @@ object TransactionClassifier {
         Regex("(?i)\\bat\\s+(?<merchant>.+?)\\s+on\\b"),
         Regex("(?i)\\bto\\s+(?<merchant>.+?)\\s+on\\b"),
         Regex("(?i)\\bto\\s+(?<merchant>[^.;]{2,40}?)\\s*(?:[.;]|\\bRef\\b)"),
-        Regex("(?i)\\bfrom\\s+(?<merchant>.+?)\\s+on\\b"),
+        Regex("(?i)\\btowards\\s+(?<merchant>[^.;]{2,40}?)\\s*(?:[.;]|\\bon\\b|\\bRef\\b|$)"),
+        // ICICI: "Acct XX773 debited ...; RELIANCEJIO credited." The payee is
+        // the one being credited, so this reads correctly on a debit too.
         Regex("(?i);\\s*(?<merchant>.+?)\\s+credited\\b"),
         Regex("(?i)\\bInfo:?\\s*(?<merchant>[^.;]{2,40})"),
+    )
+
+    /**
+     * Only meaningful on a credit. On a debit, "from X" is the account the
+     * money left, and treating it as the payee is what produced ledger rows
+     * named after the user's own bank.
+     */
+    private val INBOUND_MERCHANT_PATTERNS = listOf(
+        Regex("(?i)\\bfrom\\s+(?<merchant>.+?)\\s+on\\b"),
+        Regex("(?i)\\bby\\s+(?<merchant>[^.;]{2,40}?)\\s*(?:[.;]|\\bon\\b|$)"),
     )
 
     private val REFERENCE_PATTERNS = listOf(
