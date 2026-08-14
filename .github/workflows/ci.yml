@@ -32,20 +32,21 @@ jobs:
       - name: Unit tests (Android modules)
         run: ./gradlew test --stacktrace
 
-      - name: Lint (debug)
-        run: ./gradlew :app:lintDebug --stacktrace
+      # Product flavors make the variant-specific lint task flavor-qualified.
+      - name: Lint (full debug)
+        run: ./gradlew :app:lintFullDebug --stacktrace
 
-      - name: Assemble debug APK
+      - name: Assemble debug APKs (both flavors, per-ABI + universal)
         run: ./gradlew :app:assembleDebug --stacktrace
 
       - name: Record APK size baseline
-        run: ls -la app/build/outputs/apk/debug/
+        run: find app/build/outputs/apk -name "*.apk" -printf "%s\t%p\n" | sort -rn
 
-      - name: Upload debug APK
+      - name: Upload debug APKs
         uses: actions/upload-artifact@v4
         with:
           name: kosha-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/**/debug/*.apk
           retention-days: 14
 
       - name: Upload test reports on failure

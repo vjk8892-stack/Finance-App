@@ -30,6 +30,39 @@ android {
         }
     }
 
+    /**
+     * Android hard-blocks SIDELOADED apps that request SMS permissions, so a
+     * debug APK with `full` cannot be installed without disabling Play
+     * Protect. `lite` drops the SMS permissions entirely — which the spec
+     * already supports as a first-class mode ("Skip — manual only" leaves the
+     * app fully functional, spec C8/G9), so this is a real product variant,
+     * not a workaround. Manual entry, OCR capture, budgets, insights, vault
+     * and export all work; only automatic SMS capture is absent.
+     */
+    flavorDimensions += "capture"
+    productFlavors {
+        create("full") {
+            dimension = "capture"
+            isDefault = true
+        }
+        create("lite") {
+            dimension = "capture"
+            applicationIdSuffix = ".lite"
+            versionNameSuffix = "-lite"
+        }
+    }
+
+    // The universal debug APK carries native libraries for four ABIs (~89 MB
+    // with SQLCipher + ML Kit). Per-ABI APKs are a third of that.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

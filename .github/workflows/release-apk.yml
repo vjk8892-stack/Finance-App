@@ -29,24 +29,46 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Assemble debug APK
+      - name: Assemble debug APKs
         run: ./gradlew :app:assembleDebug --stacktrace
 
-      - name: Name the APK with its commit
-        id: rename
+      - name: Collect the APKs worth publishing
+        id: collect
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk "dist/kosha-debug-${GITHUB_SHA::7}.apk"
-          echo "path=dist/kosha-debug-${GITHUB_SHA::7}.apk" >> "$GITHUB_OUTPUT"
+          SHA="${GITHUB_SHA::7}"
+          # lite = no SMS permission, installs without Play Protect blocking
+          cp app/build/outputs/apk/lite/debug/app-lite-arm64-v8a-debug.apk \
+             "dist/kosha-lite-arm64-$SHA.apk"
+          # full = automatic SMS capture; needs Play Protect turned off to install
+          cp app/build/outputs/apk/full/debug/app-full-arm64-v8a-debug.apk \
+             "dist/kosha-full-arm64-$SHA.apk"
+          cp app/build/outputs/apk/full/debug/app-full-universal-debug.apk \
+             "dist/kosha-full-universal-$SHA.apk"
           ls -la dist/
 
       - name: Publish as a rolling release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          SHA="${GITHUB_SHA::7}"
           gh release delete debug-latest --yes --cleanup-tag || true
-          gh release create debug-latest "${{ steps.rename.outputs.path }}" \
+          gh release create debug-latest dist/*.apk \
             --title "Kosha debug APK (latest)" \
-            --notes "Unsigned debug build of ${GITHUB_SHA::7}. Sideload only — enable 'install from unknown sources'." \
+            --notes "Unsigned debug build of $SHA.
+
+          **kosha-lite-arm64** — start here. No SMS permission, so it installs
+          normally. Everything works except automatic SMS capture: manual entry,
+          photo/OCR, budgets, insights, vault, export.
+
+          **kosha-full-arm64** — adds automatic bank-SMS capture. Android blocks
+          sideloaded apps that request SMS access, so installing this one needs
+          Play Protect scanning turned off (Play Store → Play Protect → gear →
+          off), or \`adb install\`.
+
+          **kosha-full-universal** — same as full, with all four ABIs. Only needed
+          for an x86 emulator.
+
+          All builds are debug and unsigned." \
             --target "$GITHUB_SHA" \
             --prerelease

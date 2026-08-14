@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Manual-only build. The SMS permissions and the receiver are stripped from
+  the merged manifest so the app installs on a normal phone without Play
+  Protect blocking it (Android restricts sideloaded apps that request SMS
+  access).
+
+  Everything else is unchanged: manual entry, photo/OCR capture, budgets,
+  income, insights, vault, export and widgets all behave identically. The
+  onboarding SMS step still renders and its "Skip — manual only" path is the
+  outcome, exactly as the spec intends when permission is refused.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_SMS" tools:node="remove" />
+
+    <application>
+        <receiver
+            android:name="dev.kosha.feature.ingest.sms.SmsReceiver"
+            tools:node="remove" />
+    </application>
+</manifest>
