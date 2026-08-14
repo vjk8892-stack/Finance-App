@@ -40,11 +40,16 @@ fun KoshaUndoBar(
     onUndo: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Changes on every new action. Keying the timer on the MESSAGE was wrong:
+     * two deletes in a row produce identical wording, so the effect never
+     * restarted and the second undo inherited whatever was left of the first
+     * one's window — sometimes vanishing almost immediately.
+     */
+    token: Any? = message,
     timeoutMillis: Long = 6_000,
 ) {
-    // Re-armed whenever a new action arrives, so back-to-back deletes each get
-    // their own window instead of inheriting the first one's remaining time.
-    LaunchedEffect(visible, message) {
+    LaunchedEffect(visible, token) {
         if (visible) {
             delay(timeoutMillis)
             onDismiss()

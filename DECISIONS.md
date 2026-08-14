@@ -433,3 +433,25 @@ Format: date · decision · alternatives · why.
 - **2026-08-14 · The Ledger has its own add button** · the Add tab only ·
   Noticing a missing entry happens while looking at the ledger, so adding one
   should not start with finding another tab.
+
+## Quality pass findings (2026-08-14)
+
+Three defects found by reading the phase diffs rather than by a failing test —
+all in the new undo path, which is exactly where a silent defect is worst:
+
+- **Undo of a split transaction dropped its children.** `deleteWithChildren`
+  removes the split lines, but the capture only took the parent, so undo would
+  restore a transaction whose category breakdown had vanished. Children are
+  captured and re-inserted after their parents, so the foreign key has
+  something to point at.
+- **Two deletes in a row shared one countdown.** The dismiss timer was keyed on
+  the message text, which is identical for consecutive deletes, so the effect
+  never restarted and the second undo inherited whatever was left of the first
+  one's window. Keyed on the action's identity now.
+- **The account statement never cancelled its previous collector.** Switching
+  accounts left both running and writing the same state. Held as a Job and
+  cancelled on load.
+
+Pinned by `UndoRestoreTest` (`:core:database` androidTest — needs a device).
+An undo that ALMOST restores is worse than no undo: the user taps it, believes
+they are whole, and has silently lost data.

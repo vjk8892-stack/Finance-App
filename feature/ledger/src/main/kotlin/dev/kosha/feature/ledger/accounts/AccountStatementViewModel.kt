@@ -11,6 +11,7 @@ import dev.kosha.core.database.model.TxnStatus
 import dev.kosha.core.database.model.TxnType
 import dev.kosha.core.database.repo.TransactionRepository
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,10 +41,14 @@ class AccountStatementViewModel @Inject constructor(
 
     private var accountId: Long? = null
 
+    /** The live collector, so switching accounts does not leave two running. */
+    private var loadJob: Job? = null
+
     fun load(id: Long) {
         if (accountId == id && _state.value.account != null) return
         accountId = id
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             val account = accountDao.byId(id)
             // The ledger flow is already scoped to committed parents, which is
             // exactly the set the stored balance is computed from — so the

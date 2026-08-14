@@ -151,6 +151,8 @@ fun ReviewQueueScreen(
         actionLabel = stringResource(R.string.undo_action),
         onUndo = viewModel::performUndo,
         onDismiss = viewModel::dismissUndo,
+        // Identity of the action, so each one gets a fresh countdown.
+        token = undo,
         modifier = Modifier.align(Alignment.BottomCenter),
     )
     }

@@ -191,6 +191,10 @@ interface TransactionDao {
     )
     suspend fun restoreStatus(id: Long, status: TxnStatus, reason: String?, now: Long)
 
+    /** Split lines of a parent — deleted with it, so restored with it too. */
+    @Query("SELECT * FROM transactions WHERE parentTransactionId = :parentId")
+    suspend fun childrenOf(parentId: Long): List<TransactionEntity>
+
     @Query("SELECT COUNT(*) FROM transactions WHERE accountId = :accountId")
     suspend fun countForAccount(accountId: Long): Int
 

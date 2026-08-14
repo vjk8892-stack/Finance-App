@@ -60,15 +60,19 @@ class TransactionRepository @Inject constructor(
 
     suspend fun deleteCapturing(id: Long): DeletedTransaction? {
         val parent = transactionDao.byId(id) ?: return null
+        // deleteWithChildren removes the split lines as well, so an undo that
+        // only restored the parent would silently drop them and leave the
+        // category breakdown wrong.
+        val children = transactionDao.childrenOf(id)
         val evidence = transactionDao.evidenceFor(id)
         transactionDao.deleteWithChildren(id)
         accountDao.recomputeBalance(parent.accountId)
-        return DeletedTransaction(listOf(parent), evidence)
+        return DeletedTransaction(listOf(parent) + children, evidence)
     }
 
     suspend fun deleteAllCapturing(ids: List<Long>): DeletedTransaction? {
         if (ids.isEmpty()) return null
-        val rows = ids.mapNotNull { transactionDao.byId(it) }
+        val rows = ids.mapNotNull { transactionDao.byId(it) } + ids.flatMap { transactionDao.childrenOf(it) }
         val evidence = ids.flatMap { transactionDao.evidenceFor(it) }
         val accountIds = transactionDao.accountIdsFor(ids)
         transactionDao.deleteBatch(ids)
@@ -78,7 +82,11 @@ class TransactionRepository @Inject constructor(
 
     suspend fun restore(deleted: DeletedTransaction) {
         if (deleted.rows.isEmpty()) return
-        transactionDao.insertAll(deleted.rows)
+        // Parents first: a child's parentTransactionId must have something to
+        // point at by the time it lands.
+        val (parents, children) = deleted.rows.partition { it.parentTransactionId == null }
+        transactionDao.insertAll(parents)
+        if (children.isNotEmpty()) transactionDao.insertAll(children)
         if (deleted.evidence.isNotEmpty()) transactionDao.insertEvidenceAll(deleted.evidence)
         deleted.rows.map { it.accountId }.distinct().forEach { accountDao.recomputeBalance(it) }
     }
