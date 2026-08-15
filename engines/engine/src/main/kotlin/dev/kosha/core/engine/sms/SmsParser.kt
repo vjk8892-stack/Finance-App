@@ -75,9 +75,18 @@ class SmsParser(private val library: SmsPatternLibrary) {
         // rest. Banks move the reference around and some put the account tail
         // outside any keyword, so neither source is complete on its own.
         val amount = match?.groupOrNull("amount")?.let { Money.parseOrNull(it) } ?: extraction.amount
-        val last4 = match?.groupOrNull("last4") ?: extraction.accountLast4
-        val merchant = match?.groupOrNull("merchant")?.trim()?.trim('.', ',', ';')
-            ?: extraction.merchant
+        val last4 = (match?.groupOrNull("last4") ?: extraction.accountLast4)?.takeLast(4)
+        // A curated capture is not automatically a NAME. The library's merchant
+        // group went straight through while the classifier's own went through
+        // isNotAName, so a bank pattern whose group happened to land on "a/c"
+        // put that in the ledger as the payee — rows titled "a/c" that no
+        // amount of recategorizing could explain. Both sources answer to the
+        // same standard now, and a rejected capture falls back rather than
+        // taking the row's name down with it.
+        val merchant = listOfNotNull(
+            match?.groupOrNull("merchant")?.trim()?.trim('.', ',', ';'),
+            extraction.merchant,
+        ).firstOrNull { it.isNotBlank() && !TransactionClassifier.isNotAName(it) }
         val reference = match?.groupOrNull("ref") ?: extraction.reference
 
         // A sender-specific pattern that matched is stronger evidence of

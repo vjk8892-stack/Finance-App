@@ -204,7 +204,9 @@ object TransactionClassifier {
     }
 
     fun extractLast4(text: String): String? =
-        ACCOUNT_PATTERNS.firstNotNullOfOrNull { it.find(text)?.groups?.get("last4")?.value }
+        ACCOUNT_PATTERNS
+            .firstNotNullOfOrNull { it.find(text)?.groups?.get("last4")?.value }
+            ?.takeLast(4)
 
     fun extractReference(text: String): String? =
         REFERENCE_PATTERNS.firstNotNullOfOrNull { pattern ->
@@ -243,7 +245,7 @@ object TransactionClassifier {
      * word, so "a/c no" and "HDFC Bank XX0773" sailed through and became
      * merchant names.
      */
-    private fun isNotAName(candidate: String): Boolean {
+    fun isNotAName(candidate: String): Boolean {
         if (candidate.all { !it.isLetter() }) return true
         if (DATE_LIKE.containsMatchIn(candidate)) return true
         if (ACCOUNT_WORDS.containsMatchIn(candidate)) return true
@@ -357,9 +359,24 @@ object TransactionClassifier {
             "(?<amount>\\d[\\d,]*(?:\\.\\d{1,2})?)\\b",
     )
 
+    /**
+     * Banks mask a varying number of digits. Canara sends "Acct XXXXX07683" —
+     * FIVE trailing digits — and a `\d{3,4}` capture simply failed to match it,
+     * with two consequences that both looked like something else.
+     *
+     * The transaction could not be attributed to any account, so it went to
+     * the review queue instead of the ledger and read as "not captured". And
+     * because the scan then continued past the user's own account, the next
+     * tail in the message matched instead — which in "from a/c XXXXX07683 to
+     * a/c XXXXX1234" is the PAYEE's account. Silently filing a transaction
+     * against the wrong account is the worse of the two.
+     *
+     * Up to eight digits are captured now and the last four taken, which is
+     * what every downstream comparison actually uses.
+     */
     private val ACCOUNT_PATTERNS = listOf(
-        Regex("(?i)(?:a/c|ac|acct|account|card)\\s*(?:no\\.?|number)?\\s*[Xx*]{0,8}\\s*(?<last4>\\d{3,4})\\b"),
-        Regex("(?i)[Xx*]{2,}\\s*(?<last4>\\d{3,4})\\b"),
+        Regex("(?i)(?:a/c|ac|acct|account|card)\\s*(?:no\\.?|number)?\\s*[Xx*]{0,8}\\s*(?<last4>\\d{3,8})\\b"),
+        Regex("(?i)[Xx*]{2,}\\s*(?<last4>\\d{3,8})\\b"),
     )
 
     private val MERCHANT_PATTERNS = listOf(
@@ -383,6 +400,10 @@ object TransactionClassifier {
      */
     private val INBOUND_MERCHANT_PATTERNS = listOf(
         Regex("(?i)\\bfrom\\s+(?<merchant>.+?)\\s+on\\b"),
+        // "Cr. INR 5,000.00 on 12/08/26 from RAMESH K; UPI: ..." — the name is
+        // ended by a separator, not by the word "on", so the pattern above
+        // never fired and money received from a person arrived unnamed.
+        Regex("(?i)\\bfrom\\s+(?<merchant>[^.;,]{2,40}?)\\s*(?:[.;,]|\\bRef\\b|\\bUPI\\b|$)"),
         Regex("(?i)\\bby\\s+(?<merchant>[^.;]{2,40}?)\\s*(?:[.;]|\\bon\\b|$)"),
     )
 

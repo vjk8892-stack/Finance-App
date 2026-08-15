@@ -534,3 +534,22 @@ they are whole, and has silently lost data.
   table means an existing user never sees a new category, with nothing to
   explain the difference. Backfill is inserts-only and leaves renamed or
   reordered categories alone.
+
+- **2026-08-15 · Account tails capture up to eight digits and keep the last
+  four** · the `\d{3,4}` capture · Canara sends "Acct XXXXX07683" — five
+  trailing digits — which matched nothing, and the two consequences both
+  looked like something other than their cause. The transaction could not be
+  attributed, so it sat in the review queue and read as "never captured"; and
+  because the scan did not stop at the user's own account it carried on to the
+  next tail in the message, which in "from a/c XXXXX07683 to a/c XXXXX1234" is
+  the PAYEE's. Filing a transaction against somebody else's account number is
+  the quieter and worse of the two failures. Pinned by `CanaraBankTest`.
+- **2026-08-15 · The pattern library's merchant answers to the same name check
+  as the classifier's** · trust curated captures · The library's `merchant`
+  group went straight into the ledger while the classifier's went through
+  `isNotAName`, so a bank pattern whose group landed on "a/c" titled the row
+  "a/c" — with no way for the user to tell why. A rejected capture now falls
+  back to the other source rather than taking the row's name down with it.
+- **2026-08-15 · A payer's name may be ended by a separator, not just by the
+  word "on"** · the single `from … on` pattern · "Cr. INR 5,000.00 on 12/08/26
+  from RAMESH K; UPI: …" left money received from a person unnamed.
