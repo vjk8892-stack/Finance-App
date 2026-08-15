@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -181,27 +186,42 @@ private fun BudgetEditorSheet(
         Column(
             Modifier
                 .fillMaxWidth()
+                // The keyboard opens the moment the amount field takes focus
+                // and covered the field and the Save button both, with no way
+                // to scroll to either. imePadding lifts the sheet clear; the
+                // scroll handles a short screen with the keyboard up.
+                .imePadding()
+                .verticalScroll(rememberScrollState())
                 .padding(KoshaSpacing.m),
             verticalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
         ) {
-            Text(stringResource(R.string.budget_add), style = KoshaType.Title, color = KoshaColors.OffWhite)
-
-            KoshaChip(
-                label = stringResource(R.string.budget_overall),
-                selected = categoryId == null,
-                onClick = { categoryId = null },
-            )
-            categories.chunked(2).forEach { rowCats ->
-                Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs)) {
-                    rowCats.forEach { cat ->
-                        KoshaChip(
-                            label = cat.name,
-                            selected = categoryId == cat.id,
-                            onClick = { categoryId = cat.id },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    if (rowCats.size == 1) Spacer(Modifier.weight(1f))
+            // Amount and Save at the TOP, above the category grid. The two
+            // things you must reach are now the two nearest the top of the
+            // sheet, so the keyboard can cover the categories — which are
+            // scrollable and optional — instead of the controls.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.budget_add),
+                    style = KoshaType.SectionHeader,
+                    color = KoshaColors.OffWhite,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    onClick = { onSave(categoryId, limit, threshold.roundToInt()) },
+                    enabled = limit.isNotBlank(),
+                ) {
+                    Text(
+                        text = stringResource(R.string.budget_save),
+                        style = KoshaType.LabelStrong,
+                        color = if (limit.isNotBlank()) {
+                            KoshaColors.AccentTealBright
+                        } else {
+                            KoshaColors.OffWhiteFaint
+                        },
+                    )
                 }
             }
 
@@ -209,6 +229,7 @@ private fun BudgetEditorSheet(
                 value = limit,
                 onValueChange = { text -> if (text.all { it.isDigit() || it == '.' }) limit = text },
                 placeholder = { Text(stringResource(R.string.budget_limit), color = KoshaColors.OffWhiteFaint) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = KoshaColors.CharcoalRaised,
                     unfocusedContainerColor = KoshaColors.CharcoalRaised,
@@ -235,12 +256,30 @@ private fun BudgetEditorSheet(
                 ),
             )
 
-            TextButton(
-                onClick = { onSave(categoryId, limit, threshold.roundToInt()) },
-                enabled = limit.isNotBlank(),
-            ) {
-                Text(stringResource(R.string.budget_save), color = KoshaColors.AccentTeal)
+            Text(
+                text = stringResource(R.string.budget_applies_to),
+                style = KoshaType.Label,
+                color = KoshaColors.OffWhiteFaint,
+            )
+            KoshaChip(
+                label = stringResource(R.string.budget_overall),
+                selected = categoryId == null,
+                onClick = { categoryId = null },
+            )
+            categories.chunked(2).forEach { rowCats ->
+                Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs)) {
+                    rowCats.forEach { cat ->
+                        KoshaChip(
+                            label = cat.name,
+                            selected = categoryId == cat.id,
+                            onClick = { categoryId = cat.id },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    if (rowCats.size == 1) Spacer(Modifier.weight(1f))
+                }
             }
+
             Spacer(Modifier.height(KoshaSpacing.l))
         }
     }

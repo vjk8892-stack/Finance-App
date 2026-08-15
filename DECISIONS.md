@@ -571,3 +571,26 @@ they are whole, and has silently lost data.
 - **2026-08-15 · The Import tab has a failure state at all** · rely on the
   preview opening · It rendered only its intro text and the picker chip, so a
   rejected image put the user back on an unchanged screen with no message.
+
+- **2026-08-15 · Receipt photos are shown, not merely stored** · keep them as
+  invisible evidence · The photo was already attached to the transaction, but
+  nothing in the app ever displayed it, so capturing one was an act of faith.
+  The ledger row carries a thumbnail (via a correlated subquery on the row, not
+  a query per row) and the detail sheet shows it at readable size.
+- **2026-08-15 · A hand-rolled local image loader instead of an image library**
+  · Coil/Glide · Every mainstream loader is built around fetching over HTTP,
+  and Kosha has no INTERNET permission plus a CI check that keeps it that way.
+  The only images that exist are receipts in app-private storage, so a
+  downsampling `BitmapFactory` decode is the whole requirement. Downsampling is
+  the part that matters: a 12-megapixel photo decoded at full size, fifty rows
+  deep in a scrolling list, is how a ledger runs out of memory.
+- **2026-08-15 · Expense / Income / None is one three-way choice** · a
+  direction pair plus a separate transfer toggle · The third state — counts as
+  neither — was a toggle further down the sheet that you had to know to look
+  for. Three mutually exclusive options state the whole truth about what a row
+  does to the totals in one place.
+- **2026-08-15 · The budget sheet puts amount and Save above the category
+  grid** · title, grid, then the controls · The keyboard opened over both the
+  field and the button with nothing scrollable to reach them. The two controls
+  you must reach are now nearest the top, and the keyboard covers the category
+  grid instead — which is optional and now scrolls.

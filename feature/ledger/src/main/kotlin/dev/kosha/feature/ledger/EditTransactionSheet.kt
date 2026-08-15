@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -135,6 +136,7 @@ fun EditTransactionSheet(
         Column(
             Modifier
                 .fillMaxWidth()
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = KoshaSpacing.m),
             verticalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
@@ -166,6 +168,61 @@ fun EditTransactionSheet(
                 }
             }
 
+            // What this row DOES to the totals, as one three-way choice.
+            //
+            // It was previously two unrelated controls — a money out/in pair
+            // and a separate "between my own accounts" toggle further down —
+            // which made the third state, 'counts as neither', something you
+            // had to know to go looking for. Three mutually exclusive options
+            // say the whole truth in one place: out, in, or set aside.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                KoshaChip(
+                    label = stringResource(R.string.edit_effect_expense),
+                    selected = !isTransfer && type == TxnType.DEBIT,
+                    onClick = {
+                        isTransfer = false
+                        type = TxnType.DEBIT
+                        categoryId = categoryId.takeIf { it != transfersCategoryId }
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+                KoshaChip(
+                    label = stringResource(R.string.edit_effect_income),
+                    selected = !isTransfer && type == TxnType.CREDIT,
+                    onClick = {
+                        isTransfer = false
+                        type = TxnType.CREDIT
+                        categoryId = categoryId.takeIf { it != transfersCategoryId }
+                    },
+                    accent = KoshaColors.AccentTealBright,
+                    modifier = Modifier.weight(1f),
+                )
+                KoshaChip(
+                    label = stringResource(R.string.edit_effect_none),
+                    selected = isTransfer,
+                    onClick = {
+                        isTransfer = true
+                        categoryId = transfersCategoryId
+                    },
+                    accent = KoshaColors.OffWhiteMuted,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Text(
+                text = stringResource(
+                    when {
+                        isTransfer -> R.string.edit_effect_none_help
+                        type == TxnType.CREDIT -> R.string.edit_effect_income_help
+                        else -> R.string.edit_effect_expense_help
+                    },
+                ),
+                style = KoshaType.Caption,
+                color = if (isTransfer) KoshaColors.OffWhiteMuted else KoshaColors.OffWhiteFaint,
+            )
+
             TextField(
                 value = amountText,
                 onValueChange = { text ->
@@ -177,20 +234,6 @@ fun EditTransactionSheet(
                 colors = editFieldColors(),
                 modifier = Modifier.fillMaxWidth(),
             )
-
-            Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs)) {
-                KoshaChip(
-                    label = stringResource(R.string.edit_money_out),
-                    selected = type == TxnType.DEBIT,
-                    onClick = { type = TxnType.DEBIT },
-                )
-                KoshaChip(
-                    label = stringResource(R.string.edit_money_in),
-                    selected = type == TxnType.CREDIT,
-                    onClick = { type = TxnType.CREDIT },
-                    accent = KoshaColors.AccentTeal,
-                )
-            }
 
             TextField(
                 value = merchant,
@@ -211,39 +254,6 @@ fun EditTransactionSheet(
                 label = { Text(stringResource(R.string.edit_note), color = KoshaColors.OffWhiteFaint) },
                 colors = editFieldColors(),
                 modifier = Modifier.fillMaxWidth(),
-            )
-
-            // No parser can know that the account at the other end is also
-            // yours. Moving money between your own accounts — a card bill, a
-            // transfer to another bank — is neither income nor spending, and
-            // counting it as either is what makes the savings gap nonsense.
-            KoshaChip(
-                label = if (isTransfer) {
-                    stringResource(R.string.edit_is_transfer_on)
-                } else {
-                    stringResource(R.string.edit_is_transfer_off)
-                },
-                selected = isTransfer,
-                onClick = {
-                    isTransfer = !isTransfer
-                    // Turning it OFF has to release the category too. It only
-                    // cleared on the way in, so un-marking a transfer left
-                    // categoryId still pointing at Transfers — the row saved
-                    // itself back into the excluded category and went on being
-                    // left out of every total, which looks exactly like the
-                    // toggle not working.
-                    categoryId = if (isTransfer) {
-                        transfersCategoryId
-                    } else {
-                        categoryId.takeIf { it != transfersCategoryId }
-                    }
-                },
-                accent = KoshaColors.AccentTeal,
-            )
-            Text(
-                text = stringResource(R.string.edit_is_transfer_help),
-                style = KoshaType.Caption,
-                color = KoshaColors.OffWhiteFaint,
             )
 
             if (!isTransfer) {

@@ -16,6 +16,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import dev.kosha.core.common.Money
@@ -24,6 +26,7 @@ import dev.kosha.core.database.model.TxnStatus
 import dev.kosha.core.database.model.TxnType
 import dev.kosha.core.designsystem.component.AmountText
 import dev.kosha.core.designsystem.component.KoshaChip
+import dev.kosha.core.designsystem.component.KoshaLocalImage
 import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaSpacing
 import dev.kosha.core.designsystem.token.KoshaType
@@ -92,6 +95,26 @@ fun TransactionDetailSheet(
             }
 
             Spacer(Modifier.height(KoshaSpacing.xs))
+
+            // The receipt itself, big enough to actually read. The thumbnail
+            // in the list says evidence exists; this is where you check it.
+            row.photoUri?.let { uri ->
+                Text(
+                    text = stringResource(R.string.detail_receipt),
+                    style = KoshaType.Label,
+                    color = KoshaColors.OffWhiteMuted,
+                )
+                KoshaLocalImage(
+                    uri = uri,
+                    contentDescription = stringResource(R.string.detail_receipt),
+                    targetSize = 320.dp,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(320.dp)
+                        .clip(RoundedCornerShape(KoshaSpacing.cardRadius)),
+                )
+            }
 
             when {
                 detail.originalMessage != null -> {

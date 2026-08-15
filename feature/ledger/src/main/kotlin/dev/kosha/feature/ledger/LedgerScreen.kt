@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Add
@@ -39,6 +40,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -50,6 +52,7 @@ import dev.kosha.core.database.model.TxnSource
 import dev.kosha.core.database.model.TxnType
 import dev.kosha.core.designsystem.component.AmountText
 import dev.kosha.core.designsystem.component.KoshaChip
+import dev.kosha.core.designsystem.component.KoshaLocalImage
 import dev.kosha.core.designsystem.component.KoshaUndoBar
 import dev.kosha.core.designsystem.component.KoshaIcons
 import dev.kosha.core.designsystem.token.KoshaColors
@@ -664,6 +667,21 @@ private fun TransactionRow(
                     .padding(8.dp),
             )
             Spacer(Modifier.width(KoshaSpacing.s))
+            // The receipt this row came from. A photo you deliberately took as
+            // proof is only evidence if you can SEE it is still attached —
+            // otherwise the capture is an act of faith.
+            row.photoUri?.let { uri ->
+                KoshaLocalImage(
+                    uri = uri,
+                    contentDescription = stringResource(R.string.ledger_has_photo),
+                    targetSize = 36.dp,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(KoshaSpacing.xxs))
+                        .alpha(dim),
+                )
+                Spacer(Modifier.width(KoshaSpacing.s))
+            }
             Column(Modifier.weight(1f)) {
                 Text(
                     // Falling back to the category name printed "Uncategorized"

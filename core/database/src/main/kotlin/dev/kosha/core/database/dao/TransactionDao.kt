@@ -22,6 +22,12 @@ data class LedgerRow(
     val categoryIcon: String?,
     val accountName: String,
     val accountColorToken: Int,
+    /**
+     * The photo this row was read from, if any. Carried on the row itself so
+     * the ledger can show a thumbnail without a per-row query — a receipt you
+     * captured is only evidence if you can see that it is still attached.
+     */
+    val photoUri: String? = null,
 )
 
 @Dao
@@ -43,7 +49,10 @@ interface TransactionDao {
     @Query(
         """
         SELECT t.*, c.name AS categoryName, c.icon AS categoryIcon,
-               a.name AS accountName, a.colorToken AS accountColorToken
+               a.name AS accountName, a.colorToken AS accountColorToken,
+               (SELECT e.payload FROM transaction_evidence e
+                 WHERE e.transactionId = t.id AND e.kind = 'photo_uri'
+                 ORDER BY e.id LIMIT 1) AS photoUri
         FROM transactions t
         LEFT JOIN categories c ON c.id = t.categoryId
         JOIN accounts a ON a.id = t.accountId
@@ -69,7 +78,10 @@ interface TransactionDao {
     @Query(
         """
         SELECT t.*, c.name AS categoryName, c.icon AS categoryIcon,
-               a.name AS accountName, a.colorToken AS accountColorToken
+               a.name AS accountName, a.colorToken AS accountColorToken,
+               (SELECT e.payload FROM transaction_evidence e
+                 WHERE e.transactionId = t.id AND e.kind = 'photo_uri'
+                 ORDER BY e.id LIMIT 1) AS photoUri
         FROM transactions t
         LEFT JOIN categories c ON c.id = t.categoryId
         JOIN accounts a ON a.id = t.accountId

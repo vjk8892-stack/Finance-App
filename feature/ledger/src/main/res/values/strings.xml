@@ -5,6 +5,7 @@
     <string name="ledger_accounts">Accounts</string>
     <string name="ledger_scan_sms">Scan bank messages</string>
     <string name="ledger_done">Done</string>
+    <string name="ledger_has_photo">Receipt photo attached</string>
     <string name="ledger_not_in_total">· not in total</string>
     <string name="ledger_recategorize">Recategorize</string>
     <string name="ledger_edit">Edit</string>
@@ -86,6 +87,12 @@
     <string name="edit_is_transfer_off">Mark as a transfer between my accounts</string>
     <string name="edit_is_transfer_help">Card bill payments and moving money to another of your accounts are not income or spending. Marked entries keep your balances right but stay out of the totals.</string>
     <string name="edit_save">Save</string>
+    <string name="edit_effect_expense">Expense</string>
+    <string name="edit_effect_income">Income</string>
+    <string name="edit_effect_none">None</string>
+    <string name="edit_effect_expense_help">Counted as money you spent.</string>
+    <string name="edit_effect_income_help">Counted as money you received.</string>
+    <string name="edit_effect_none_help">Left out of every total — for moving money between your own accounts, or paying off your own card. Your balances still change.</string>
     <string name="ledger_categorize_existing">Categorize existing</string>
     <string name="ledger_categorize_done">Sorted %1$d entries into categories.</string>
     <string name="ledger_categorize_none">Nothing left to sort automatically — the rest need a category by hand.</string>
@@ -123,6 +130,7 @@
     <string name="detail_captured_by">Captured from</string>
     <string name="detail_reference">Reference</string>
     <string name="detail_note">Note</string>
+    <string name="detail_receipt">Receipt</string>
     <string name="detail_status">Status</string>
     <string name="detail_status_review">Waiting for review</string>
     <string name="detail_original_message">Original message</string>
