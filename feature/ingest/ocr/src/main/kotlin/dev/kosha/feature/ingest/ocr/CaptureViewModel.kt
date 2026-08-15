@@ -24,6 +24,13 @@ data class CaptureUiState(
     val batchMode: Boolean = false,
     val batchCount: Int = 0,
     val unreadable: Boolean = false,
+    /**
+     * The camera itself failed to produce a file. Reported separately from
+     * [unreadable]: 'the photo could not be taken' and 'the photo could not be
+     * read' need different advice, and swallowing the first meant tapping the
+     * shutter did nothing at all, forever, with no clue why.
+     */
+    val captureFailed: Boolean = false,
     val lastResult: PipelineCommitter.CommitResult? = null,
     val warrantyPrompt: WarrantyPrompt? = null,
 ) {
@@ -45,8 +52,17 @@ class CaptureViewModel @Inject constructor(
         _state.value = _state.value.copy(batchMode = !_state.value.batchMode, batchCount = 0)
     }
 
+    /** The shutter was pressed; the file does not exist yet. */
+    fun onCaptureStarted() {
+        _state.value = _state.value.copy(processing = true, unreadable = false, captureFailed = false)
+    }
+
+    fun onCaptureFailed() {
+        _state.value = _state.value.copy(processing = false, captureFailed = true)
+    }
+
     fun onCaptured(uri: Uri, liveCapture: Boolean) {
-        _state.value = _state.value.copy(processing = true, unreadable = false)
+        _state.value = _state.value.copy(processing = true, unreadable = false, captureFailed = false)
         viewModelScope.launch {
             val preview = ingestPhoto.preview(uri, liveCapture)
             _state.value = if (preview == null) {
@@ -119,6 +135,6 @@ class CaptureViewModel @Inject constructor(
     }
 
     fun clearResult() {
-        _state.value = _state.value.copy(lastResult = null, unreadable = false)
+        _state.value = _state.value.copy(lastResult = null, unreadable = false, captureFailed = false)
     }
 }

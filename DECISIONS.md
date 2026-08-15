@@ -553,3 +553,21 @@ they are whole, and has silently lost data.
 - **2026-08-15 · A payer's name may be ended by a separator, not just by the
   word "on"** · the single `from … on` pattern · "Cr. INR 5,000.00 on 12/08/26
   from RAMESH K; UPI: …" left money received from a person unnamed.
+
+- **2026-08-15 · A photo Kosha cannot parse opens the preview EMPTY rather
+  than being discarded** · keep returning null and showing "unreadable" ·
+  `preview()` returned null both when the image could not be read at all and
+  when text came off cleanly but held no amount. The second is the common case
+  — a receipt in an unusual layout — and throwing the capture away meant the
+  Scan and Import tabs returned to their own screen with nothing to show,
+  which is indistinguishable from the button not working. The preview screen
+  exists precisely so the user can correct a bad read, and its Confirm is
+  already gated on a parseable amount, so opening it empty is safe. Null is
+  now reserved for "nothing readable in this image at all".
+- **2026-08-15 · Camera capture failures are reported** · `onError = Unit` ·
+  A failed shutter produced no photo, no error and no end to the spinner. It
+  is a separate state from "unreadable": the photo could not be TAKEN, which
+  needs different advice from the photo not being understood.
+- **2026-08-15 · The Import tab has a failure state at all** · rely on the
+  preview opening · It rendered only its intro text and the picker chip, so a
+  rejected image put the user back on an unchanged screen with no message.

@@ -64,6 +64,17 @@ fun ExtractionPreview(
             color = KoshaColors.OffWhite,
         )
 
+        // An unreadable capture used to be discarded outright. It now opens
+        // here with empty fields, so a photo Kosha cannot parse still becomes
+        // a transaction the user can type — with the image kept as evidence.
+        if (preview.nothingExtracted) {
+            Text(
+                text = stringResource(R.string.preview_nothing_read),
+                style = KoshaType.Body,
+                color = KoshaColors.Amber,
+            )
+        }
+
         FieldLabel(
             label = stringResource(R.string.preview_amount),
             lowConfidence = ParsedTransaction.Field.AMOUNT in preview.lowConfidenceFields,

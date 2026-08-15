@@ -29,4 +29,8 @@
     <string name="warranty_prompt_body">%1$s — set a warranty period and Kosha will remind you before it expires.</string>
     <string name="warranty_months">%1$d months</string>
     <string name="warranty_skip">No thanks</string>
+    <string name="scan_capture_failed">The camera could not save that shot. Try again — if it keeps failing, close and reopen Kosha.</string>
+    <string name="import_unreadable">No text could be read from that image. A screenshot of the payment confirmation usually works better than a photo of a screen.</string>
+    <string name="import_pick_again">Pick another image</string>
+    <string name="preview_nothing_read">Kosha could not find an amount in this image. Fill in what it should say — the photo is kept as evidence either way.</string>
 </resources>

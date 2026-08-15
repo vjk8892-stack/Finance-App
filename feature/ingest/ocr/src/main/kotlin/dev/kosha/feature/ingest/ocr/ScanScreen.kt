@@ -96,7 +96,10 @@ fun ScanScreen(viewModel: CaptureViewModel = hiltViewModel()) {
             batchMode = state.batchMode,
             batchCount = state.batchCount,
             unreadable = state.unreadable,
+            captureFailed = state.captureFailed,
             onToggleBatch = viewModel::toggleBatch,
+            onCaptureStarted = viewModel::onCaptureStarted,
+            onCaptureFailed = viewModel::onCaptureFailed,
             onCaptured = { uri -> viewModel.onCaptured(uri, liveCapture = true) },
         )
     }
@@ -141,12 +144,27 @@ fun ImportScreen(viewModel: CaptureViewModel = hiltViewModel()) {
             style = KoshaType.InsightSerif,
             color = KoshaColors.OffWhiteMuted,
         )
+
+        // This screen had no failure state at all. When a picked image could
+        // not be read, the preview never opened and the picker chip simply
+        // reappeared — indistinguishable from the button not working.
+        if (state.unreadable) {
+            Spacer(Modifier.height(KoshaSpacing.s))
+            Text(
+                text = stringResource(R.string.import_unreadable),
+                style = KoshaType.Body,
+                color = KoshaColors.Amber,
+            )
+        }
+
         Spacer(Modifier.height(KoshaSpacing.m))
         if (state.processing) {
             CircularProgressIndicator(color = KoshaColors.AccentTeal)
         } else {
             KoshaChip(
-                label = stringResource(R.string.import_pick),
+                label = stringResource(
+                    if (state.unreadable) R.string.import_pick_again else R.string.import_pick,
+                ),
                 onClick = {
                     pickerLauncher.launch(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
@@ -197,7 +215,10 @@ private fun CameraCapture(
     batchMode: Boolean,
     batchCount: Int,
     unreadable: Boolean,
+    captureFailed: Boolean,
     onToggleBatch: () -> Unit,
+    onCaptureStarted: () -> Unit,
+    onCaptureFailed: () -> Unit,
     onCaptured: (Uri) -> Unit,
 ) {
     val context = LocalContext.current
@@ -248,6 +269,13 @@ private fun CameraCapture(
                     color = KoshaColors.Amber,
                 )
             }
+            if (captureFailed) {
+                Text(
+                    text = stringResource(R.string.scan_capture_failed),
+                    style = KoshaType.Body,
+                    color = KoshaColors.Amber,
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.s)) {
                 KoshaChip(
                     label = if (batchMode) {
@@ -263,7 +291,10 @@ private fun CameraCapture(
                 } else {
                     KoshaChip(
                         label = stringResource(R.string.scan_shutter),
-                        onClick = { captureTo(context, imageCapture, onCaptured) },
+                        onClick = {
+                            onCaptureStarted()
+                            captureTo(context, imageCapture, onCaptured, onCaptureFailed)
+                        },
                         accent = KoshaColors.AccentTeal,
                     )
                 }
@@ -276,6 +307,7 @@ private fun captureTo(
     context: Context,
     imageCapture: ImageCapture,
     onCaptured: (Uri) -> Unit,
+    onFailed: () -> Unit,
 ) {
     // App-private storage: no storage permission, and evidence photos stay
     // inside the app sandbox (spec B4/G9).
@@ -291,7 +323,10 @@ private fun captureTo(
                 onCaptured(output.savedUri ?: Uri.fromFile(file))
             }
 
-            override fun onError(exception: ImageCaptureException) = Unit
+            // Swallowing this meant a failed shutter did nothing whatsoever
+            // — no photo, no error, no spinner ending. The tab simply looked
+            // dead.
+            override fun onError(exception: ImageCaptureException) = onFailed()
         },
     )
 }

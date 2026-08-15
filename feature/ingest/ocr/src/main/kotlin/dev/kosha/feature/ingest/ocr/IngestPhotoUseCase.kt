@@ -40,13 +40,44 @@ class IngestPhotoUseCase @Inject constructor(
         val appLabel: String,
         /** Field-level flags drive the confidence highlights in the preview UI. */
         val lowConfidenceFields: Set<ParsedTransaction.Field>,
+        /**
+         * True when text came off the image but no transaction could be read
+         * from it. The preview is still shown, empty, for the user to fill in.
+         */
+        val nothingExtracted: Boolean = false,
     )
 
-    /** Step 1: recognize + extract, for the editable preview screen (spec C4). */
+    /**
+     * Step 1: recognize + extract, for the editable preview screen (spec C4).
+     *
+     * Returns null ONLY when nothing could be read from the image at all — a
+     * blurred shot, a photo of something that is not a receipt. A photo whose
+     * text came off cleanly but held no recognisable amount returns an EMPTY
+     * preview instead of null, because the preview screen exists precisely so
+     * the user can correct what the extractor got wrong. Throwing the capture
+     * away in that case is what made both tabs look broken: you took a photo,
+     * and the app returned to the same screen with nothing to show for it.
+     */
     suspend fun preview(uri: Uri, liveCapture: Boolean): Preview? {
         val text = runCatching { recognizer.recognize(uri) }.getOrNull() ?: return null
+        if (text.isBlank()) return null
         val capturedAt = System.currentTimeMillis()
-        val extraction = extractor.extract(text, capturedAt, liveCapture) ?: return null
+        val extraction = extractor.extract(text, capturedAt, liveCapture)
+            ?: return Preview(
+                uri = uri,
+                amount = null,
+                type = TxnType.DEBIT,
+                merchant = null,
+                reference = null,
+                accountLast4 = null,
+                capturedAtMillis = capturedAt,
+                liveCapture = liveCapture,
+                lineItems = emptyList(),
+                warrantyCandidate = null,
+                appLabel = "",
+                lowConfidenceFields = ParsedTransaction.Field.entries.toSet(),
+                nothingExtracted = true,
+            )
         val lowConfidence = extraction.txn.fieldConfidence
             .filterValues { it < 0.8 }
             .keys
