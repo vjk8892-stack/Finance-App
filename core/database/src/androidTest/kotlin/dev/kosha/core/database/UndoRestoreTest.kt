@@ -10,7 +10,10 @@ import dev.kosha.core.database.model.TransactionEntity
 import dev.kosha.core.database.model.TxnSource
 import dev.kosha.core.database.model.TxnStatus
 import dev.kosha.core.database.model.TxnType
+import dev.kosha.core.database.repo.BalanceMaintainer
 import dev.kosha.core.database.repo.TransactionRepository
+import dev.kosha.core.database.settings.SettingsRepository
+import dev.kosha.core.database.settings.TrackingWindow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -28,6 +31,22 @@ class UndoRestoreTest {
     private fun db(context: Context) = Room.inMemoryDatabaseBuilder(context, KoshaDatabase::class.java)
         .allowMainThreadQueries()
         .build()
+
+    /**
+     * No tracking boundary is set in these tests, so the window is "everything"
+     * and the balances behave exactly as they did before it existed — which is
+     * the point: adding the boundary must not change the untracked case.
+     */
+    private fun repo(database: KoshaDatabase): TransactionRepository {
+        val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
+        val trackingWindow = TrackingWindow(SettingsRepository(context))
+        return TransactionRepository(
+            database.transactionDao(),
+            database.accountDao(),
+            BalanceMaintainer(database.accountDao(), trackingWindow),
+            trackingWindow,
+        )
+    }
 
     private fun txn(accountId: Long, paise: Long, parentId: Long? = null) = TransactionEntity(
         accountId = accountId,
@@ -47,7 +66,7 @@ class UndoRestoreTest {
     fun deleteThenRestoreKeepsTheSameIdAndBalance() = runBlocking {
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
         val database = db(context)
-        val repo = TransactionRepository(database.transactionDao(), database.accountDao())
+        val repo = repo(database)
         val accountId = database.accountDao().insert(
             AccountEntity(name = "Bank", type = AccountType.BANK, openingBalancePaise = 100_000),
         )
@@ -73,7 +92,7 @@ class UndoRestoreTest {
         // parent would quietly drop them and leave the category mix wrong.
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
         val database = db(context)
-        val repo = TransactionRepository(database.transactionDao(), database.accountDao())
+        val repo = repo(database)
         val accountId = database.accountDao().insert(AccountEntity(name = "Bank", type = AccountType.BANK))
 
         val parentId = repo.add(txn(accountId, 40_000))
@@ -93,7 +112,7 @@ class UndoRestoreTest {
     fun undoingABulkApprovalPutsRowsBackInTheQueue() = runBlocking {
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
         val database = db(context)
-        val repo = TransactionRepository(database.transactionDao(), database.accountDao())
+        val repo = repo(database)
         val accountId = database.accountDao().insert(AccountEntity(name = "Bank", type = AccountType.BANK))
 
         val ids = (1..3).map { i ->

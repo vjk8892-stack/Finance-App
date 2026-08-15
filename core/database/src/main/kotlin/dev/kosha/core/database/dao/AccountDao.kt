@@ -25,6 +25,10 @@ interface AccountDao {
     @Query("SELECT * FROM accounts ORDER BY id")
     fun observeAll(): Flow<List<AccountEntity>>
 
+    /** Inactive ones included: their balances still have to stay consistent. */
+    @Query("SELECT * FROM accounts ORDER BY id")
+    suspend fun allAccounts(): List<AccountEntity>
+
     @Query("SELECT * FROM accounts WHERE id = :id")
     suspend fun byId(id: Long): AccountEntity?
 
@@ -38,9 +42,15 @@ interface AccountDao {
     suspend fun delete(account: AccountEntity)
 
     /**
-     * currentBalance = openingBalance + Σ(parent txns), spec B5: recomputed,
-     * never independently mutated. Children (splits) excluded via
-     * parentTransactionId IS NULL.
+     * currentBalance = openingBalance + Σ(parent txns from [fromMillis]),
+     * spec B5: recomputed, never independently mutated. Children (splits)
+     * excluded via parentTransactionId IS NULL.
+     *
+     * [fromMillis] is the tracking boundary, 0 when everything is tracked. It
+     * belongs in the SAME sum the ledger shows, or the balance and the rows
+     * under it cover different periods and adding the rows up stops matching
+     * the figure above them. With a boundary set, the opening balance means
+     * "what was in this account on that date".
      */
     @Query(
         """
@@ -48,10 +58,10 @@ interface AccountDao {
             (SELECT SUM(CASE WHEN t.type = 'credit' THEN t.amountPaise ELSE -t.amountPaise END)
              FROM transactions t
              WHERE t.accountId = accounts.id AND t.parentTransactionId IS NULL
-               AND t.status = 'committed'),
+               AND t.status = 'committed' AND t.timestampMillis >= :fromMillis),
             0)
         WHERE id = :accountId
         """
     )
-    suspend fun recomputeBalance(accountId: Long)
+    suspend fun recomputeBalance(accountId: Long, fromMillis: Long)
 }

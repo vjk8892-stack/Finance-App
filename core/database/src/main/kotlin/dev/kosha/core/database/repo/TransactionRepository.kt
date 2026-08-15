@@ -9,7 +9,9 @@ import dev.kosha.core.database.model.TransactionEvidenceEntity
 import dev.kosha.core.database.model.TxnStatus
 import javax.inject.Inject
 import javax.inject.Singleton
+import dev.kosha.core.database.settings.TrackingWindow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 
 /**
  * Single write path for transactions.
@@ -22,27 +24,50 @@ import kotlinx.coroutines.flow.Flow
 class TransactionRepository @Inject constructor(
     private val transactionDao: TransactionDao,
     private val accountDao: AccountDao,
+    private val balanceMaintainer: BalanceMaintainer,
+    private val trackingWindow: TrackingWindow,
 ) {
 
-    fun observeLedger(): Flow<List<LedgerRow>> = transactionDao.observeLedger()
+    /**
+     * Committed rows from the tracking boundary onwards.
+     *
+     * Filtered here rather than in each screen: the ledger, the account
+     * statement and the natural-language query all read this one flow, and a
+     * boundary honoured by two of the three would show three different
+     * histories of the same month.
+     */
+    fun observeLedger(): Flow<List<LedgerRow>> =
+        combine(transactionDao.observeLedger(), trackingWindow.startMillis) { rows, from ->
+            if (from <= 0L) rows else rows.filter { it.txn.timestampMillis >= from }
+        }
+
+    /**
+     * The review queue, boundary-filtered for the same reason as the ledger:
+     * approving a row that will then be hidden is a wasted decision, and a
+     * queue badge counting invisible rows can never be cleared.
+     */
+    fun observeReviewQueue(): Flow<List<LedgerRow>> =
+        combine(transactionDao.observeReviewQueue(), trackingWindow.startMillis) { rows, from ->
+            if (from <= 0L) rows else rows.filter { it.txn.timestampMillis >= from }
+        }
 
     suspend fun byId(id: Long): TransactionEntity? = transactionDao.byId(id)
 
     suspend fun add(txn: TransactionEntity): Long {
         val id = transactionDao.insert(txn)
-        accountDao.recomputeBalance(txn.accountId)
+        balanceMaintainer.recompute(txn.accountId)
         return id
     }
 
     suspend fun update(txn: TransactionEntity) {
         transactionDao.update(txn.copy(updatedAtMillis = System.currentTimeMillis()))
-        accountDao.recomputeBalance(txn.accountId)
+        balanceMaintainer.recompute(txn.accountId)
     }
 
     suspend fun delete(id: Long) {
         val existing = transactionDao.byId(id) ?: return
         transactionDao.deleteWithChildren(id)
-        accountDao.recomputeBalance(existing.accountId)
+        balanceMaintainer.recompute(existing.accountId)
     }
 
     // --- Undo ---
@@ -66,7 +91,7 @@ class TransactionRepository @Inject constructor(
         val children = transactionDao.childrenOf(id)
         val evidence = transactionDao.evidenceFor(id)
         transactionDao.deleteWithChildren(id)
-        accountDao.recomputeBalance(parent.accountId)
+        balanceMaintainer.recompute(parent.accountId)
         return DeletedTransaction(listOf(parent) + children, evidence)
     }
 
@@ -76,7 +101,7 @@ class TransactionRepository @Inject constructor(
         val evidence = ids.flatMap { transactionDao.evidenceFor(it) }
         val accountIds = transactionDao.accountIdsFor(ids)
         transactionDao.deleteBatch(ids)
-        accountIds.forEach { accountDao.recomputeBalance(it) }
+        accountIds.forEach { balanceMaintainer.recompute(it) }
         return DeletedTransaction(rows, evidence)
     }
 
@@ -88,7 +113,7 @@ class TransactionRepository @Inject constructor(
         transactionDao.insertAll(parents)
         if (children.isNotEmpty()) transactionDao.insertAll(children)
         if (deleted.evidence.isNotEmpty()) transactionDao.insertEvidenceAll(deleted.evidence)
-        deleted.rows.map { it.accountId }.distinct().forEach { accountDao.recomputeBalance(it) }
+        deleted.rows.map { it.accountId }.distinct().forEach { balanceMaintainer.recompute(it) }
     }
 
     /** What a row looked like in the review queue, so approval is reversible. */
@@ -108,7 +133,7 @@ class TransactionRepository @Inject constructor(
         val now = System.currentTimeMillis()
         states.forEach { transactionDao.restoreStatus(it.id, it.status, it.reason, now) }
         val accountIds = transactionDao.accountIdsFor(states.map { it.id })
-        accountIds.forEach { accountDao.recomputeBalance(it) }
+        accountIds.forEach { balanceMaintainer.recompute(it) }
     }
 
     suspend fun recategorizeMerchantCapturing(
@@ -143,7 +168,7 @@ class TransactionRepository @Inject constructor(
         if (ids.isEmpty()) return
         val accountIds = transactionDao.accountIdsFor(ids)
         transactionDao.approveReviewBatch(ids, System.currentTimeMillis())
-        accountIds.forEach { accountDao.recomputeBalance(it) }
+        accountIds.forEach { balanceMaintainer.recompute(it) }
     }
 
     suspend fun deleteAll(ids: List<Long>) {
@@ -151,6 +176,6 @@ class TransactionRepository @Inject constructor(
         // Read the accounts BEFORE the rows disappear.
         val accountIds = transactionDao.accountIdsFor(ids)
         transactionDao.deleteBatch(ids)
-        accountIds.forEach { accountDao.recomputeBalance(it) }
+        accountIds.forEach { balanceMaintainer.recompute(it) }
     }
 }

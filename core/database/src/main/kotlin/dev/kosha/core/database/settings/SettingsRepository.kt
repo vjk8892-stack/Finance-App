@@ -36,7 +36,22 @@ data class KoshaSettings(
     val backupFolderUri: String? = null,
     /** When the last successful backup was written, 0 if never. */
     val lastBackupAtMillis: Long = 0,
+    /**
+     * Ignore everything before this day, as an epoch-day, or 0 for "track
+     * everything".
+     *
+     * A HIDE, never a delete. Older rows keep their categories, their edits
+     * and their transfer marks, so moving the date back reveals them exactly
+     * as they were left — which is the whole reason this is a filter and not a
+     * purge. Held as epoch-day rather than millis so a timezone change cannot
+     * move the boundary by a day.
+     */
+    val trackingStartEpochDay: Long = 0,
 )
+
+/** The tracking boundary as a date, or null when everything is tracked. */
+val KoshaSettings.trackingStartDate: java.time.LocalDate?
+    get() = trackingStartEpochDay.takeIf { it > 0 }?.let(java.time.LocalDate::ofEpochDay)
 
 @Singleton
 class SettingsRepository @Inject constructor(
@@ -51,6 +66,7 @@ class SettingsRepository @Inject constructor(
         val emergencyFundMonths = intPreferencesKey("emergency_fund_months")
         val backupFolderUri = stringPreferencesKey("backup_folder_uri")
         val lastBackupAt = longPreferencesKey("last_backup_at")
+        val trackingStart = longPreferencesKey("tracking_start_epoch_day")
     }
 
     val settings: Flow<KoshaSettings> = context.dataStore.data.map { p ->
@@ -63,7 +79,13 @@ class SettingsRepository @Inject constructor(
             emergencyFundMonths = (p[Keys.emergencyFundMonths] ?: 3).coerceIn(3, 12),
             backupFolderUri = p[Keys.backupFolderUri],
             lastBackupAtMillis = p[Keys.lastBackupAt] ?: 0,
+            trackingStartEpochDay = p[Keys.trackingStart] ?: 0,
         )
+    }
+
+    /** Pass null to go back to tracking everything. */
+    suspend fun setTrackingStart(date: java.time.LocalDate?) = context.dataStore.edit {
+        it[Keys.trackingStart] = date?.toEpochDay() ?: 0L
     }
 
     suspend fun setBackupFolderUri(uri: String) = context.dataStore.edit {

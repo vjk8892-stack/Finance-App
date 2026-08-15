@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.Flow
  */
 @Singleton
 class RecurringRepository @Inject constructor(
+    private val balanceMaintainer: BalanceMaintainer,
     private val planningDao: PlanningDao,
     private val transactionDao: TransactionDao,
     private val accountDao: AccountDao,
@@ -92,7 +93,7 @@ class RecurringRepository @Inject constructor(
                             updatedAtMillis = now,
                         ),
                     )
-                    accountDao.recomputeBalance(rule.accountId)
+                    balanceMaintainer.recompute(rule.accountId)
                     posted++
                 }
             }

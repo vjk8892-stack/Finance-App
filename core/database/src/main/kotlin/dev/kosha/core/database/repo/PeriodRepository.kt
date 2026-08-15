@@ -14,6 +14,7 @@ import dev.kosha.core.database.model.TxnType
 import dev.kosha.core.engine.period.PeriodMath
 import java.time.LocalDate
 import java.time.ZoneId
+import dev.kosha.core.database.settings.TrackingWindow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +25,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class PeriodRepository @Inject constructor(
+    private val trackingWindow: TrackingWindow,
     private val transactionDao: TransactionDao,
     private val planningDao: PlanningDao,
     private val categoryDao: CategoryDao,
@@ -49,7 +51,10 @@ class PeriodRepository @Inject constructor(
     }
 
     suspend fun snapshot(period: Period): PeriodSnapshot {
-        val from = period.startEpochMillis(zone)
+        // A period that begins before the tracking boundary is clamped to it,
+        // so a month you only started tracking halfway through reports what
+        // you tracked rather than silently including what you asked to ignore.
+        val from = trackingWindow.clampFrom(period.startEpochMillis(zone))
         val to = period.endEpochMillisExclusive(zone)
         val rows = transactionDao.inWindow(from, to).filter { it.status == TxnStatus.COMMITTED }
         val transferLegIds = transactionDao.transferLegIds().toSet()

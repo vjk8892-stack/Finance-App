@@ -4,6 +4,7 @@ import android.content.Context
 import android.provider.Telephony
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.kosha.core.database.repo.PipelineCommitter
+import dev.kosha.core.database.settings.TrackingWindow
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +17,7 @@ import kotlinx.coroutines.withContext
  */
 @Singleton
 class HistoricalSmsImporter @Inject constructor(
+    private val trackingWindow: TrackingWindow,
     @ApplicationContext private val context: Context,
     private val ingest: IngestSmsUseCase,
 ) {
@@ -48,7 +50,10 @@ class HistoricalSmsImporter @Inject constructor(
         sinceMillis: Long,
         onProgress: (scanned: Int, total: Int) -> Unit = { _, _ -> },
     ): ImportSummary = withContext(Dispatchers.IO) {
-        val since = sinceMillis
+        // Never reach below the tracking boundary. Importing messages the user
+        // has asked to ignore fills the review queue with rows that will not
+        // even be shown once approved.
+        val since = maxOf(sinceMillis, trackingWindow.startMillisNow())
         var scanned = 0
         var committed = 0
         var queued = 0

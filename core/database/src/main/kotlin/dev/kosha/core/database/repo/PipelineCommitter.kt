@@ -33,6 +33,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class PipelineCommitter @Inject constructor(
+    private val balanceMaintainer: BalanceMaintainer,
     private val transactionDao: TransactionDao,
     private val accountDao: AccountDao,
     private val categoryDao: CategoryDao,
@@ -47,6 +48,9 @@ class PipelineCommitter @Inject constructor(
 
     /** Recent window handed to the dedup engine. */
     suspend fun dedupWindow(aroundMillis: Long, spreadMillis: Long = DEFAULT_SPREAD): List<DedupEngine.ExistingTxn> =
+        // Deliberately NOT clamped to the tracking boundary. Dedup has to see
+        // rows the user has chosen to ignore, or re-scanning a period they
+        // later re-include would import a second copy of everything in it.
         transactionDao.inWindow(aroundMillis - spreadMillis, aroundMillis + spreadMillis).map {
             DedupEngine.ExistingTxn(
                 id = it.id,
@@ -275,7 +279,7 @@ class PipelineCommitter @Inject constructor(
             ),
         )
         transactionDao.insertTransfer(TransferEntity(fromTransactionId = debit.id, toTransactionId = creditId))
-        accountDao.recomputeBalance(cash.id)
+        balanceMaintainer.recompute(cash.id)
         return debit.asResult()
     }
 
@@ -341,7 +345,7 @@ class PipelineCommitter @Inject constructor(
                 updatedAtMillis = now,
             ),
         )
-        accountDao.recomputeBalance(accountId)
+        balanceMaintainer.recompute(accountId)
         return Inserted(id, effectiveStatus)
     }
 

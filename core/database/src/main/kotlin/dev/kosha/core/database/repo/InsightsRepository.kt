@@ -18,6 +18,7 @@ import dev.kosha.core.engine.insight.HealthScore
 import dev.kosha.core.engine.insight.LeakDetector
 import java.time.LocalDate
 import java.time.ZoneId
+import dev.kosha.core.database.settings.TrackingWindow
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.first
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.first
  */
 @Singleton
 class InsightsRepository @Inject constructor(
+    private val trackingWindow: TrackingWindow,
     private val transactionDao: TransactionDao,
     private val categoryDao: CategoryDao,
     private val planningDao: PlanningDao,
@@ -87,7 +89,7 @@ class InsightsRepository @Inject constructor(
 
         // Daily spend for the heatmap, and the raw rows the breakdown needs.
         val periodTxns = transactionDao.inWindow(
-            period.startEpochMillis(zone),
+            trackingWindow.clampFrom(period.startEpochMillis(zone)),
             period.endEpochMillisExclusive(zone),
         ).filter { it.status == TxnStatus.COMMITTED && it.type == TxnType.DEBIT }
 
@@ -118,7 +120,7 @@ class InsightsRepository @Inject constructor(
         // Leaks over the trailing 90 days.
         val leakWindowStart = LocalDate.now(zone).minusDays(LeakDetector.WINDOW_DAYS.toLong())
         val leakTxns = transactionDao.inWindow(
-            leakWindowStart.atStartOfDay(zone).toInstant().toEpochMilli(),
+            trackingWindow.clampFrom(leakWindowStart.atStartOfDay(zone).toInstant().toEpochMilli()),
             System.currentTimeMillis(),
         ).filter {
             it.status == TxnStatus.COMMITTED &&
@@ -134,8 +136,11 @@ class InsightsRepository @Inject constructor(
 
         // Anomalies over this period's transactions, against 6 months of history.
         val historyStart = LocalDate.now(zone).minusDays(AnomalyEngine.HISTORY_WINDOW_DAYS)
+        // History is what the anomaly detector calls "normal for you". Reaching
+        // past the boundary would judge this month against months the user
+        // asked to ignore.
         val historyTxns = transactionDao.inWindow(
-            historyStart.atStartOfDay(zone).toInstant().toEpochMilli(),
+            trackingWindow.clampFrom(historyStart.atStartOfDay(zone).toInstant().toEpochMilli()),
             System.currentTimeMillis(),
         ).filter { it.status == TxnStatus.COMMITTED && it.type == TxnType.DEBIT }
 

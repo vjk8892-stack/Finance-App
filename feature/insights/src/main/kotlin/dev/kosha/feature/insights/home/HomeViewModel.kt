@@ -12,6 +12,7 @@ import dev.kosha.core.database.model.CategoryType
 import dev.kosha.core.database.repo.CategoryRepository
 import dev.kosha.core.database.repo.ForecastRepository
 import dev.kosha.core.database.repo.PeriodRepository
+import dev.kosha.core.database.repo.TransactionRepository
 import dev.kosha.core.database.settings.SettingsRepository
 import dev.kosha.core.engine.forecast.ForecastEngine
 import dev.kosha.core.engine.period.BudgetMath
@@ -62,6 +63,7 @@ class HomeViewModel @Inject constructor(
     private val forecastRepository: ForecastRepository,
     private val planningDao: PlanningDao,
     transactionDao: TransactionDao,
+    transactionRepository: TransactionRepository,
     categoryRepository: CategoryRepository,
     settingsRepository: SettingsRepository,
 ) : ViewModel() {
@@ -70,7 +72,7 @@ class HomeViewModel @Inject constructor(
         transactionDao.observeTransactionCount(),
         planningDao.observeBudgets(),
         categoryRepository.observeAll(),
-        transactionDao.observeReviewQueue(),
+        transactionRepository.observeReviewQueue(),
         settingsRepository.settings,
     ) { txnCount, budgets, categories, reviewRows, settings ->
         val period = periodRepository.currentPeriod(settings.periodAnchorDay)

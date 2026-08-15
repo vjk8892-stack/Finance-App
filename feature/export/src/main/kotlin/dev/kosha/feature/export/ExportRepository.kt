@@ -10,6 +10,7 @@ import dev.kosha.core.database.dao.AccountDao
 import dev.kosha.core.database.dao.CategoryDao
 import dev.kosha.core.database.dao.TransactionDao
 import dev.kosha.core.database.model.SystemCategoryKey
+import dev.kosha.core.database.settings.TrackingWindow
 import dev.kosha.core.database.model.TxnStatus
 import dev.kosha.core.engine.export.CsvWriter
 import java.io.File
@@ -32,6 +33,7 @@ import kotlinx.coroutines.withContext
  */
 @Singleton
 class ExportRepository @Inject constructor(
+    private val trackingWindow: TrackingWindow,
     @ApplicationContext private val context: Context,
     private val transactionDao: TransactionDao,
     private val accountDao: AccountDao,
@@ -62,11 +64,16 @@ class ExportRepository @Inject constructor(
      * The window [options] asks for, as epoch millis. `null` bounds mean "all
      * of history" and "up to now" respectively.
      */
-    fun window(period: Period, range: ExportRange): Pair<Long, Long> {
+    suspend fun window(period: Period, range: ExportRange): Pair<Long, Long> {
         val start = range.startDate(period, LocalDate.now(zone))
         val endExclusive = range.endDateExclusive(period)
         return Pair(
-            start?.atStartOfDay(zone)?.toInstant()?.toEpochMilli() ?: 0L,
+            // Even "Everything" means everything TRACKED. An export that
+            // included what the app itself refuses to show would not reconcile
+            // with any figure the user could check it against.
+            trackingWindow.clampFrom(
+                start?.atStartOfDay(zone)?.toInstant()?.toEpochMilli() ?: 0L,
+            ),
             endExclusive?.atStartOfDay(zone)?.toInstant()?.toEpochMilli() ?: Long.MAX_VALUE,
         )
     }

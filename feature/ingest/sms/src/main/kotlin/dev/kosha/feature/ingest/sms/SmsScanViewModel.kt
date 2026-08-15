@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.kosha.core.database.settings.SettingsRepository
+import dev.kosha.core.database.settings.TrackingWindow
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,11 +19,18 @@ data class SmsScanUiState(
     val retainRawSms: Boolean = false,
     /** Start of the day chosen in the date picker, if any. */
     val customStartMillis: Long? = null,
+    /**
+     * The tracking boundary, so the screen can say that scanning further back
+     * will do nothing. Without it the importer silently clamps and the user
+     * sees "scanned 0" with no explanation.
+     */
+    val trackingStartMillis: Long = 0,
     val error: String? = null,
 )
 
 @HiltViewModel
 class SmsScanViewModel @Inject constructor(
+    private val trackingWindow: TrackingWindow,
     private val importer: HistoricalSmsImporter,
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
@@ -34,6 +42,11 @@ class SmsScanViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.settings.collect { settings ->
                 _state.value = _state.value.copy(retainRawSms = settings.retainRawSms)
+            }
+        }
+        viewModelScope.launch {
+            trackingWindow.startMillis.collect { start ->
+                _state.value = _state.value.copy(trackingStartMillis = start)
             }
         }
     }

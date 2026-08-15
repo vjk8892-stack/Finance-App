@@ -224,6 +224,19 @@ fun SmsScanScreen(
                                 )
                             }
                         }
+                        // Scanning below the tracking boundary imports nothing,
+                        // and "scanned 0" with no reason given reads as a
+                        // broken scanner rather than a setting doing its job.
+                        if (state.trackingStartMillis > 0) {
+                            Text(
+                                text = stringResource(
+                                    R.string.sms_scan_tracking_note,
+                                    formatDay(state.trackingStartMillis),
+                                ),
+                                style = KoshaType.Caption,
+                                color = KoshaColors.OffWhiteFaint,
+                            )
+                        }
                     }
                 }
             }

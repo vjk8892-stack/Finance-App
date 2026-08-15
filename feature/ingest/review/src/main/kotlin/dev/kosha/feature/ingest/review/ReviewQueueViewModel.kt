@@ -82,7 +82,7 @@ class ReviewQueueViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<ReviewUiState> = combine(
-        transactionDao.observeReviewQueue(),
+        transactionRepository.observeReviewQueue(),
         categoryRepository.observeAll(),
         _sort,
     ) { items, categories, sort ->

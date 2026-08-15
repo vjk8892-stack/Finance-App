@@ -12,12 +12,14 @@ import dev.kosha.core.engine.forecast.ForecastEngine
 import dev.kosha.core.engine.forecast.RecurringEngine
 import java.time.LocalDate
 import java.time.ZoneId
+import dev.kosha.core.database.settings.TrackingWindow
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /** Assembles ledger + rules into [ForecastEngine] inputs (spec G6). */
 @Singleton
 class ForecastRepository @Inject constructor(
+    private val trackingWindow: TrackingWindow,
     private val accountDao: AccountDao,
     private val planningDao: PlanningDao,
     private val transactionDao: TransactionDao,
@@ -65,7 +67,7 @@ class ForecastRepository @Inject constructor(
         // and transfer legs (both are counted explicitly above).
         val windowStart = today.minusDays(ForecastEngine.DISCRETIONARY_WINDOW_DAYS.toLong())
         val windowTxns = transactionDao.inWindow(
-            windowStart.atStartOfDay(zone).toInstant().toEpochMilli(),
+            trackingWindow.clampFrom(windowStart.atStartOfDay(zone).toInstant().toEpochMilli()),
             today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli(),
         )
         val transferLegIds = transactionDao.transferLegIds().toSet()

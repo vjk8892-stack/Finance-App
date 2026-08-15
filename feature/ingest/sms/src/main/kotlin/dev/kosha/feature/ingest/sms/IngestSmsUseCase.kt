@@ -5,6 +5,7 @@ import dev.kosha.core.database.model.TxnSource
 import dev.kosha.core.database.repo.PipelineCommitter
 import dev.kosha.core.database.repo.RecurringRepository
 import dev.kosha.core.database.settings.SettingsRepository
+import dev.kosha.core.database.settings.TrackingWindow
 import dev.kosha.core.engine.pipeline.IngestionPipeline
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.first
  */
 @Singleton
 class IngestSmsUseCase @Inject constructor(
+    private val trackingWindow: TrackingWindow,
     private val committer: PipelineCommitter,
     private val recurringRepository: RecurringRepository,
     private val settingsRepository: SettingsRepository,
@@ -24,6 +26,13 @@ class IngestSmsUseCase @Inject constructor(
     private val pipeline = IngestionPipeline()
 
     suspend fun ingest(sender: String, body: String, receivedAtMillis: Long): PipelineCommitter.CommitResult {
+        // Live capture respects the boundary too. Without this, a message
+        // arriving now with an older receipt time would be committed into a
+        // window the user has chosen not to track and simply never appear.
+        val trackingStart = trackingWindow.startMillisNow()
+        if (trackingStart > 0 && receivedAtMillis < trackingStart) {
+            return PipelineCommitter.CommitResult.Dropped("before-tracking-start")
+        }
         val existing = committer.dedupWindow(receivedAtMillis)
         val outcome = pipeline.processSms(
             sender = sender,

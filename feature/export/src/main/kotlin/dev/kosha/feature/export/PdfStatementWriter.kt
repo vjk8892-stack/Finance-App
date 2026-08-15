@@ -106,6 +106,7 @@ class PdfStatementWriter @Inject constructor(
         val canvas = page.canvas
         var y = MARGIN + 40f
 
+        drawTitleBand(canvas, y)
         canvas.drawText("Kosha statement", MARGIN, y, titlePaint)
         y += 28f
         val format = DateTimeFormatter.ofPattern("d MMM yyyy")
@@ -140,6 +141,7 @@ class PdfStatementWriter @Inject constructor(
         val canvas = page.canvas
         var y = MARGIN + 40f
 
+        drawTitleBand(canvas, y)
         canvas.drawText("Where it went", MARGIN, y, titlePaint)
         y += 34f
 
@@ -270,7 +272,10 @@ class PdfStatementWriter @Inject constructor(
         bars.forEachIndexed { index, bar ->
             val height = chartHeight * (bar.spent.paise / peak)
             val left = MARGIN + index * slot + (slot - barWidth) / 2f
-            canvas.drawRect(left, baseline - height, left + barWidth, baseline, barPaint)
+            // The month you are in is the one being judged; every other bar is
+            // context for it.
+            val paint = if (index == bars.lastIndex) barPaintCurrent else barPaint
+            canvas.drawRect(left, baseline - height, left + barWidth, baseline, paint)
             canvas.drawText(bar.label, left, baseline + 14f, labelPaint)
             canvas.drawText(
                 bar.spent.format(withPaise = false),
@@ -299,6 +304,7 @@ class PdfStatementWriter @Inject constructor(
         val canvas = page.canvas
         var y = MARGIN + 40f
 
+        drawTitleBand(canvas, y)
         canvas.drawText("Trajectory", MARGIN, y, titlePaint)
         y += 24f
 
@@ -360,6 +366,7 @@ class PdfStatementWriter @Inject constructor(
         var page = document.startPage(pageInfo(pages.next()))
         var canvas = page.canvas
         var y = MARGIN + 40f
+        drawTitleBand(canvas, y)
         canvas.drawText("Every transaction", MARGIN, y, titlePaint)
         y += 30f
 
@@ -396,6 +403,21 @@ class PdfStatementWriter @Inject constructor(
         document.finishPage(page)
     }
 
+    /**
+     * A tinted band behind the page title. Cheap structure: on a printed page
+     * it is what makes each page identifiable at arm's length, and it survives
+     * greyscale as a light band rather than disappearing.
+     */
+    private fun drawTitleBand(canvas: Canvas, titleBaseline: Float) {
+        canvas.drawRect(
+            0f,
+            titleBaseline - 30f,
+            PAGE_WIDTH,
+            titleBaseline + 12f,
+            bandPaint,
+        )
+    }
+
     private fun drawAmountBlock(canvas: Canvas, label: String, amount: Money, x: Float, y: Float) {
         canvas.drawText(label, x, y, labelPaint)
         canvas.drawText(amount.format(withPaise = false), x, y + 26f, amountPaint)
@@ -405,13 +427,22 @@ class PdfStatementWriter @Inject constructor(
         PdfDocument.PageInfo.Builder(PAGE_WIDTH.toInt(), PAGE_HEIGHT.toInt(), number).create()
 
     private companion object {
+        /**
+         * The screen palette, darkened for paper. The on-screen accents are
+         * tuned for a charcoal background and read washed-out on white, so
+         * these are the same hues at print weight rather than the same values.
+         */
+        val INK_TEAL = 0xFF0B6E70.toInt()
+        val INK_VIOLET = 0xFF5B4599.toInt()
+        val INK_AMBER = 0xFFB45F05.toInt()
+
         // A4 at 72dpi.
         const val PAGE_WIDTH = 595f
         const val PAGE_HEIGHT = 842f
         const val MARGIN = 48f
 
         val titlePaint = Paint().apply {
-            color = Color.BLACK
+            color = INK_TEAL
             textSize = 22f
             typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
             isAntiAlias = true
@@ -423,7 +454,7 @@ class PdfStatementWriter @Inject constructor(
             isAntiAlias = true
         }
         val labelPaint = Paint().apply {
-            color = Color.GRAY
+            color = INK_VIOLET
             textSize = 10f
             typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
             isAntiAlias = true
@@ -440,19 +471,19 @@ class PdfStatementWriter @Inject constructor(
             isAntiAlias = true
         }
         val amberTabularPaint = Paint().apply {
-            color = Color.rgb(0xD9, 0x77, 0x06)
+            color = INK_AMBER
             textSize = 11f
             typeface = Typeface.MONOSPACE
             isAntiAlias = true
         }
         val amountPaint = Paint().apply {
-            color = Color.BLACK
+            color = INK_TEAL
             textSize = 18f
             typeface = Typeface.MONOSPACE
             isAntiAlias = true
         }
         val bigNumberPaint = Paint().apply {
-            color = Color.BLACK
+            color = INK_VIOLET
             textSize = 32f
             typeface = Typeface.MONOSPACE
             isAntiAlias = true
@@ -468,8 +499,13 @@ class PdfStatementWriter @Inject constructor(
             isAntiAlias = true
         }
         val rulePaint = Paint().apply {
-            color = Color.LTGRAY
+            color = INK_TEAL
             strokeWidth = 1f
+            alpha = 90
+        }
+        val bandPaint = Paint().apply {
+            color = INK_TEAL
+            alpha = 22
         }
         val smallTabularPaint = Paint().apply {
             color = Color.BLACK
@@ -478,16 +514,20 @@ class PdfStatementWriter @Inject constructor(
             isAntiAlias = true
         }
         val barPaint = Paint().apply {
-            color = Color.rgb(0x3B, 0x3B, 0x3B)
+            color = INK_TEAL
+            isAntiAlias = true
+        }
+        val barPaintCurrent = Paint().apply {
+            color = INK_VIOLET
             isAntiAlias = true
         }
         val budgetLinePaint = Paint().apply {
-            color = Color.rgb(0xD9, 0x77, 0x06)
+            color = INK_AMBER
             strokeWidth = 1.5f
             pathEffect = DashPathEffect(floatArrayOf(6f, 4f), 0f)
         }
         val amberLabelPaint = Paint().apply {
-            color = Color.rgb(0xD9, 0x77, 0x06)
+            color = INK_AMBER
             textSize = 9f
             typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
             isAntiAlias = true
@@ -502,15 +542,28 @@ class PdfStatementWriter @Inject constructor(
         const val PIE_SLICES = 8
 
         /**
-         * Distinct LIGHTNESSES, not hues. Statements get printed, and printed
-         * in black and white more often than not, so a hue-based palette would
-         * collapse into eight identical greys on paper.
+         * Kosha's own palette, ordered so ADJACENT slices differ in lightness
+         * as well as hue. Colour is what makes a statement readable at a
+         * glance, but plenty of them still get printed in black and white —
+         * where hue alone collapses into eight identical greys. Alternating
+         * dark and light keeps the wedges apart either way.
+         *
+         * No red, on paper as on screen (spec A2/G10). The warm end stops at
+         * amber.
          */
-        private val PIE_TONES = intArrayOf(0x22, 0x55, 0x88, 0xBB, 0x3B, 0x6E, 0xA1, 0xD4)
+        private val PIE_COLORS = intArrayOf(
+            0xFF0F8B8D.toInt(), // teal
+            0xFF7C5CBF.toInt(), // violet
+            0xFFD97706.toInt(), // amber
+            0xFF3E7CB1.toInt(), // slate blue
+            0xFF6BBF9E.toInt(), // sage
+            0xFF9B6A9D.toInt(), // mauve
+            0xFFC08A3E.toInt(), // ochre
+            0xFF5A7D7C.toInt(), // deep teal-grey
+        )
 
         fun piePaint(index: Int): Paint = Paint().apply {
-            val tone = PIE_TONES[index % PIE_TONES.size]
-            color = Color.rgb(tone, tone, tone)
+            color = PIE_COLORS[index % PIE_COLORS.size]
             isAntiAlias = true
         }
     }

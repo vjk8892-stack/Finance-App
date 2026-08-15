@@ -45,6 +45,8 @@ import dev.kosha.core.designsystem.token.KoshaType
 @Composable
 fun ExportScreen(
     onBack: () -> Unit,
+    /** Put backup first — Settings links here from two different rows. */
+    focusBackup: Boolean = false,
     viewModel: ExportViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -83,6 +85,15 @@ fun ExportScreen(
             Modifier.padding(horizontal = KoshaSpacing.screenPadding),
             verticalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
         ) {
+            if (focusBackup) {
+                BackupSection(
+                    state = state,
+                    viewModel = viewModel,
+                    onPickFolder = { pickFolderLauncher.launch(null) },
+                    onRestoreFromFile = { restoreLauncher.launch(arrayOf("*/*")) },
+                )
+                Spacer(Modifier.height(KoshaSpacing.m))
+            }
             PdfSection(state, viewModel)
             CsvSection(state, viewModel)
 
@@ -102,13 +113,15 @@ fun ExportScreen(
                 }
             }
 
-            Spacer(Modifier.height(KoshaSpacing.m))
-            BackupSection(
-                state = state,
-                viewModel = viewModel,
-                onPickFolder = { pickFolderLauncher.launch(null) },
-                onRestoreFromFile = { restoreLauncher.launch(arrayOf("*/*")) },
-            )
+            if (!focusBackup) {
+                Spacer(Modifier.height(KoshaSpacing.m))
+                BackupSection(
+                    state = state,
+                    viewModel = viewModel,
+                    onPickFolder = { pickFolderLauncher.launch(null) },
+                    onRestoreFromFile = { restoreLauncher.launch(arrayOf("*/*")) },
+                )
+            }
 
             state.message?.let { message ->
                 Text(message, style = KoshaType.Body, color = KoshaColors.Amber)

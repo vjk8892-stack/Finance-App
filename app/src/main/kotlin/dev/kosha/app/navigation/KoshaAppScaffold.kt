@@ -29,6 +29,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.kosha.app.R
 import dev.kosha.app.settings.PermissionsScreen
+import dev.kosha.app.settings.SettingsScreen
 import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaType
 import dev.kosha.feature.budget.BudgetScreen
@@ -72,6 +73,8 @@ const val ROUTE_EXPORT = "export"
 const val ROUTE_GOALS = "goals"
 const val ROUTE_SMS_SCAN = "sms-scan"
 const val ROUTE_PERMISSIONS = "permissions"
+const val ROUTE_SETTINGS = "settings"
+const val ARG_EXPORT_FOCUS_BACKUP = "focusBackup"
 const val ARG_QUICK_CATEGORY = "quickCategoryId"
 
 /** Chart → ledger deep links, so a slice can show the rows behind it. */
@@ -154,7 +157,7 @@ fun KoshaAppScaffold(startAction: String? = null) {
                         )
                     },
                     onOpenBudgets = { navController.navigate(ROUTE_BUDGETS) },
-                    onOpenIncome = { navController.navigate(ROUTE_INCOME) },
+                    onOpenIncome = { navController.navigate(ROUTE_SETTINGS) },
                     onOpenRecurring = { navController.navigate(ROUTE_RECURRING) },
                     onOpenExport = { navController.navigate(ROUTE_EXPORT) },
                     onOpenGoals = { navController.navigate(ROUTE_GOALS) },
@@ -273,8 +276,37 @@ fun KoshaAppScaffold(startAction: String? = null) {
             composable(ROUTE_RECURRING) {
                 RecurringScreen(onBack = { navController.popBackStack() })
             }
-            composable(ROUTE_EXPORT) {
-                ExportScreen(onBack = { navController.popBackStack() })
+            composable(
+                route = "$ROUTE_EXPORT?$ARG_EXPORT_FOCUS_BACKUP={$ARG_EXPORT_FOCUS_BACKUP}",
+                arguments = listOf(
+                    navArgument(ARG_EXPORT_FOCUS_BACKUP) {
+                        type = NavType.BoolType
+                        defaultValue = false
+                    },
+                ),
+            ) { entry ->
+                ExportScreen(
+                    onBack = { navController.popBackStack() },
+                    // Settings offers export and backup as separate rows; both
+                    // land here, so the one you asked for goes on top rather
+                    // than making you hunt past the other.
+                    focusBackup = entry.arguments?.getBoolean(ARG_EXPORT_FOCUS_BACKUP) == true,
+                )
+            }
+            composable(ROUTE_SETTINGS) {
+                SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenExport = { navController.navigate(ROUTE_EXPORT) },
+                    onOpenBackup = {
+                        navController.navigate("$ROUTE_EXPORT?$ARG_EXPORT_FOCUS_BACKUP=true")
+                    },
+                    onOpenIncome = { navController.navigate(ROUTE_INCOME) },
+                    onOpenBudgets = { navController.navigate(ROUTE_BUDGETS) },
+                    onOpenRecurring = { navController.navigate(ROUTE_RECURRING) },
+                    onOpenGoals = { navController.navigate(ROUTE_GOALS) },
+                    onOpenPermissions = { navController.navigate(ROUTE_PERMISSIONS) },
+                    onScanSms = { navController.navigate(ROUTE_SMS_SCAN) },
+                )
             }
             composable(ROUTE_GOALS) {
                 GoalsScreen(onBack = { navController.popBackStack() })
