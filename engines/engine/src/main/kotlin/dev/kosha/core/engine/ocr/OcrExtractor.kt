@@ -83,12 +83,19 @@ class OcrExtractor(private val templates: OcrTemplateLibrary = OcrTemplateLibrar
         lines.forEachIndexed { index, line ->
             val match = label.find(line) ?: return@forEachIndexed
             val sameLine = line.substring(match.range.last + 1).trim().trim(':', '-', '\u2013').trim()
-            if (sameLine.length >= 2 && !isChrome(sameLine)) return sameLine
-            // Value on the following line — the common layout on phone receipts.
+            if (sameLine.length >= 2 && !isChrome(sameLine) && !isInitialsBlob(sameLine)) return sameLine
+            // Value on the following line — the common layout on phone
+            // receipts. Collected rather than returned on first hit, because
+            // the line directly under "Paid to" is often the AVATAR: a two- or
+            // three-letter monogram drawn from the name that follows it. "MG"
+            // is not who you paid, Mani Gopalgowda is.
+            val candidates = mutableListOf<String>()
             for (next in index + 1 until minOf(index + 4, lines.size)) {
                 val candidate = lines[next].trim()
-                if (candidate.length >= 2 && !isChrome(candidate)) return candidate
+                if (candidate.length >= 2 && !isChrome(candidate)) candidates += candidate
             }
+            candidates.firstOrNull { !isInitialsBlob(it) }?.let { return it }
+            candidates.firstOrNull()?.let { return it }
         }
         return null
     }
@@ -113,6 +120,16 @@ class OcrExtractor(private val templates: OcrTemplateLibrary = OcrTemplateLibrar
             }
         }
         return null
+    }
+
+    /**
+     * An avatar monogram — the initials circle a payment app draws beside a
+     * name. Short, all capitals, no spaces. Rejected only when a fuller
+     * candidate exists, so a genuinely short payee name is not lost.
+     */
+    internal fun isInitialsBlob(line: String): Boolean {
+        val t = line.trim()
+        return t.length in 1..3 && t.none { it.isWhitespace() } && t.all { it.isUpperCase() }
     }
 
     /**
@@ -203,10 +220,10 @@ class OcrExtractor(private val templates: OcrTemplateLibrary = OcrTemplateLibrar
         capturedAtMillis: Long,
         liveCapture: Boolean,
     ): Extraction? {
-        val amount = lines.firstNotNullOfOrNull { prominentAmount(it) }
+        val marked = lines.firstNotNullOfOrNull { prominentAmount(it) }
             ?: lines.firstNotNullOfOrNull { anyAmount(it) }
-            ?: largestStandaloneAmount(lines)
-            ?: return null
+        val amount = marked ?: largestStandaloneAmount(lines) ?: return null
+        val amountWasGuessed = marked == null
 
         // The BANK UTR is the dedup key that matches the bank's SMS. UPI apps
         // also print their own transaction ID, which the bank never sends —
@@ -263,7 +280,14 @@ class OcrExtractor(private val templates: OcrTemplateLibrary = OcrTemplateLibrar
                 timestampMillis = stamped ?: capturedAtMillis,
                 reference = utr,
                 fieldConfidence = mapOf(
-                    Field.AMOUNT to base,
+                    // An unmarked number is a GUESS, and must not be dressed up
+                    // as anything else. The rupee glyph is frequently misread
+                    // as a leading digit — "₹50" comes back as "750" — so the
+                    // figure can be an order of magnitude out with nothing in
+                    // the text to reveal it. Below the review threshold, so the
+                    // preview flags the field and the row cannot slip in
+                    // unexamined.
+                    Field.AMOUNT to if (amountWasGuessed) GUESSED_AMOUNT else base,
                     Field.TYPE to base,
                     Field.ACCOUNT to if (last4 != null) base else 0.45,
                     Field.MERCHANT to if (merchant != null) base else 0.4,
@@ -288,10 +312,10 @@ class OcrExtractor(private val templates: OcrTemplateLibrary = OcrTemplateLibrar
     ): Extraction? {
         // Total: prefer an explicit grand-total line, else the largest amount.
         val totalLine = lines.lastOrNull { totalKeywords.containsMatchIn(it) }
-        val amount = totalLine?.let { anyAmount(it) }
+        val marked = totalLine?.let { anyAmount(it) }
             ?: lines.mapNotNull { anyAmount(it) }.maxByOrNull { it.paise }
-            ?: largestStandaloneAmount(lines)
-            ?: return null
+        val amount = marked ?: largestStandaloneAmount(lines) ?: return null
+        val amountWasGuessed = marked == null
 
         // A labelled payee wins; otherwise the first line that is plausibly a
         // name. The old rule took the first short line without an amount in it,
@@ -319,7 +343,7 @@ class OcrExtractor(private val templates: OcrTemplateLibrary = OcrTemplateLibrar
                 timestampMillis = stamped ?: capturedAtMillis,
                 reference = labelledIdentifier(lines, REFERENCE_LABEL),
                 fieldConfidence = mapOf(
-                    Field.AMOUNT to template.baseConfidence,
+                    Field.AMOUNT to if (amountWasGuessed) GUESSED_AMOUNT else template.baseConfidence,
                     Field.TYPE to 0.85,
                     Field.ACCOUNT to 0.35,
                     Field.MERCHANT to if (merchant != null) 0.7 else 0.35,
@@ -370,6 +394,13 @@ class OcrExtractor(private val templates: OcrTemplateLibrary = OcrTemplateLibrar
                 "upi\\s*ref(?:erence)?(?:\\s*no\\.?)?|ref(?:erence)?(?:\\s*no\\.?)?)\\b",
         )
         val REFERENCE_VALUE = Regex("[A-Za-z0-9]{8,25}")
+
+        /**
+         * Confidence for an amount read WITHOUT a currency marker. Deliberately
+         * under the 0.8 the preview treats as "worth a second look", so a
+         * guessed figure always arrives flagged.
+         */
+        const val GUESSED_AMOUNT = 0.55
 
         /** A mangled or missing currency glyph, or a real one, at the start. */
         val STRAY_PREFIX = Regex("(?i)^(?:₹|rs\\.?|inr|[^\\p{L}\\d\\s]{1,2}|[a-z])\\s*")

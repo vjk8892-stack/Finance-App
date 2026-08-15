@@ -609,3 +609,20 @@ they are whole, and has silently lost data.
   Counting squares to work out which day is not reading a calendar. The number
   brightens on dark cells and dims on pale ones so it stays legible at both
   ends of the ramp instead of being tuned for the middle.
+
+- **2026-08-15 · An amount read WITHOUT a currency marker is marked uncertain**
+  · trust it like any other reading · The rupee glyph is frequently recognised
+  as a leading DIGIT — a real ₹50 receipt came back as "750" — and nothing in
+  the text distinguishes that from a genuine ₹750. The unmarked fallback is
+  still worth having, because the alternative is reading nothing at all, but it
+  was inheriting the template's confidence and so arrived looking certain. It
+  now scores below the review threshold, which flags the field in the preview
+  and keeps the row out of an unexamined commit. A figure that can be an order
+  of magnitude out, shown as fact, is worse than one shown as a question.
+  Kosha cannot recover the true value here, and does not pretend to.
+- **2026-08-15 · The avatar monogram is not the payee** · take the first
+  non-chrome line after the label · Payment apps draw a two- or three-letter
+  initials circle beside the name, and it lands on the line ABOVE it, so
+  "Mani Gopalgowda" arrived in the ledger as "MG". Candidates in the window are
+  now collected and a monogram skipped when something fuller follows — so a
+  genuinely short payee ("KFC") is still kept.
