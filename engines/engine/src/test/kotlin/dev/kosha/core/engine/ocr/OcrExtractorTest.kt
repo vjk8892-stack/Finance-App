@@ -134,10 +134,19 @@ class OcrExtractorTest {
     }
 
     @Test
-    fun `gallery imports score lower on time and land in review`() {
-        // A screenshot picked from the gallery can be months old — capture
-        // time is not transaction time, so it must not auto-commit.
-        val imported = extractor.extract(phonePeScreenshot, t0, liveCapture = false)!!
+    fun `an undated gallery import scores lower on time and lands in review`() {
+        // A screenshot picked from the gallery can be months old, so CAPTURE
+        // time is not transaction time and must not auto-commit.
+        //
+        // Narrowed deliberately: the extractor now reads the date printed on
+        // the receipt itself, and where it finds one this rule's reason no
+        // longer applies — the timestamp is the receipt's own statement, not a
+        // guess from when the file was picked. The protection still holds for
+        // a receipt that states no date, which is the case it was written for.
+        val undated = phonePeScreenshot.lines()
+            .filterNot { it.contains("2026") }
+            .joinToString("\n")
+        val imported = extractor.extract(undated, t0, liveCapture = false)!!
         val score = ConfidenceScorer.score(imported.txn)
         assertTrue(
             "imported score $score should be review-bound",
