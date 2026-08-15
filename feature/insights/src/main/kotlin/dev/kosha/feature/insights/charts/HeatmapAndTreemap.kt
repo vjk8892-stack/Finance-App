@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.kosha.core.common.Money
 import dev.kosha.core.designsystem.token.KoshaColors
 import dev.kosha.core.designsystem.token.KoshaType
@@ -51,6 +52,7 @@ fun CalendarHeatmap(
 
     val textMeasurer = rememberTextMeasurer()
     val weekdayStyle = KoshaType.Caption.copy(color = KoshaColors.OffWhiteFaint)
+    val dayStyle = KoshaType.Caption.copy(fontSize = 9.sp)
 
     Canvas(
         modifier
@@ -117,14 +119,36 @@ fun CalendarHeatmap(
             val spend = dailySpend[date]?.paise ?: 0L
             val intensity = if (max <= 0) 0f else (spend.toFloat() / max)
 
+            val cellLeft = column * (cellWidth + cellGap)
+            val cellTop = headerHeight + row * (cellHeight + cellGap)
             drawRect(
                 color = heatColor(intensity),
-                topLeft = Offset(
-                    column * (cellWidth + cellGap),
-                    headerHeight + row * (cellHeight + cellGap),
-                ),
+                topLeft = Offset(cellLeft, cellTop),
                 size = Size(cellWidth, cellHeight),
             )
+
+            // The day number, quietly. Without it the grid says "some day in
+            // the third week was heavy" and stops there — the whole reason to
+            // tap a cell is to know WHICH day, and having to count squares to
+            // work that out is not reading a calendar.
+            val label = textMeasurer.measure(
+                text = date.dayOfMonth.toString(),
+                style = dayStyle.copy(
+                    // Dark cells carry a bright number and pale ones a dim
+                    // number, so the date stays legible at both ends of the
+                    // ramp rather than being tuned for the middle.
+                    color = KoshaColors.OffWhite.copy(alpha = if (intensity > 0.35f) 0.85f else 0.4f),
+                ),
+            )
+            if (label.size.width < cellWidth && label.size.height < cellHeight) {
+                drawText(
+                    label,
+                    topLeft = Offset(
+                        cellLeft + (cellWidth - label.size.width) / 2f,
+                        cellTop + (cellHeight - label.size.height) / 2f,
+                    ),
+                )
+            }
         }
     }
 }

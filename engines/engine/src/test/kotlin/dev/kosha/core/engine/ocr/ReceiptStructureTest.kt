@@ -128,6 +128,49 @@ class ReceiptStructureTest {
         }
     }
 
+    @Test
+    fun `a receipt still reads when the rupee glyph does not survive OCR`() {
+        // ML Kit drops or mangles ₹ constantly — it comes back as nothing, or
+        // as a stray letter or symbol. Every amount pattern required a clean
+        // marker, so one bad glyph made the entire capture fail. Each of these
+        // is the same receipt with the amount recognised differently.
+        listOf("₹175", "175", "z175", "R175", "* 175", "175.00", "%175").forEach { amountLine ->
+            val text = receipt.replace("₹175", amountLine)
+            val result = extractor.extract(text, capturedAtMillis = NOW, liveCapture = false)
+            assertNotNull("nothing read when the amount line was '$amountLine'", result)
+            assertEquals("wrong amount for '$amountLine'", 17_500L, result!!.txn.amount?.paise)
+            assertEquals("LJ IYENGARS PASTRY PALACE", result.txn.merchantRaw)
+        }
+    }
+
+    @Test
+    fun `an unmarked number is only an amount when it stands alone`() {
+        // The fallback must not turn every stray figure into money.
+        listOf(
+            "659307666484",        // a transaction reference
+            "9845948557",          // a phone number
+            "you earned a total of 5", // a number inside a sentence
+            "9845948557@seyes",    // a VPA
+            "XXXXXX76",            // a card mask
+        ).forEach { assertNull("should not be an amount: $it", extractor.standaloneAmount(it)) }
+
+        listOf("175", "₹175", "1,250.50", "z2000").forEach {
+            assertNotNull("should be an amount: $it", extractor.standaloneAmount(it))
+        }
+    }
+
+    @Test
+    fun `the reference is never mistaken for the amount`() {
+        // Both are bare numbers on their own lines; only one is money.
+        val result = extractor.extract(
+            receipt.replace("₹175", "175"),
+            capturedAtMillis = NOW,
+            liveCapture = false,
+        )!!
+        assertEquals(17_500L, result.txn.amount?.paise)
+        assertEquals("659307666484", result.txn.reference)
+    }
+
     private companion object {
         const val NOW = 1_800_000_000_000L
         /** 15 Aug 2026, midday UTC. */

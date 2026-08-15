@@ -131,6 +131,41 @@ class OcrExtractor(private val templates: OcrTemplateLibrary = OcrTemplateLibrar
         return false
     }
 
+    /**
+     * The hero figure on a receipt that carries NO usable currency marker.
+     *
+     * Every amount pattern required a clean "₹", "Rs" or "INR", and ML Kit
+     * drops or mangles the rupee glyph constantly — it comes back as nothing,
+     * or as a stray letter or symbol. A receipt whose amount recognised as
+     * plain "175" therefore yielded no amount at all and the whole capture
+     * failed. That is one bad glyph away from every receipt, which is far too
+     * fragile a hinge for the feature to hang on.
+     *
+     * Only consulted when nothing currency-marked was found anywhere, and only
+     * for a line that is JUST a number once a leading marker is stripped — so
+     * a reward blurb ("you earned a total of 5") cannot qualify, because there
+     * the number is embedded in a sentence.
+     */
+    internal fun standaloneAmount(line: String): Money? {
+        val t = line.trim()
+        if (t.contains('@')) return null
+        val stripped = STRAY_PREFIX.replace(t, "").trim()
+        if (!STANDALONE_NUMBER.matches(stripped)) return null
+
+        val grouped = stripped.contains(',') || stripped.contains('.')
+        val digits = stripped.count { it.isDigit() }
+        // A long run of BARE digits is an identifier — a reference, a phone
+        // number, an account. Grouped or decimal figures get more room,
+        // because the separators are what make them read as an amount.
+        if (!grouped && digits > 6) return null
+        if (grouped && digits > 9) return null
+        return Money.parseOrNull(stripped)
+    }
+
+    /** Largest standalone figure on the page — the hero amount, when unmarked. */
+    internal fun largestStandaloneAmount(lines: List<String>): Money? =
+        lines.mapNotNull { standaloneAmount(it) }.maxByOrNull { it.paise }
+
     /** "15 aug 2026 * 6:07 pm", "15/08/2026", "15-Aug-26" → epoch millis. */
     internal fun receiptDate(lines: List<String>, zoneOffsetMillis: Long = 0L): Long? {
         for (line in lines) {
@@ -170,6 +205,7 @@ class OcrExtractor(private val templates: OcrTemplateLibrary = OcrTemplateLibrar
     ): Extraction? {
         val amount = lines.firstNotNullOfOrNull { prominentAmount(it) }
             ?: lines.firstNotNullOfOrNull { anyAmount(it) }
+            ?: largestStandaloneAmount(lines)
             ?: return null
 
         // The BANK UTR is the dedup key that matches the bank's SMS. UPI apps
@@ -254,6 +290,7 @@ class OcrExtractor(private val templates: OcrTemplateLibrary = OcrTemplateLibrar
         val totalLine = lines.lastOrNull { totalKeywords.containsMatchIn(it) }
         val amount = totalLine?.let { anyAmount(it) }
             ?: lines.mapNotNull { anyAmount(it) }.maxByOrNull { it.paise }
+            ?: largestStandaloneAmount(lines)
             ?: return null
 
         // A labelled payee wins; otherwise the first line that is plausibly a
@@ -333,6 +370,10 @@ class OcrExtractor(private val templates: OcrTemplateLibrary = OcrTemplateLibrar
                 "upi\\s*ref(?:erence)?(?:\\s*no\\.?)?|ref(?:erence)?(?:\\s*no\\.?)?)\\b",
         )
         val REFERENCE_VALUE = Regex("[A-Za-z0-9]{8,25}")
+
+        /** A mangled or missing currency glyph, or a real one, at the start. */
+        val STRAY_PREFIX = Regex("(?i)^(?:₹|rs\\.?|inr|[^\\p{L}\\d\\s]{1,2}|[a-z])\\s*")
+        val STANDALONE_NUMBER = Regex("\\d{1,3}(?:,\\d{2,3})*(?:\\.\\d{1,2})?|\\d+(?:\\.\\d{1,2})?")
 
         /** Never a payee: headings, branding, reward blurbs, status words. */
         val CHROME_WORDS = Regex(

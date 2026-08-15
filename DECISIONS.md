@@ -594,3 +594,18 @@ they are whole, and has silently lost data.
   field and the button with nothing scrollable to reach them. The two controls
   you must reach are now nearest the top, and the keyboard covers the category
   grid instead — which is optional and now scrolls.
+
+- **2026-08-15 · An unmarked standalone number can be the amount** · require a
+  currency marker · Every amount pattern demanded a clean `₹`, `Rs` or `INR`,
+  and ML Kit drops or mangles the rupee glyph constantly — it returns nothing,
+  a stray letter, or a symbol. A receipt whose amount recognised as plain "175"
+  produced NO amount and the whole capture failed, which put the entire feature
+  one bad glyph away from useless. The fallback runs only when nothing
+  currency-marked exists anywhere, and only on a line that is JUST a number
+  once a leading marker is stripped — so a number inside a sentence, a
+  reference, a phone number and a card mask are all still excluded.
+- **2026-08-15 · The heatmap prints its day numbers** · a bare intensity grid ·
+  Without them the chart says "some day in the third week was heavy" and stops.
+  Counting squares to work out which day is not reading a calendar. The number
+  brightens on dark cells and dims on pale ones so it stays legible at both
+  ends of the ramp instead of being tuned for the middle.
