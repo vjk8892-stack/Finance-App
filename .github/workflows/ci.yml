@@ -99,6 +99,20 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # The Room Gradle plugin copies `core/database/schemas` into the
+      # androidTest assets so MigrationTestHelper can read the old versions.
+      # That directory is written by KSP during a normal compile, and asking
+      # for `connectedDebugAndroidTest` on its own does not order the two — the
+      # copy task fails input validation before a single test runs. Compiling
+      # the library first puts the schemas on disk; the emulator step then
+      # finds them. The `ls` is not decoration: if this ever stops producing
+      # them, the failure should say so here rather than as an opaque
+      # "directory doesn't exist" inside the emulator script.
+      - name: Export Room schemas
+        run: |
+          ./gradlew :core:database:assembleDebug --console=plain
+          ls -R core/database/schemas
+
       # KVM is what makes the emulator usable rather than glacial.
       - name: Enable KVM
         run: |
