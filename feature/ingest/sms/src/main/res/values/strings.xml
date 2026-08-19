@@ -19,4 +19,14 @@
     <string name="sms_keep_raw_on">Keeping message text</string>
     <string name="sms_keep_raw_off">Not keeping message text</string>
     <string name="sms_scan_tracking_note">Kosha is tracking from %1$s, so messages before that are skipped. Change it in Settings.</string>
+    <string name="capture_channel_name">Transactions captured</string>
+    <string name="capture_channel_desc">Shown the moment Kosha reads a payment from a bank message.</string>
+    <string name="capture_title_out">%1$s spent</string>
+    <string name="capture_title_in">%1$s received</string>
+    <string name="capture_no_name">No name in the message</string>
+    <string name="capture_account">Account · %1$s</string>
+    <string name="capture_category">Category · %1$s</string>
+    <string name="capture_uncategorized">Not categorized yet</string>
+    <string name="capture_in_ledger">Added to your ledger — tap to check it</string>
+    <string name="capture_needs_review">Waiting in review — tap to confirm it</string>
 </resources>

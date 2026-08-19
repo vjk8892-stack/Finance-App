@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
  */
 @Singleton
 class IngestSmsUseCase @Inject constructor(
+    private val captureNotifier: CaptureNotifier,
     private val trackingWindow: TrackingWindow,
     private val committer: PipelineCommitter,
     private val recurringRepository: RecurringRepository,
@@ -25,7 +26,18 @@ class IngestSmsUseCase @Inject constructor(
 ) {
     private val pipeline = IngestionPipeline()
 
-    suspend fun ingest(sender: String, body: String, receivedAtMillis: Long): PipelineCommitter.CommitResult {
+    /**
+     * @param notify false for a bulk historical scan. The importer runs this
+     * same path for every message in the inbox, so notifying per row would
+     * bury the phone in banners for payments made weeks ago — the notification
+     * is for money that just moved, not for a catch-up.
+     */
+    suspend fun ingest(
+        sender: String,
+        body: String,
+        receivedAtMillis: Long,
+        notify: Boolean = true,
+    ): PipelineCommitter.CommitResult {
         // Live capture respects the boundary too. Without this, a message
         // arriving now with an older receipt time would be committed into a
         // window the user has chosen not to track and simply never appear.
@@ -53,6 +65,14 @@ class IngestSmsUseCase @Inject constructor(
             // seen and reported rather than just distrusted.
             retainRawBody = settingsRepository.settings.first().retainRawSms,
         )
+        if (notify) when (result) {
+            is PipelineCommitter.CommitResult.Committed ->
+                captureNotifier.notifyCaptured(result.txnId, needsReview = false)
+            is PipelineCommitter.CommitResult.QueuedForReview ->
+                captureNotifier.notifyCaptured(result.txnId, needsReview = true)
+            else -> Unit
+        }
+
         if (result is PipelineCommitter.CommitResult.Dropped && result.reason != "not-bank-sender") {
             // Discard-with-log (spec B3) — logcat until the debug screen lands.
             Log.i(TAG, "SMS discarded: ${result.reason}")

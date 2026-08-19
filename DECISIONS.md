@@ -662,3 +662,23 @@ they are whole, and has silently lost data.
   never run is not evidence of anything. Kept as a separate job because an
   emulator is the slowest and flakiest part of a pipeline, so a green build
   still means "compiles, unit tests pass" without waiting on a device to boot.
+
+- **2026-08-15 · Captured transactions notify, loudly** · stay silent like the
+  other channels · Kosha reads bank messages in the background whether or not
+  it is open and said nothing at all when it did, so the only way to learn a
+  payment had been recorded was to open the app and look. An automatic ledger
+  that never speaks is indistinguishable from one that is not running. The
+  budget and recurring channels are IMPORTANCE_LOW on purpose — they are
+  ambient reminders — but this is a statement about money that has just moved,
+  so it is IMPORTANCE_HIGH, which is what makes Android show a heads-up banner.
+  Android exposes no way to request a share of the screen; an expanded
+  notification is capped near 256dp, about a fifth of a phone, and the
+  four-line big-text style gets as close to that as the platform permits.
+- **2026-08-15 · Only LIVE capture notifies** · notify on every commit · The
+  historical importer runs the same ingest path for every message in the
+  inbox, so notifying per row would bury the phone in banners for payments
+  made weeks ago. The notification is for money that just moved.
+- **2026-08-15 · The capture notification opens the ledger filtered to that
+  transaction's DAY** · open the app · "Tap to check it" landing on an
+  unfiltered ledger is the notification overselling itself. The day travels in
+  the intent and reuses the ledger's existing date filter.

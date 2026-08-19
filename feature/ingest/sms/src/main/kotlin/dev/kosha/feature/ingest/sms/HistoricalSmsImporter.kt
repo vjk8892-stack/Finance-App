@@ -78,7 +78,7 @@ class HistoricalSmsImporter @Inject constructor(
                 val sender = c.getString(addressIdx) ?: continue
                 val body = c.getString(bodyIdx) ?: continue
                 val date = c.getLong(dateIdx)
-                when (ingest.ingest(sender, body, date)) {
+                when (ingest.ingest(sender, body, date, notify = false)) {
                     is PipelineCommitter.CommitResult.Committed -> committed++
                     is PipelineCommitter.CommitResult.QueuedForReview -> queued++
                     is PipelineCommitter.CommitResult.MergedEvidence -> merged++

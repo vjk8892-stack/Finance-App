@@ -104,6 +104,8 @@
     <string name="settings_anchor">Month starts on day %1$d</string>
     <string name="settings_anchor_sub">Set this to your salary day so a \"month\" matches your pay cycle.</string>
     <string name="settings_anchor_day">%1$d</string>
+    <string name="settings_autostart_title">Keep capture running</string>
+    <string name="settings_autostart_body">Your phone\'s brand stops apps from running in the background unless you allow it. If Kosha stops picking up new bank messages, turn on Autostart for Kosha in your phone\'s Settings → Apps → Kosha, and set its battery usage to unrestricted.</string>
     <string name="settings_privacy">Privacy &amp; security</string>
     <string name="settings_permissions">Permissions</string>
     <string name="settings_permissions_sub">SMS, camera and notifications</string>

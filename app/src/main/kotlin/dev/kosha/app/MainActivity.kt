@@ -7,6 +7,7 @@ import androidx.activity.viewModels
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
+import dev.kosha.feature.ingest.sms.CaptureNotifier
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
@@ -90,7 +91,11 @@ class MainActivity : FragmentActivity() {
 
                     !current.onboardingDone -> OnboardingScreen(onDone = {})
 
-                    else -> KoshaAppScaffold(startAction = intent?.action)
+                    else -> KoshaAppScaffold(
+                        startAction = intent?.action,
+                        startLedgerDay = intent
+                            ?.getStringExtra(CaptureNotifier.EXTRA_TRANSACTION_DAY),
+                    )
                 }
 
                 // First composition with lock enabled → gate render (spec B4)

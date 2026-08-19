@@ -40,6 +40,7 @@ import dev.kosha.feature.income.IncomeScreen
 import dev.kosha.feature.ingest.ocr.ImportScreen
 import dev.kosha.feature.ingest.ocr.ScanScreen
 import dev.kosha.feature.ingest.review.ReviewQueueScreen
+import dev.kosha.feature.ingest.sms.CaptureNotifier
 import dev.kosha.feature.ingest.sms.SmsScanScreen
 import dev.kosha.feature.insights.home.HomeScreen
 import dev.kosha.feature.insights.hub.InsightsScreen
@@ -85,7 +86,11 @@ const val ARG_LEDGER_TO = "ledgerTo"
 const val ARG_LEDGER_SEARCH = "ledgerSearch"
 
 @Composable
-fun KoshaAppScaffold(startAction: String? = null) {
+fun KoshaAppScaffold(
+    startAction: String? = null,
+    /** Set when opened from a capture notification — the day to land on. */
+    startLedgerDay: String? = null,
+) {
     val navController = rememberNavController()
     val backStack by navController.currentBackStackEntryAsState()
     val currentDestination = backStack?.destination
@@ -98,6 +103,16 @@ fun KoshaAppScaffold(startAction: String? = null) {
                 navController.navigate(KoshaDestination.ADD.route)
             KoshaDeepLinks.ACTION_VAULT ->
                 navController.navigate(KoshaDestination.VAULT.route)
+            CaptureNotifier.ACTION_OPEN_TRANSACTION -> {
+                // Filtered to the transaction's own day, so the row is on
+                // screen rather than somewhere in a list. A notification that
+                // opens the app wherever it was left is barely better than no
+                // notification at all.
+                val filter = startLedgerDay
+                    ?.let { "?$ARG_LEDGER_FROM=$it&$ARG_LEDGER_TO=$it" }
+                    .orEmpty()
+                navController.navigate(KoshaDestination.LEDGER.route + filter)
+            }
         }
     }
 

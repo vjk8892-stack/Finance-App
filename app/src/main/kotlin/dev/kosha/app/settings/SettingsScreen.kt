@@ -226,6 +226,25 @@ fun SettingsScreen(
                 }
             }
 
+            // Several Android skins stop manifest-registered receivers unless
+            // the app is on an "autostart" allowlist, and they do it silently —
+            // background capture simply stops with nothing to indicate why.
+            // Only shown on the manufacturers that actually do this.
+            if (needsAutostartNote()) {
+                KoshaCard(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(R.string.settings_autostart_title),
+                        style = KoshaType.SectionHeader,
+                        color = KoshaColors.OffWhite,
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_autostart_body),
+                        style = KoshaType.Body,
+                        color = KoshaColors.OffWhiteMuted,
+                    )
+                }
+            }
+
             SectionCard(stringResource(R.string.settings_privacy)) {
                 LinkRow(stringResource(R.string.settings_permissions), stringResource(R.string.settings_permissions_sub), onOpenPermissions)
                 ToggleRow(
@@ -405,3 +424,15 @@ private fun ToggleRow(label: String, sub: String, checked: Boolean, onChange: (B
 }
 
 private val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy")
+
+/**
+ * Manufacturers whose skins suspend background receivers by default. Kosha
+ * cannot change that setting for the user — only tell them it exists, because
+ * the alternative is capture quietly stopping with no explanation available
+ * anywhere in the app.
+ */
+private fun needsAutostartNote(): Boolean {
+    val make = android.os.Build.MANUFACTURER.lowercase()
+    return listOf("xiaomi", "redmi", "poco", "oppo", "realme", "vivo", "iqoo", "huawei", "honor")
+        .any { make.contains(it) }
+}
