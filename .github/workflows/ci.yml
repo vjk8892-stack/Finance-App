@@ -59,6 +59,21 @@ jobs:
       - name: Record APK size baseline
         run: find app/build/outputs/apk -name "*.apk" -printf "%s\t%p\n" | sort -rn
 
+      # The one APK worth installing, on its own.
+      #
+      # `kosha-debug-apk` below is every flavor crossed with every ABI split
+      # plus the universals, which zips to well over 200 MB — a download nobody
+      # wants on a phone, to then pick the right file out of by hand. This is
+      # the full flavor's universal build: runs on any device, has the SMS and
+      # camera capture in it, and is what "give me the app to try" means.
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: kosha-install
+          path: app/build/outputs/apk/full/debug/*universal*.apk
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload debug APKs
         uses: actions/upload-artifact@v4
         with:
