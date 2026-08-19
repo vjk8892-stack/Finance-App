@@ -60,6 +60,9 @@
     <string name="backup_include_vault">Include vault entries</string>
     <string name="backup_vault_warning">Vault entries are excluded by default. Including them puts your saved account and card details in the backup file.</string>
     <string name="backup_success">Backup written</string>
-    <string name="backup_restored">Restored — reopen Kosha to see your data</string>
+    <string name="backup_restored">Restored</string>
+    <string name="backup_restart_title">Restart to finish</string>
+    <string name="backup_restart_body">Your data has been replaced. Kosha needs to start again before it can read it — nothing else will work until it does.</string>
+    <string name="backup_restart_action">Restart Kosha</string>
     <string name="backup_failed">%1$s</string>
 </resources>

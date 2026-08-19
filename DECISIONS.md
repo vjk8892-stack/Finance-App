@@ -646,3 +646,19 @@ they are whole, and has silently lost data.
   so moving the boundary changes what the opening figure MEANS without changing
   the figure. Every balance is then wrong, and nothing else in the app would
   ever say so.
+
+- **2026-08-15 · Restore deletes the WAL journals and forces a restart** ·
+  overwrite the database file and tell the user to reopen the app · SQLite in
+  WAL mode keeps recent writes in side files that live next to the database, so
+  overwriting only the main file left the next open replaying the OLD journal
+  over the freshly restored data — a silent partial restore, which is the worst
+  possible outcome for the one feature whose entire job is getting your data
+  back. Restore also left every injected copy of the database closed, so the
+  advisory "reopen Kosha" was really a hard requirement; it is now a blocking
+  card with a button that relaunches the process.
+- **2026-08-15 · CI runs the instrumented tests on an emulator** · leave them
+  unrun · Undo/restore, multi-account attribution, the migration harness and
+  the vault-exclusion guarantee had never once executed, and a test that has
+  never run is not evidence of anything. Kept as a separate job because an
+  emulator is the slowest and flakiest part of a pipeline, so a green build
+  still means "compiles, unit tests pass" without waiting on a device to boot.

@@ -40,6 +40,12 @@ data class ExportUiState(
     val lastBackupAtMillis: Long = 0,
     val csvOptions: CsvOptions = CsvOptions(),
     val pdfOptions: PdfOptions = PdfOptions(),
+    /**
+     * A restore has replaced the database file underneath a closed handle.
+     * Nothing in the app can read anything until the process starts again, so
+     * this is not a suggestion — the screen blocks on it.
+     */
+    val restartRequired: Boolean = false,
 )
 
 @HiltViewModel
@@ -236,6 +242,7 @@ class ExportViewModel @Inject constructor(
             _state.value = _state.value.copy(
                 busy = false,
                 passphrase = "",
+                restartRequired = result.isSuccess,
                 message = result.fold(
                     onSuccess = { context.getString(R.string.backup_restored) },
                     onFailure = { it.message ?: context.getString(R.string.export_failed) },

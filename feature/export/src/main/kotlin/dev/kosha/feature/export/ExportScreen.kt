@@ -123,6 +123,32 @@ fun ExportScreen(
                 )
             }
 
+            // A restore leaves the app holding a database handle that has been
+            // closed and a file that has been swapped underneath it. Anything
+            // touched before the process restarts throws, so this is a wall
+            // rather than a hint.
+            if (state.restartRequired) {
+                KoshaCard(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(R.string.backup_restart_title),
+                        style = KoshaType.SectionHeader,
+                        color = KoshaColors.Amber,
+                    )
+                    Text(
+                        text = stringResource(R.string.backup_restart_body),
+                        style = KoshaType.Body,
+                        color = KoshaColors.OffWhiteMuted,
+                    )
+                    TextButton(onClick = { restartKosha(context) }) {
+                        Text(
+                            text = stringResource(R.string.backup_restart_action),
+                            style = KoshaType.LabelStrong,
+                            color = KoshaColors.AccentTealBright,
+                        )
+                    }
+                }
+            }
+
             state.message?.let { message ->
                 Text(message, style = KoshaType.Body, color = KoshaColors.Amber)
             }
@@ -289,6 +315,19 @@ private fun BackupSection(
 }
 
 private val STAMP_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm")
+
+/**
+ * Relaunches Kosha from scratch. Ending the process is the point, not a side
+ * effect: the singleton database was closed during the restore and every
+ * injected copy of it in memory is now unusable, so only a fresh process can
+ * open the file that was just written.
+ */
+private fun restartKosha(context: android.content.Context) {
+    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+    if (intent != null) context.startActivity(intent)
+    Runtime.getRuntime().exit(0)
+}
 
 @Composable
 private fun backupFieldColors() = TextFieldDefaults.colors(

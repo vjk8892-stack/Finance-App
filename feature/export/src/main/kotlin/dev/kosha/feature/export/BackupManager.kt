@@ -210,8 +210,18 @@ class BackupManager @Inject constructor(
             throw RestoreFailed("Backup failed its integrity check")
         }
 
+        // Overwriting the database file is not enough on its own. SQLite in
+        // WAL mode keeps recent writes in a side journal, and those files sit
+        // next to the database with a life of their own: leaving them means
+        // the NEXT open replays the old journal over the freshly restored
+        // file, which is a silent partial restore — the worst possible outcome
+        // for the one feature whose entire job is getting your data back.
         database.close()
-        context.getDatabasePath(KoshaDatabase.NAME).writeBytes(resolvedDb)
+        val dbFile = context.getDatabasePath(KoshaDatabase.NAME)
+        dbFile.writeBytes(resolvedDb)
+        listOf("-wal", "-shm", "-journal").forEach { suffix ->
+            java.io.File(dbFile.parentFile, dbFile.name + suffix).delete()
+        }
         resolvedManifest
     }
 
