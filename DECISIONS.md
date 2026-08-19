@@ -626,3 +626,23 @@ they are whole, and has silently lost data.
   "Mani Gopalgowda" arrived in the ledger as "MG". Candidates in the window are
   now collected and a monogram skipped when something fuller follows — so a
   genuinely short payee ("KFC") is still kept.
+
+- **2026-08-15 · The ledger flow is unbounded** · `LIMIT 500` · The cap reached
+  far beyond the list it was written for: the account statement's
+  `opening + in − out = now`, the natural-language query and the Settings
+  tracked/hidden counts all read the same flow. Past 500 rows the statement
+  stopped reconciling and the list simply ended with nothing on screen to say
+  anything was missing. A quietly incomplete number is worse than an obviously
+  absent one, and a year of captured messages crosses 500 easily.
+- **2026-08-15 · With no accounts on file, the first one is created and the row
+  goes to review** · dropping the transaction · A correctly-read message was
+  discarded outright — no ledger row, no review entry, no message — so anyone
+  who granted SMS before adding an account lost everything until they happened
+  to add one. This does not breach "never attributed to an account the user did
+  not confirm": a Discovered resolution forces PENDING_REVIEW, so the row waits
+  for confirmation exactly like any other new-account attribution.
+- **2026-08-15 · Moving the tracking date prompts for opening balances** ·
+  change it silently · Balances are stored as `opening + tracked transactions`,
+  so moving the boundary changes what the opening figure MEANS without changing
+  the figure. Every balance is then wrong, and nothing else in the app would
+  ever say so.

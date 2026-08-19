@@ -85,6 +85,10 @@
     <string name="settings_backfill">Bank messages from %1$s to %2$s were never scanned, so that stretch may look emptier than it was.</string>
     <string name="settings_backfill_scan">Scan those messages</string>
     <string name="settings_backfill_later">Not now</string>
+    <string name="settings_opening_title">Check your opening balances</string>
+    <string name="settings_opening_body">Balances are now counted from %1$s onwards, so each account\'s opening balance should be what it held on that date. %2$d accounts to check.</string>
+    <string name="settings_opening_action">Open Accounts</string>
+    <string name="settings_accounts">Accounts</string>
     <string name="settings_data">Your data</string>
     <string name="settings_export">Export statements &amp; spreadsheets</string>
     <string name="settings_export_sub">PDF with charts, or CSV for a spreadsheet</string>

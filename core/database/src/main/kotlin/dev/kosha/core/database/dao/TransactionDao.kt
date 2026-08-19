@@ -58,10 +58,24 @@ interface TransactionDao {
         JOIN accounts a ON a.id = t.accountId
         WHERE t.parentTransactionId IS NULL AND t.status = 'committed'
         ORDER BY t.timestampMillis DESC
-        LIMIT :limit
         """
     )
-    fun observeLedger(limit: Int = 500): Flow<List<LedgerRow>>
+    /**
+     * EVERY committed parent row, deliberately unbounded.
+     *
+     * This was capped at 500 and the cap reached far further than the list it
+     * was written for: the account statement's opening + in − out = now, the
+     * natural-language query, and the tracked/hidden counts all read this same
+     * flow. Past 500 transactions the statement stopped reconciling and the
+     * ledger simply ended, with nothing on screen to say anything was missing —
+     * a number that is quietly incomplete is worse than one that is obviously
+     * absent. A year of captured bank messages crosses 500 easily.
+     *
+     * The cost is bounded: the row is a transaction plus four display columns,
+     * so even a decade of data is a few megabytes, and the list is rendered
+     * lazily.
+     */
+    fun observeLedger(): Flow<List<LedgerRow>>
 
     @Query(
         """

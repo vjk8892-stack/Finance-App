@@ -65,10 +65,12 @@ fun SettingsScreen(
     onOpenGoals: () -> Unit,
     onOpenPermissions: () -> Unit,
     onScanSms: () -> Unit,
+    onOpenAccounts: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     val backfill by viewModel.backfill.collectAsState()
+    val openingBalanceReminder by viewModel.openingBalanceReminder.collectAsState()
     var showDatePicker by remember { mutableStateOf(false) }
 
     if (showDatePicker) {
@@ -143,6 +145,49 @@ fun SettingsScreen(
                 },
                 onDismissBackfill = viewModel::dismissBackfill,
             )
+
+            // Balances are stored as opening + tracked transactions, so moving
+            // the boundary changes what the opening figure MEANS without
+            // changing the figure. Every balance is wrong until they are
+            // re-entered, and nothing else would ever say so.
+            openingBalanceReminder?.let { reminder ->
+                KoshaCard(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(R.string.settings_opening_title),
+                        style = KoshaType.SectionHeader,
+                        color = KoshaColors.Amber,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.settings_opening_body,
+                            DAY.format(reminder.from),
+                            reminder.accounts,
+                        ),
+                        style = KoshaType.Body,
+                        color = KoshaColors.OffWhiteMuted,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.s)) {
+                        TextButton(
+                            onClick = {
+                                viewModel.dismissOpeningBalanceReminder()
+                                onOpenAccounts()
+                            },
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_opening_action),
+                                style = KoshaType.LabelStrong,
+                                color = KoshaColors.AccentTealBright,
+                            )
+                        }
+                        TextButton(onClick = viewModel::dismissOpeningBalanceReminder) {
+                            Text(
+                                stringResource(R.string.settings_backfill_later),
+                                color = KoshaColors.OffWhiteMuted,
+                            )
+                        }
+                    }
+                }
+            }
 
             SectionCard(stringResource(R.string.settings_data)) {
                 LinkRow(stringResource(R.string.settings_export), stringResource(R.string.settings_export_sub), onOpenExport)

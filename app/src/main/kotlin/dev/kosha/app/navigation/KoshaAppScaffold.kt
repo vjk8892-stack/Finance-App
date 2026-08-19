@@ -306,6 +306,7 @@ fun KoshaAppScaffold(startAction: String? = null) {
                     onOpenGoals = { navController.navigate(ROUTE_GOALS) },
                     onOpenPermissions = { navController.navigate(ROUTE_PERMISSIONS) },
                     onScanSms = { navController.navigate(ROUTE_SMS_SCAN) },
+                    onOpenAccounts = { navController.navigate(ROUTE_ACCOUNTS) },
                 )
             }
             composable(ROUTE_GOALS) {

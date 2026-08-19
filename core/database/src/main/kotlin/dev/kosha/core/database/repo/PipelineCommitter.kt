@@ -98,7 +98,27 @@ class PipelineCommitter @Inject constructor(
 
     suspend fun resolveAccount(last4: String?): AccountResolution {
         val active = accountDao.activeAccounts()
-        if (active.isEmpty()) return AccountResolution.NoAccounts
+        if (active.isEmpty()) {
+            // No accounts on file. The transaction was read correctly and was
+            // then thrown away — no ledger row, no review entry, no message.
+            // Someone who installs Kosha and grants SMS before adding an
+            // account loses every message until they happen to add one, with
+            // nothing to indicate it.
+            //
+            // Creating the account here does NOT breach "never attributed to
+            // an account the user did not confirm": a Discovered resolution
+            // forces PENDING_REVIEW, so the row waits to be confirmed exactly
+            // like any other new-account attribution.
+            val id = accountDao.insert(
+                AccountEntity(
+                    name = last4?.let { "•• $it" } ?: "Unassigned",
+                    type = AccountType.BANK,
+                    last4 = last4,
+                    colorToken = 0,
+                ),
+            )
+            return AccountResolution.Discovered(id, last4.orEmpty())
+        }
 
         if (!last4.isNullOrBlank()) {
             // Banks mask tails inconsistently (XX1234, X234, **234), so match

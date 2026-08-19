@@ -31,6 +31,15 @@ import kotlinx.coroutines.launch
  */
 data class BackfillOffer(val from: LocalDate, val to: LocalDate)
 
+/**
+ * Shown after the tracking date moves. Balances are stored as
+ * `openingBalance + tracked transactions`, so changing the boundary silently
+ * changes what the opening figure MEANS — from "when I created the account" to
+ * "on this date". Every balance in the app is wrong until those are re-entered,
+ * and nothing else in the UI would ever say so.
+ */
+data class OpeningBalanceReminder(val from: LocalDate, val accounts: Int)
+
 data class SettingsUiState(
     val settings: KoshaSettings = KoshaSettings(),
     val trackingStart: LocalDate? = null,
@@ -43,12 +52,17 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val transactionDao: TransactionDao,
+    private val accountDao: dev.kosha.core.database.dao.AccountDao,
     private val balanceMaintainer: BalanceMaintainer,
 ) : ViewModel() {
 
     private val zone: ZoneId = ZoneId.systemDefault()
     private val _backfill = MutableStateFlow<BackfillOffer?>(null)
     val backfill: StateFlow<BackfillOffer?> = _backfill.asStateFlow()
+
+    private val _openingBalanceReminder = MutableStateFlow<OpeningBalanceReminder?>(null)
+    val openingBalanceReminder: StateFlow<OpeningBalanceReminder?> =
+        _openingBalanceReminder.asStateFlow()
 
     val state: StateFlow<SettingsUiState> = settingsRepository.settings
         .map { settings ->
@@ -86,7 +100,17 @@ class SettingsViewModel @Inject constructor(
                 else -> null
             }
             _backfill.value = newlyCovered?.let { (from, to) -> BackfillOffer(from, to) }
+
+            // Whichever way the boundary moved, the opening figures now mean a
+            // different date than the one they were entered for.
+            _openingBalanceReminder.value = date?.let {
+                OpeningBalanceReminder(from = it, accounts = accountDao.activeAccounts().size)
+            }
         }
+    }
+
+    fun dismissOpeningBalanceReminder() {
+        _openingBalanceReminder.value = null
     }
 
     fun dismissBackfill() {
