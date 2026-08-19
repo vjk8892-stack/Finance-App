@@ -14,6 +14,9 @@ jobs:
     name: Build, unit tests, lint
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Needed only by the release step at the end of this job.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -84,6 +87,38 @@ jobs:
           name: kosha-debug-apk
           path: app/build/outputs/apk/**/debug/*.apk
           retention-days: 14
+
+      # A link that works without a GitHub account.
+      #
+      # Actions artifacts require the downloader to be signed in to GitHub —
+      # even on a public repo — so opening one on a phone gives a bare 404 and
+      # no hint why. Release assets have no such rule: this URL is a plain
+      # public download, which is what installing your own app should take.
+      #
+      # One rolling tag, replaced each build, so the link never changes:
+      # https://github.com/<owner>/<repo>/releases/download/dev-latest/kosha-latest.apk
+      - name: Publish the APK where a phone can reach it
+        if: github.ref_name == github.event.repository.default_branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          apk=$(find app/build/outputs/apk/full/debug -name '*arm64-v8a*.apk' | head -1)
+          test -n "$apk"
+          cp "$apk" kosha-latest.apk
+          # Delete first: a release asset cannot be overwritten in place, and
+          # --cleanup-tag keeps the tag from drifting off an old commit.
+          gh release delete dev-latest --yes --cleanup-tag || true
+          gh release create dev-latest kosha-latest.apk \
+            --prerelease \
+            --title "Latest debug build" \
+            --notes "Debug build of ${GITHUB_SHA}.
+
+          For 64-bit phones (arm64-v8a) — which is any phone from the last several years.
+
+          This is a DEBUG build: it installs alongside a release build rather than over it,
+          and it is larger than a release build would be. Kosha has no INTERNET permission,
+          verified on every build."
 
       - name: Upload test reports on failure
         if: failure()
