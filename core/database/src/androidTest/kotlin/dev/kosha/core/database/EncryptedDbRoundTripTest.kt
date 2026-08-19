@@ -43,10 +43,16 @@ class EncryptedDbRoundTripTest {
         )
         assertEquals("HDFC Savings", db.accountDao().byId(id)?.name)
 
-        // Seeding: G2 = 16 expense + 3 system-reserved + 5 income = 24; idempotent
+        // Seeding is idempotent: twice through leaves exactly one of each.
+        //
+        // Counted against the seeder's own list rather than a number written
+        // out here. This said 24 and broke the moment a category was added —
+        // which tested the constant, not the seeding. The property worth
+        // pinning is "running it twice does not duplicate", and that holds
+        // however many categories there are.
         CategorySeeder.ensureSeeded(db.categoryDao())
         CategorySeeder.ensureSeeded(db.categoryDao())
-        assertEquals(24, db.categoryDao().count())
+        assertEquals(CategorySeeder.seedCategories().size, db.categoryDao().count())
         assertNotNull(db.categoryDao().bySystemKey(dev.kosha.core.database.model.SystemCategoryKey.UNCATEGORIZED))
         db.close()
 

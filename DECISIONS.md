@@ -742,3 +742,39 @@ rejected suggestion stays rejected.
 Asking for `connectedDebugAndroidTest` alone does not order the compile ahead of
 the copy, so the job failed at configuration time before a single instrumented
 test ran. A compile step now precedes it.
+
+## Splits can finally be made
+
+The schema, the period maths, the balances and the exports have handled split
+transactions since Phase 1 — parents contribute their children's amounts to the
+category breakdown, children are excluded from balances and from every export —
+and nothing in the app could create one. `TransactionRepository.split` and a
+sheet in the transaction detail close that. The lines must add up to the parent
+exactly: a partial split would leave the category breakdown disagreeing with
+the total it is a breakdown of.
+
+## Three defects the Goals/Vault/Widgets review turned up
+
+- **The widget was up to 30 minutes stale.** `WidgetRefreshWorker.refreshNow`
+  carried a comment saying it ran after every commit; nothing called it. Hooked
+  to the transaction count in `KoshaApp`, the one place that can see both
+  `:core:database` and `:feature:widgets`.
+- **Goals reported the current period's spend as "average monthly expense".**
+  The emergency-fund card multiplies it by the months target, so on the 2nd of
+  the month it showed a target near zero and a fund already complete — the one
+  number on that screen meant to say whether you are safe.
+  `PeriodRepository.averageExpense` averages completed periods instead.
+- **The vault never re-locked.** Unlocking set a flag that lived as long as the
+  ViewModel, so backgrounding the app and returning showed the vault open, with
+  any revealed field still counting down. It now re-locks on `ON_STOP`.
+
+## Two instrumented tests that had never run, and what they found
+
+- `EncryptedDbRoundTripTest` asserted 24 seeded categories. Adding "Personal"
+  made it 25. It now counts the seeder's own list — the property worth pinning
+  is that seeding twice does not duplicate, which holds at any count.
+- `:feature:export` reported "Starting 0 tests" and a crashed instrumentation
+  process: `androidx.test:runner` was never declared, and `androidx.test.ext:junit`
+  does not bring it. `:core:database` had it only by accident, via espresso. It
+  is now declared in the library convention plugin beside the
+  `testInstrumentationRunner` line it satisfies.

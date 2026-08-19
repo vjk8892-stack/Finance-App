@@ -245,6 +245,10 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE parentTransactionId = :parentId")
     suspend fun childrenOf(parentId: Long): List<TransactionEntity>
 
+    /** Clears a split without touching the transaction it belongs to. */
+    @Query("DELETE FROM transactions WHERE parentTransactionId = :parentId")
+    suspend fun deleteChildrenOf(parentId: Long)
+
     @Query("SELECT COUNT(*) FROM transactions WHERE accountId = :accountId")
     suspend fun countForAccount(accountId: Long): Int
 

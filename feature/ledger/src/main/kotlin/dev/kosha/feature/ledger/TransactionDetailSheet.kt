@@ -54,6 +54,7 @@ fun TransactionDetailSheet(
     onDismiss: () -> Unit,
     onRecategorize: () -> Unit,
     onEdit: () -> Unit,
+    onSplit: () -> Unit = {},
 ) {
     val row = detail.row
     val txn = row.txn
@@ -185,6 +186,18 @@ fun TransactionDetailSheet(
                     label = stringResource(R.string.ledger_recategorize),
                     onClick = onRecategorize,
                 )
+                // Only for money going out: an incoming payment has one source,
+                // and "half my salary was groceries" is not a sentence.
+                if (txn.type == TxnType.DEBIT) {
+                    KoshaChip(
+                        label = if (detail.splitLines.isEmpty()) {
+                            stringResource(R.string.split_action)
+                        } else {
+                            stringResource(R.string.split_action_edit, detail.splitLines.size)
+                        },
+                        onClick = onSplit,
+                    )
+                }
             }
             Spacer(Modifier.height(KoshaSpacing.xl))
         }

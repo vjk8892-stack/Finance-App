@@ -68,6 +68,24 @@ fun VaultScreen(viewModel: VaultViewModel = hiltViewModel()) {
     var showEditor by remember { mutableStateOf(false) }
     val copiedLabel = stringResource(R.string.vault_copied)
 
+    // Re-lock the moment the vault leaves the foreground.
+    //
+    // Unlocking set a flag that then lived as long as the ViewModel, so
+    // switching to another app and coming back showed the vault open — with a
+    // revealed field still counting down. FLAG_SECURE stops a screenshot and
+    // the biometric gate stops a first look, and neither of them helped once
+    // the phone had been handed to someone with the app already unlocked. Ring
+    // 2 is meant to be stricter than the rest of the app, not the same as it
+    // with a prompt on the way in.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) viewModel.lock()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     // Screenshot blocking while the vault is on screen (spec B4).
     DisposableEffect(activity) {
         activity?.window?.setFlags(

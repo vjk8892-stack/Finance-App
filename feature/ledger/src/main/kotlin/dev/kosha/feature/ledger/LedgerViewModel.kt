@@ -216,6 +216,12 @@ data class TransactionDetail(
      * lite build, or the user deleted it from their inbox.
      */
     val messageUnavailable: Boolean = false,
+    /**
+     * The split lines, if this transaction has been divided. Loaded with the
+     * detail so the sheet can say "Split · 3 ways" rather than offering to
+     * split something that already is.
+     */
+    val splitLines: List<Pair<Long?, Money>> = emptyList(),
 )
 
 @HiltViewModel
@@ -599,8 +605,45 @@ class LedgerViewModel @Inject constructor(
                 photoUri = evidence.firstOrNull { it.kind == EvidenceKind.PHOTO_URI }?.payload,
                 loadingMessage = false,
                 messageUnavailable = message == null && isSms,
+                splitLines = transactionRepository.splitLines(row.txn.id)
+                    .map { it.categoryId to Money(it.amountPaise) },
             )
         }
+    }
+
+    /**
+     * Divides a transaction across categories, or clears an existing split.
+     *
+     * Rejected outright unless the lines add up to the transaction exactly —
+     * see [TransactionRepository.split]. The sheet keeps Save disabled until
+     * they do, so reaching this with a mismatch means something else is wrong
+     * and silently writing a half-split would hide it.
+     */
+    fun splitTransaction(parentId: Long, lines: List<Pair<Long?, Money>>) {
+        viewModelScope.launch {
+            transactionRepository.split(
+                parentId,
+                lines.map { (categoryId, amount) ->
+                    TransactionRepository.SplitLine(categoryId, amount)
+                },
+            )
+            refreshDetail(parentId)
+        }
+    }
+
+    fun unsplitTransaction(parentId: Long) {
+        viewModelScope.launch {
+            transactionRepository.unsplit(parentId)
+            refreshDetail(parentId)
+        }
+    }
+
+    /** Keeps the open sheet honest about what it just did. */
+    private suspend fun refreshDetail(parentId: Long) {
+        _detail.value = _detail.value?.takeIf { it.row.txn.id == parentId }?.copy(
+            splitLines = transactionRepository.splitLines(parentId)
+                .map { it.categoryId to Money(it.amountPaise) },
+        ) ?: _detail.value
     }
 
     fun closeDetail() {

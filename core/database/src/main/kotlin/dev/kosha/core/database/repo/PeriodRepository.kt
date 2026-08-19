@@ -50,6 +50,32 @@ class PeriodRepository @Inject constructor(
         return Money(total)
     }
 
+    /**
+     * Typical spending per period, over the last [periods] COMPLETED ones.
+     *
+     * The current period is excluded deliberately. Callers want this to size
+     * an emergency fund — "six months of expenses" — and on the 2nd of the
+     * month the period-to-date total is nearly zero, which would report a
+     * target of almost nothing and a fund that is already complete. A partial
+     * month is not a month's spending.
+     *
+     * Falls back to the current period only when there is no completed history
+     * at all, which is the one case where a partial figure beats no figure.
+     */
+    suspend fun averageExpense(anchorDay: Int, periods: Int = 6): Money {
+        var p = Periods.previousMonthlyPeriod(currentPeriod(anchorDay), anchorDay)
+        val totals = mutableListOf<Long>()
+        repeat(periods) {
+            totals += snapshot(p).totals.totalExpense.paise
+            p = Periods.previousMonthlyPeriod(p, anchorDay)
+        }
+        // Periods before any data exist and total zero; averaging them in
+        // would halve the figure for someone three months into using the app.
+        val real = totals.filter { it > 0 }
+        if (real.isEmpty()) return snapshot(currentPeriod(anchorDay)).totals.totalExpense
+        return Money(real.sum() / real.size)
+    }
+
     suspend fun snapshot(period: Period): PeriodSnapshot {
         // A period that begins before the tracking boundary is clamped to it,
         // so a month you only started tracking halfway through reports what

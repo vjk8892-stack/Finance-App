@@ -104,6 +104,7 @@ fun LedgerScreen(
     var filtersOpen by remember { mutableStateOf(false) }
     var sortOpen by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<LedgerRow?>(null) }
+    var splitting by remember { mutableStateOf<TransactionDetail?>(null) }
     val retroResult by viewModel.retroResult.collectAsState()
     val undo by viewModel.undo.collectAsState()
 
@@ -473,6 +474,26 @@ fun LedgerScreen(
             },
             onEdit = {
                 editing = open.row
+                viewModel.closeDetail()
+            },
+            onSplit = { splitting = open },
+        )
+    }
+
+    splitting?.let { open ->
+        SplitSheet(
+            total = Money(open.row.txn.amountPaise),
+            categories = state.categories,
+            existing = open.splitLines,
+            onDismiss = { splitting = null },
+            onSave = { lines ->
+                viewModel.splitTransaction(open.row.txn.id, lines)
+                splitting = null
+                viewModel.closeDetail()
+            },
+            onUnsplit = {
+                viewModel.unsplitTransaction(open.row.txn.id)
+                splitting = null
                 viewModel.closeDetail()
             },
         )

@@ -98,9 +98,12 @@ class GoalsViewModel @Inject constructor(
             .map { (tag, txns) -> tag to Money(txns.sumOf { it.amountPaise }) }
             .sortedByDescending { it.second.paise }
 
-        val avgExpense = periodRepository
-            .snapshot(periodRepository.currentPeriod(settings.periodAnchorDay))
-            .totals.totalExpense
+        // Was the CURRENT period's expense, which is not an average and not a
+        // month. The emergency-fund card multiplies this by the months target,
+        // so on the 2nd of the month it reported a target near zero and a fund
+        // that was already complete — the one number on this screen that is
+        // supposed to tell you whether you are safe.
+        val avgExpense = periodRepository.averageExpense(settings.periodAnchorDay)
 
         GoalsUiState(
             goals = goals,

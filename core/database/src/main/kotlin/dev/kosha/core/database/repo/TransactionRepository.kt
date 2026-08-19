@@ -1,5 +1,6 @@
 package dev.kosha.core.database.repo
 
+import dev.kosha.core.common.Money
 import dev.kosha.core.database.dao.AccountDao
 import dev.kosha.core.database.dao.LedgerRow
 import dev.kosha.core.database.dao.CategoryState
@@ -69,6 +70,62 @@ class TransactionRepository @Inject constructor(
         transactionDao.deleteWithChildren(id)
         balanceMaintainer.recompute(existing.accountId)
     }
+
+    /** One line of a split: part of the parent's amount, under its own category. */
+    data class SplitLine(val categoryId: Long?, val amount: Money, val note: String? = null)
+
+    /**
+     * Divides one transaction across several categories.
+     *
+     * The schema, the period maths and every read path have supported splits
+     * since Phase 1 — parents are excluded from category breakdowns when they
+     * have children, children are excluded from balances and exports — but
+     * nothing in the app could create one. A ₹4,000 supermarket bill that is
+     * half groceries and half a birthday present had to be filed as one or the
+     * other, or typed in twice.
+     *
+     * Children are read-only satellites of the parent: they carry no account
+     * effect of their own (the money moved once), and deleting the parent
+     * deletes them.
+     *
+     * @return false when the lines do not add up to the parent exactly.
+     * Anything else leaves the category breakdown disagreeing with the total
+     * it is a breakdown OF, which is worse than not splitting at all.
+     */
+    suspend fun split(parentId: Long, lines: List<SplitLine>): Boolean {
+        val parent = transactionDao.byId(parentId) ?: return false
+        if (parent.parentTransactionId != null) return false
+        if (lines.size < 2) return false
+        if (lines.any { it.amount.paise <= 0 }) return false
+        if (lines.sumOf { it.amount.paise } != parent.amountPaise) return false
+
+        // Replace rather than append: splitting twice should give the second
+        // answer, not both answers added together.
+        transactionDao.deleteChildrenOf(parentId)
+        val now = System.currentTimeMillis()
+        lines.forEach { line ->
+            transactionDao.insert(
+                parent.copy(
+                    id = 0,
+                    parentTransactionId = parentId,
+                    categoryId = line.categoryId,
+                    amountPaise = line.amount.paise,
+                    note = line.note,
+                    createdAtMillis = now,
+                    updatedAtMillis = now,
+                ),
+            )
+        }
+        return true
+    }
+
+    /** Drops the split lines, leaving the transaction whole again. */
+    suspend fun unsplit(parentId: Long) {
+        transactionDao.deleteChildrenOf(parentId)
+    }
+
+    suspend fun splitLines(parentId: Long): List<TransactionEntity> =
+        transactionDao.childrenOf(parentId)
 
     // --- Undo ---
     //
