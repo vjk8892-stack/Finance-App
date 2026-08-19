@@ -5,8 +5,18 @@ and runs in CI. The gates below cannot be — they need real hardware, real bank
 SMS, or your own screenshots. They are listed here so nothing is quietly
 assumed to have passed.
 
-Run instrumented tests with `./gradlew connectedDebugAndroidTest` on a
-connected device.
+The instrumented tests themselves are no longer in this category: the CI
+`instrumented` job boots an emulator and runs `:core:database` and
+`:feature:export` on every push. Until it existed they had never once been
+executed, and three of them turned out not to work at all — one built a
+repository with constructor arguments that had changed twice, one asserted a
+category count that a new category had made wrong, and one read a file with
+`readNBytes`, a method Android only gained at API 33 while this app supports
+26. Everything below still needs real hardware, real bank SMS, or your own
+screenshots.
+
+To run them against a phone rather than the emulator:
+`./gradlew connectedDebugAndroidTest` with the device connected.
 
 ## Phase 0 — spikes and baselines
 
@@ -35,7 +45,7 @@ still worth doing for a bank you use often: it raises confidence and names the
 bank, but it is no longer what makes capture work.
 
 Multi-account attribution is pinned by `MultiAccountAttributionTest`
-(`:core:database` androidTest, needs a device): an SMS account tail that
+(`:core:database` androidTest, runs on the CI emulator): an SMS account tail that
 matches nothing must create its own account and wait for review, never land on
 the account you did add.
 

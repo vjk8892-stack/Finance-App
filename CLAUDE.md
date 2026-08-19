@@ -4,7 +4,8 @@
 product, design, and phasing. `DECISIONS.md` is the append-only decision log.
 
 **Current state:** all 12 phases implemented; CI green (build + lint + unit
-tests + debug APK). Gates that need physical devices are still open — see
+tests + debug APK + instrumented tests on an emulator). Gates that need a real
+phone, real bank SMS or your own receipts are still open — see
 `docs/DEVICE_GATES.md`.
 
 ## Reporting back
@@ -22,7 +23,7 @@ charts. `minSdk 26`, `compileSdk 35`.
 - `:core:designsystem` — tokens (`token/Kosha*.kt` — the ONLY place colors/type/motion live), theme, base components
 - `:core:database` — Room schema, DAOs, repositories, migrations, SQLCipher, DataStore settings
 - `engines/common` (`dev.kosha:common`) — **pure JVM**: Money (Long paise), Periods, Result
-- `engines/engine` (`dev.kosha:engine`) — **pure JVM**: ingestion pipeline, SMS/OCR parsing, dedup, period/budget math, forecast, insight engines, debt planner, query NLU, constitution (all exhaustively unit-tested here — 186 tests)
+- `engines/engine` (`dev.kosha:engine`) — **pure JVM**: ingestion pipeline, SMS/OCR parsing, dedup, period/budget math, forecast, insight engines, debt planner, query NLU, constitution (all exhaustively unit-tested here — 197 tests)
 - `:feature:*` — ledger, ingest/{sms,ocr,review}, budget, income, insights, goals, vault, export, widgets
 
 ## Invariants (do not break)
@@ -50,5 +51,6 @@ charts. `minSdk 26`, `compileSdk 35`.
 - The Android build consumes it via `includeBuild("engines")` as
   `dev.kosha:common` / `dev.kosha:engine`.
 - Full Android build + lint + APK runs in GitHub Actions (`.github/workflows/ci.yml`).
-- Instrumented tests (`androidTest`) need a device/emulator — run locally via
-  `./gradlew connectedDebugAndroidTest`.
+- Instrumented tests (`androidTest`) run on an emulator in the CI `instrumented`
+  job on every push; locally, `./gradlew connectedDebugAndroidTest` with a
+  device attached.
