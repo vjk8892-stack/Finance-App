@@ -9,7 +9,10 @@ import dev.kosha.core.database.model.AccountEntity
 import dev.kosha.core.database.model.AccountType
 import dev.kosha.core.database.model.TxnSource
 import dev.kosha.core.database.model.TxnStatus
+import dev.kosha.core.database.repo.BalanceMaintainer
 import dev.kosha.core.database.repo.PipelineCommitter
+import dev.kosha.core.database.settings.SettingsRepository
+import dev.kosha.core.database.settings.TrackingWindow
 import dev.kosha.core.database.seed.CategorySeeder
 import dev.kosha.core.engine.pipeline.IngestionPipeline
 import dev.kosha.core.engine.pipeline.ParsedTransaction
@@ -17,7 +20,6 @@ import dev.kosha.core.engine.pipeline.TxnType
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,6 +41,21 @@ class MultiAccountAttributionTest {
             .allowMainThreadQueries()
             .build()
 
+    /**
+     * Built the same way Hilt builds it, so a constructor change breaks here
+     * rather than drifting silently — which is exactly what happened while
+     * these tests had no device to run on.
+     */
+    private fun committerFor(context: Context, db: KoshaDatabase): PipelineCommitter {
+        val trackingWindow = TrackingWindow(SettingsRepository(context))
+        return PipelineCommitter(
+            BalanceMaintainer(db.accountDao(), trackingWindow),
+            db.transactionDao(),
+            db.accountDao(),
+            db.categoryDao(),
+        )
+    }
+
     private fun capture(last4: String?, amountPaise: Long = 50_000) = ParsedTransaction(
         amount = Money(amountPaise),
         type = TxnType.DEBIT,
@@ -56,6 +73,7 @@ class MultiAccountAttributionTest {
                 score = 0.99,
                 merchantNormalized = "SHOP",
                 isAtmWithdrawal = false,
+                isSelfTransfer = false,
                 bank = null,
                 patternId = null,
             ),
@@ -69,7 +87,7 @@ class MultiAccountAttributionTest {
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
         val db = inMemoryDb(context)
         CategorySeeder.ensureSeeded(db.categoryDao())
-        val committer = PipelineCommitter(db.transactionDao(), db.accountDao(), db.categoryDao())
+        val committer = committerFor(context, db)
 
         val hdfc = db.accountDao().insert(
             AccountEntity(name = "HDFC Savings", type = AccountType.BANK, last4 = "1234"),
@@ -103,7 +121,7 @@ class MultiAccountAttributionTest {
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
         val db = inMemoryDb(context)
         CategorySeeder.ensureSeeded(db.categoryDao())
-        val committer = PipelineCommitter(db.transactionDao(), db.accountDao(), db.categoryDao())
+        val committer = committerFor(context, db)
 
         val hdfc = db.accountDao().insert(
             AccountEntity(name = "HDFC Savings", type = AccountType.BANK, last4 = null),
@@ -134,7 +152,7 @@ class MultiAccountAttributionTest {
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
         val db = inMemoryDb(context)
         CategorySeeder.ensureSeeded(db.categoryDao())
-        val committer = PipelineCommitter(db.transactionDao(), db.accountDao(), db.categoryDao())
+        val committer = committerFor(context, db)
 
         val hdfc = db.accountDao().insert(
             AccountEntity(name = "HDFC Savings", type = AccountType.BANK, last4 = "1234"),
@@ -155,7 +173,7 @@ class MultiAccountAttributionTest {
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
         val db = inMemoryDb(context)
         CategorySeeder.ensureSeeded(db.categoryDao())
-        val committer = PipelineCommitter(db.transactionDao(), db.accountDao(), db.categoryDao())
+        val committer = committerFor(context, db)
 
         val only = db.accountDao().insert(
             AccountEntity(name = "HDFC Savings", type = AccountType.BANK, last4 = "1234"),
@@ -178,17 +196,32 @@ class MultiAccountAttributionTest {
         db.close()
     }
 
+    /**
+     * With no accounts at all, the capture used to be DROPPED — a real payment
+     * silently discarded because the user had not finished onboarding. Nothing
+     * told them, and nothing could recover it: the message had been read and
+     * marked seen. The first message now creates the account it names and
+     * queues itself for review, so the transaction survives and the user is
+     * still the one who confirms where it belongs.
+     */
     @Test
-    fun noAccountsAtAllDropsRatherThanInventingOne() = runBlocking {
+    fun theFirstMessageWithNoAccountsCreatesOneAndAsks() = runBlocking {
         val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
         val db = inMemoryDb(context)
         CategorySeeder.ensureSeeded(db.categoryDao())
-        val committer = PipelineCommitter(db.transactionDao(), db.accountDao(), db.categoryDao())
+        val committer = committerFor(context, db)
 
         val result = commit(committer, capture("1234"))
-        assertTrue("$result", result is PipelineCommitter.CommitResult.Dropped)
-        assertEquals("no-account", (result as PipelineCommitter.CommitResult.Dropped).reason)
-        assertNull(db.accountDao().activeAccounts().firstOrNull())
+        assertTrue("$result", result is PipelineCommitter.CommitResult.QueuedForReview)
+
+        val created = db.accountDao().activeAccounts().single()
+        assertEquals("1234", created.last4)
+
+        val txn = db.transactionDao()
+            .byId((result as PipelineCommitter.CommitResult.QueuedForReview).txnId)!!
+        assertEquals(created.id, txn.accountId)
+        assertEquals(TxnStatus.PENDING_REVIEW, txn.status)
+        assertEquals("new-account-1234", txn.reviewReason)
         db.close()
     }
 }
