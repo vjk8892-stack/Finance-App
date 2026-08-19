@@ -10,6 +10,8 @@
     <string name="ledger_has_photo">Receipt photo attached</string>
     <string name="ledger_not_in_total">· not in total</string>
     <string name="ledger_recategorize">Recategorize</string>
+    <string name="ledger_export">Export these</string>
+    <string name="ledger_export_share">Share these transactions</string>
     <string name="ledger_edit">Edit</string>
     <string name="ledger_delete">Delete</string>
     <string name="ledger_delete_confirm">Delete this entry?</string>
@@ -39,6 +41,7 @@
     <string name="add_income">Received</string>
     <string name="add_note_hint">Note (optional)</string>
     <string name="add_pick_category">Pick a category to save</string>
+    <string name="add_save_to">Save to %1$s</string>
     <string name="add_saved">Logged</string>
     <string name="add_no_account">Create an account first</string>
     <string name="add_mood_impulse">Impulse</string>

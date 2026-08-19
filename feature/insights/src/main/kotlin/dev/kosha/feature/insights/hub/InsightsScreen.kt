@@ -66,6 +66,7 @@ fun InsightsScreen(
     val insights by viewModel.insights.collectAsState()
     val whatIf by viewModel.whatIf.collectAsState()
     val opportunity by viewModel.opportunityCost.collectAsState()
+    val periodsBack by viewModel.periodsBack.collectAsState()
     val data = insights
 
     if (data == null) {
@@ -84,10 +85,11 @@ fun InsightsScreen(
         verticalArrangement = Arrangement.spacedBy(KoshaSpacing.m),
     ) {
         item {
-            Text(
-                text = stringResource(R.string.insights_title),
-                style = KoshaType.Title,
-                color = KoshaColors.OffWhite,
+            PeriodHeader(
+                period = data.period,
+                periodsBack = periodsBack,
+                onEarlier = viewModel::showEarlierPeriod,
+                onLater = viewModel::showLaterPeriod,
             )
         }
 
@@ -105,6 +107,57 @@ fun InsightsScreen(
         item { WhatIfSection(data, whatIf, viewModel) }
         item { OpportunityCostSection(data, opportunity, viewModel) }
         item { Spacer(Modifier.height(KoshaSpacing.xxl)) }
+    }
+}
+
+/**
+ * Title plus the month being reported on, with an arrow either side.
+ *
+ * Every chart, score and piece of advice below is about this one period. Until
+ * now that period was always the current one and was never named, so the whole
+ * hub was silently frozen on "this month" — the trajectory chart could show
+ * twelve months while nothing else would look at any of them.
+ */
+@Composable
+private fun PeriodHeader(
+    period: dev.kosha.core.common.Period,
+    periodsBack: Int,
+    onEarlier: () -> Unit,
+    onLater: () -> Unit,
+) {
+    val label = remember(period.start) {
+        YearMonth.from(period.start).format(
+            java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy"),
+        )
+    }
+    Column {
+        Text(
+            text = stringResource(R.string.insights_title),
+            style = KoshaType.Title,
+            color = KoshaColors.OffWhite,
+        )
+        Spacer(Modifier.height(KoshaSpacing.s))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
+        ) {
+            KoshaChip(label = "‹", onClick = onEarlier)
+            Text(
+                text = label,
+                style = KoshaType.InsightSerif,
+                color = KoshaColors.OffWhite,
+                modifier = Modifier.weight(1f),
+            )
+            // Deliberately absent rather than disabled at the newest period:
+            // a greyed arrow invites tapping to find out why it does nothing.
+            if (periodsBack > 0) {
+                KoshaChip(label = "›", onClick = onLater)
+                KoshaChip(
+                    label = stringResource(R.string.insights_this_month),
+                    onClick = { repeat(periodsBack) { onLater() } },
+                )
+            }
+        }
     }
 }
 

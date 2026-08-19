@@ -77,8 +77,23 @@ class InsightsRepository @Inject constructor(
         val savingsGap: Money,
     )
 
-    suspend fun load(anchorDay: Int, emergencyFundMonths: Int): Insights {
-        val period = periodRepository.currentPeriod(anchorDay)
+    /**
+     * @param periodsBack how many periods before the current one to report on.
+     * Zero is this month. Every section moves together — including the ones
+     * measured over a trailing window, which are anchored to the end of the
+     * period being shown rather than to today. A leak list built from the last
+     * ninety days sitting under a March heading would be describing a
+     * different span of time than everything around it.
+     */
+    suspend fun load(anchorDay: Int, emergencyFundMonths: Int, periodsBack: Int = 0): Insights {
+        var period = periodRepository.currentPeriod(anchorDay)
+        repeat(periodsBack.coerceAtLeast(0)) {
+            period = Periods.previousMonthlyPeriod(period, anchorDay)
+        }
+        // "Now" for everything trailing: the end of the shown period, or the
+        // real now when that period has not finished yet.
+        val asOf = minOf(System.currentTimeMillis(), period.endEpochMillisExclusive(zone))
+        val asOfDate = Periods.localDateOf(asOf, zone)
         val snapshot = periodRepository.snapshot(period)
         val categories = categoryDao.observeAll().first().associateBy { it.id }
         val excluded = setOfNotNull(
@@ -118,10 +133,10 @@ class InsightsRepository @Inject constructor(
         val baseline = baselineSpend(period, anchorDay, categories, excluded)
 
         // Leaks over the trailing 90 days.
-        val leakWindowStart = LocalDate.now(zone).minusDays(LeakDetector.WINDOW_DAYS.toLong())
+        val leakWindowStart = asOfDate.minusDays(LeakDetector.WINDOW_DAYS.toLong())
         val leakTxns = transactionDao.inWindow(
             trackingWindow.clampFrom(leakWindowStart.atStartOfDay(zone).toInstant().toEpochMilli()),
-            System.currentTimeMillis(),
+            asOf,
         ).filter {
             it.status == TxnStatus.COMMITTED &&
                 it.type == TxnType.DEBIT &&
@@ -135,13 +150,13 @@ class InsightsRepository @Inject constructor(
         )
 
         // Anomalies over this period's transactions, against 6 months of history.
-        val historyStart = LocalDate.now(zone).minusDays(AnomalyEngine.HISTORY_WINDOW_DAYS)
+        val historyStart = asOfDate.minusDays(AnomalyEngine.HISTORY_WINDOW_DAYS)
         // History is what the anomaly detector calls "normal for you". Reaching
         // past the boundary would judge this month against months the user
         // asked to ignore.
         val historyTxns = transactionDao.inWindow(
             trackingWindow.clampFrom(historyStart.atStartOfDay(zone).toInstant().toEpochMilli()),
-            System.currentTimeMillis(),
+            asOf,
         ).filter { it.status == TxnStatus.COMMITTED && it.type == TxnType.DEBIT }
 
         val anomalies = periodTxns.mapNotNull { txn ->

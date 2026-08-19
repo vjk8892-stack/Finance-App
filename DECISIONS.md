@@ -705,3 +705,40 @@ they are whole, and has silently lost data.
   having all twenty change would be the app overruling the selection it had
   just asked for. The selection bar replaces the filter bar rather than sitting
   beside it, so the controls on screen always describe the mode you are in.
+
+## Insights reports on a chosen month, not always the current one
+
+The hub was hardwired to `currentPeriod`. Every chart, score and piece of
+advice on it described this month and nothing else, while the trajectory chart
+sitting in the middle of it showed twelve — none of which could be looked at.
+`InsightsRepository.load` now takes `periodsBack`, and the trailing-window
+sections (leaks, anomalies) are anchored to the end of the SHOWN period rather
+than to today, so the whole screen describes one span of time.
+
+## The ledger can export what it is showing
+
+Export could produce a CSV over fixed ranges — this period, last three months,
+everything. None of those is the list the user is usually looking at: they have
+filtered to an account, a category, a searched merchant. Re-specifying that
+inside the export screen is work already done once. "Export these" on the
+filter bar and the selection bar writes the visible rows and opens the share
+sheet. No running-balance column: the list can be in any order the user chose.
+
+## Recurring rules are found, not only typed
+
+Recurring rules forecast, auto-log and stop an EMI being double-counted — but
+every one had to be typed in from memory, so almost none existed. `RecurringDetector`
+(engines, 11 tests) reads cadence out of the ledger: three or more payments to
+the same merchant at an even interval, still live, amount stable enough to
+forecast. Deliberately conservative — daily is excluded (a coffee habit is not
+a subscription), a bill that triples month to month scores below the bar, and
+an accepted suggestion never gets `autoLog` on. Dismissals persist, so a
+rejected suggestion stays rejected.
+
+## The emulator CI job needed the Room schemas to exist first
+
+`copyRoomSchemasToAndroidTestAssetsDebugAndroidTest` declares
+`core/database/schemas` as a required input, and KSP writes it during a compile.
+Asking for `connectedDebugAndroidTest` alone does not order the compile ahead of
+the copy, so the job failed at configuration time before a single instrumented
+test ran. A compile step now precedes it.

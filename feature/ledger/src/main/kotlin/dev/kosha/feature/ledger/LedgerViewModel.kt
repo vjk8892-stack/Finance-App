@@ -197,6 +197,9 @@ internal fun excludedCategoryIdsOf(categories: List<CategoryEntity>): Set<Long> 
  * merchant name Kosha read wrong is impossible to correct — or even to judge —
  * without seeing the text it came from.
  */
+private val CSV_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+private val CSV_STAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd")
+
 data class TransactionDetail(
     val row: LedgerRow,
     /**
@@ -217,6 +220,8 @@ data class TransactionDetail(
 
 @HiltViewModel
 class LedgerViewModel @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext
+    private val appContext: android.content.Context,
     private val transactionRepository: TransactionRepository,
     private val transactionDao: TransactionDao,
     private val queryRepository: QueryRepository,
@@ -350,6 +355,69 @@ class LedgerViewModel @Inject constructor(
                 transactionRepository.restoreCategories(before)
             }
         }
+    }
+
+    /**
+     * Writes exactly what the ledger is showing to a CSV and hands back a
+     * share URI.
+     *
+     * The Export screen can already produce a CSV, but only over fixed ranges —
+     * this period, last three months, everything. None of those is the thing
+     * you are usually looking at: you have filtered to one account, or to a
+     * category, or searched a merchant, and THAT is the list you want out.
+     * Re-creating a ledger filter inside the export screen is work the user has
+     * already done once.
+     *
+     * When rows are selected, only those go — the selection is a narrower
+     * statement of intent than the filters are.
+     */
+    fun exportVisible(onReady: (android.net.Uri) -> Unit) {
+        viewModelScope.launch {
+            val state = uiState.value
+            val visible = state.flatRows +
+                state.months.flatMap { month -> month.days.flatMap { it.rows } }
+            val subject = state.selectedIds
+                .takeIf { it.isNotEmpty() }
+                ?.let { ids -> visible.filter { it.txn.id in ids } }
+                ?: visible
+            if (subject.isEmpty()) return@launch
+            val uri = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                writeVisibleCsv(subject)
+            }
+            onReady(uri)
+        }
+    }
+
+    private fun writeVisibleCsv(rows: List<LedgerRow>): android.net.Uri {
+        val csv = dev.kosha.core.engine.export.CsvWriter.write(
+            rows.map { row ->
+                dev.kosha.core.engine.export.CsvWriter.Row(
+                    date = CSV_DATE.format(localDate(row.txn.timestampMillis)),
+                    merchant = row.txn.merchantRaw.orEmpty(),
+                    category = row.categoryName.orEmpty(),
+                    account = row.accountName,
+                    type = row.txn.type.name.lowercase(),
+                    amount = Money(row.txn.amountPaise),
+                    note = row.txn.note.orEmpty(),
+                    source = row.txn.source.name.lowercase(),
+                    tags = listOfNotNull(
+                        row.txn.moodTag?.name?.lowercase(),
+                        row.txn.taxTag?.name?.lowercase()?.removePrefix("tax_"),
+                    ).joinToString(" "),
+                )
+            },
+            // No running balance: this list can be in any order the user chose,
+            // and a running total down a list sorted by amount is nonsense.
+            dev.kosha.core.engine.export.CsvWriter.Options(includeNotesAndTags = true),
+        )
+        val dir = java.io.File(appContext.cacheDir, "exports").apply { mkdirs() }
+        val file = java.io.File(dir, "kosha-view-${CSV_STAMP.format(LocalDate.now(zone))}.csv")
+        file.writeText(csv)
+        return androidx.core.content.FileProvider.getUriForFile(
+            appContext,
+            "${appContext.packageName}.fileprovider",
+            file,
+        )
     }
 
     fun clearFilters() {

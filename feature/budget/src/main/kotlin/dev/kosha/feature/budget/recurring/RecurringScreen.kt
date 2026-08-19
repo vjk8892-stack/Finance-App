@@ -80,7 +80,7 @@ fun RecurringScreen(
             }
         }
 
-        if (state.rules.isEmpty()) {
+        if (state.rules.isEmpty() && state.suggestions.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = stringResource(R.string.recurring_empty),
@@ -94,6 +94,35 @@ fun RecurringScreen(
                 contentPadding = PaddingValues(KoshaSpacing.screenPadding),
                 verticalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
             ) {
+                // Above the rules, not below: a rule the app found for you is
+                // only useful before you have gone looking for it yourself.
+                if (state.suggestions.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.recurring_found_title),
+                            style = KoshaType.SectionHeader,
+                            color = KoshaColors.OffWhite,
+                        )
+                    }
+                    items(state.suggestions.size) { i ->
+                        val candidate = state.suggestions[i]
+                        SuggestionCard(
+                            candidate = candidate,
+                            onAccept = { viewModel.accept(candidate) },
+                            onDismiss = { viewModel.dismiss(candidate) },
+                        )
+                    }
+                    if (state.rules.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = stringResource(R.string.recurring_your_rules),
+                                style = KoshaType.SectionHeader,
+                                color = KoshaColors.OffWhite,
+                                modifier = Modifier.padding(top = KoshaSpacing.s),
+                            )
+                        }
+                    }
+                }
                 items(state.rules.size) { i ->
                     RuleCard(state.rules[i]) { viewModel.remove(state.rules[i].id) }
                 }
@@ -111,6 +140,61 @@ fun RecurringScreen(
             onDismiss = { showEditor = false },
         )
     }
+}
+
+/**
+ * "This looks monthly — make it a rule?"
+ *
+ * States what it saw rather than just asserting a conclusion: how many times,
+ * how often, for how much. A suggestion the user cannot check is one they can
+ * only guess at, and accepting it changes what the forecast says.
+ */
+@Composable
+private fun SuggestionCard(
+    candidate: dev.kosha.core.engine.forecast.RecurringDetector.Candidate,
+    onAccept: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    KoshaCard(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(candidate.label, style = KoshaType.Body, color = KoshaColors.OffWhite)
+                Text(
+                    text = stringResource(
+                        R.string.recurring_found_detail,
+                        candidate.occurrences,
+                        stringResource(candidate.frequency.labelRes()),
+                    ),
+                    style = KoshaType.Caption,
+                    color = KoshaColors.OffWhiteFaint,
+                )
+            }
+            AmountText(
+                amount = Money(candidate.typicalAmountPaise),
+                style = KoshaType.AmountSmall,
+                color = KoshaColors.OffWhite,
+                withPaise = false,
+            )
+        }
+        Spacer(Modifier.height(KoshaSpacing.xs))
+        Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs)) {
+            KoshaChip(
+                label = stringResource(R.string.recurring_found_accept),
+                onClick = onAccept,
+                selected = true,
+                accent = KoshaColors.AccentTeal,
+            )
+            KoshaChip(label = stringResource(R.string.recurring_found_no), onClick = onDismiss)
+        }
+    }
+}
+
+private fun dev.kosha.core.engine.forecast.RecurringEngine.Frequency.labelRes(): Int = when (this) {
+    dev.kosha.core.engine.forecast.RecurringEngine.Frequency.DAILY -> R.string.recurring_freq_daily
+    dev.kosha.core.engine.forecast.RecurringEngine.Frequency.WEEKLY -> R.string.recurring_freq_weekly
+    dev.kosha.core.engine.forecast.RecurringEngine.Frequency.MONTHLY -> R.string.recurring_freq_monthly
+    dev.kosha.core.engine.forecast.RecurringEngine.Frequency.QUARTERLY -> R.string.recurring_freq_quarterly
+    dev.kosha.core.engine.forecast.RecurringEngine.Frequency.YEARLY -> R.string.recurring_freq_yearly
 }
 
 @Composable

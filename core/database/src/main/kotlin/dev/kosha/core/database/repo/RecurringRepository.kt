@@ -3,11 +3,15 @@ package dev.kosha.core.database.repo
 import dev.kosha.core.database.dao.AccountDao
 import dev.kosha.core.database.dao.PlanningDao
 import dev.kosha.core.database.dao.TransactionDao
+import dev.kosha.core.database.model.RecurringFrequency
 import dev.kosha.core.database.model.RecurringRuleEntity
 import dev.kosha.core.database.model.TransactionEntity
 import dev.kosha.core.database.model.TxnSource
 import dev.kosha.core.database.model.TxnStatus
 import dev.kosha.core.database.model.TxnType
+import dev.kosha.core.database.settings.SettingsRepository
+import dev.kosha.core.database.settings.TrackingWindow
+import dev.kosha.core.engine.forecast.RecurringDetector
 import dev.kosha.core.engine.forecast.RecurringEngine
 import dev.kosha.core.engine.pipeline.DedupEngine
 import java.time.LocalDate
@@ -15,6 +19,7 @@ import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 
 /**
  * Recurring rules (spec Phase 5).
@@ -29,6 +34,8 @@ class RecurringRepository @Inject constructor(
     private val planningDao: PlanningDao,
     private val transactionDao: TransactionDao,
     private val accountDao: AccountDao,
+    private val trackingWindow: TrackingWindow,
+    private val settingsRepository: SettingsRepository,
 ) {
     private val zone: ZoneId = ZoneId.systemDefault()
 
@@ -52,6 +59,73 @@ class RecurringRepository @Inject constructor(
             dueWindowStartMillis = window.start.atStartOfDay(zone).toInstant().toEpochMilli(),
             dueWindowEndMillis = window.endInclusive.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli(),
         )
+    }
+
+    /**
+     * Subscriptions and bills the ledger already shows, that have no rule yet.
+     *
+     * Rules did real work — forecasting, auto-logging, stopping an EMI being
+     * counted twice — but every one had to be typed in from memory, so in
+     * practice almost none existed. The history needed to spot them was
+     * sitting in the same table the whole time.
+     *
+     * Returns questions, never rules: nothing here changes a number until the
+     * user accepts it.
+     */
+    suspend fun suggestions(today: LocalDate = LocalDate.now(zone)): List<RecurringDetector.Candidate> {
+        val existing = planningDao.activeRecurringRules()
+            .flatMap { listOfNotNull(it.merchantPattern, it.label) }
+            .filter { it.isNotBlank() }
+            .toSet()
+        val dismissed = settingsRepository.settings.first().dismissedRecurring
+        val occurrences = transactionDao
+            .inWindow(trackingWindow.startMillisNow(), System.currentTimeMillis())
+            .filter {
+                it.status == TxnStatus.COMMITTED &&
+                    it.type == TxnType.DEBIT &&
+                    // A split child repeats only because its parent does.
+                    it.parentTransactionId == null &&
+                    !it.merchantNormalized.isNullOrBlank()
+            }
+            .map { txn ->
+                RecurringDetector.Occurrence(
+                    merchantNormalized = txn.merchantNormalized!!,
+                    label = txn.merchantRaw.orEmpty(),
+                    amountPaise = txn.amountPaise,
+                    date = localDate(txn.timestampMillis),
+                    accountId = txn.accountId,
+                    categoryId = txn.categoryId,
+                )
+            }
+        return RecurringDetector.detect(occurrences, today, existing, dismissed)
+    }
+
+    /** Turns an accepted suggestion into a real rule. */
+    suspend fun acceptSuggestion(candidate: RecurringDetector.Candidate): Long = addRule(
+        RecurringRuleEntity(
+            accountId = candidate.accountId,
+            categoryId = candidate.categoryId,
+            amountPaise = candidate.typicalAmountPaise,
+            merchantPattern = candidate.merchantNormalized,
+            frequency = candidate.frequency.toEntity(),
+            nextDueDateMillis = candidate.nextDue.atStartOfDay(zone).toInstant().toEpochMilli(),
+            // Never auto-log from a guess. A rule the app invented that then
+            // starts inventing transactions is two mistakes deep before anyone
+            // notices; the user can switch it on once they trust it.
+            autoLog = false,
+            label = candidate.label,
+        ),
+    )
+
+    suspend fun dismissSuggestion(candidate: RecurringDetector.Candidate) =
+        settingsRepository.dismissRecurringSuggestion(candidate.merchantNormalized)
+
+    private fun RecurringEngine.Frequency.toEntity(): RecurringFrequency = when (this) {
+        RecurringEngine.Frequency.DAILY -> RecurringFrequency.DAILY
+        RecurringEngine.Frequency.WEEKLY -> RecurringFrequency.WEEKLY
+        RecurringEngine.Frequency.MONTHLY -> RecurringFrequency.MONTHLY
+        RecurringEngine.Frequency.QUARTERLY -> RecurringFrequency.QUARTERLY
+        RecurringEngine.Frequency.YEARLY -> RecurringFrequency.YEARLY
     }
 
     data class DueRule(val rule: RecurringRuleEntity, val alreadyCovered: Boolean)

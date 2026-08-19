@@ -107,6 +107,22 @@ fun LedgerScreen(
     val retroResult by viewModel.retroResult.collectAsState()
     val undo by viewModel.undo.collectAsState()
 
+    // The CSV goes straight into the share sheet rather than to a file the
+    // user then has to go and find: everything they would do with it —
+    // mail it, open it in a spreadsheet, drop it in a chat — starts there.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val shareTitle = stringResource(R.string.ledger_export_share)
+    val shareCsv: (android.net.Uri) -> Unit = remember(context, shareTitle) {
+        { uri ->
+            val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "text/csv"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(android.content.Intent.createChooser(send, shareTitle))
+        }
+    }
+
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -238,6 +254,7 @@ fun LedgerScreen(
                 onSelectAll = viewModel::selectAllVisible,
                 onRecategorize = { bulkRecategorizing = true },
                 onDelete = viewModel::deleteSelected,
+                onExport = { viewModel.exportVisible(shareCsv) },
                 onCancel = viewModel::clearSelection,
             )
         } else ActiveFilterBar(
@@ -249,6 +266,7 @@ fun LedgerScreen(
             onClearText = { viewModel.setSearchText("") },
             onClearRange = viewModel::clearDateRange,
             onClearAll = viewModel::clearFilters,
+            onExport = { viewModel.exportVisible(shareCsv) },
         )
         Spacer(Modifier.height(KoshaSpacing.xs))
 
@@ -986,6 +1004,7 @@ private fun SelectionBar(
     onSelectAll: () -> Unit,
     onRecategorize: () -> Unit,
     onDelete: () -> Unit,
+    onExport: () -> Unit,
     onCancel: () -> Unit,
 ) {
     Spacer(Modifier.height(KoshaSpacing.xs))
@@ -1015,6 +1034,7 @@ private fun SelectionBar(
             accent = KoshaColors.Amber,
             selected = true,
         )
+        KoshaChip(label = stringResource(R.string.ledger_export), onClick = onExport)
         KoshaChip(label = stringResource(R.string.ledger_cancel), onClick = onCancel)
     }
 }
@@ -1075,6 +1095,7 @@ private fun ActiveFilterBar(
     onClearText: () -> Unit,
     onClearRange: () -> Unit,
     onClearAll: () -> Unit,
+    onExport: () -> Unit,
 ) {
     val filters = state.filters
     if (filters.activeCount == 0) return
@@ -1128,6 +1149,9 @@ private fun ActiveFilterBar(
                 accent = KoshaColors.Amber,
             )
         }
+        // Offered here rather than in Export because this is the moment the
+        // list IS the thing worth exporting — the narrowing has just been done.
+        KoshaChip(label = stringResource(R.string.ledger_export), onClick = onExport)
     }
 }
 

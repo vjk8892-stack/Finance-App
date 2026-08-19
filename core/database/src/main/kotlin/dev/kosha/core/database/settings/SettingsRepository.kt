@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -47,6 +48,14 @@ data class KoshaSettings(
      * move the boundary by a day.
      */
     val trackingStartEpochDay: Long = 0,
+    /**
+     * Merchants the user has said "no, that is not a subscription" about.
+     *
+     * Kept so a rejected suggestion stays rejected. A detector that re-offers
+     * the same merchant every time the ledger changes is not a helper, and the
+     * only way to make it stop would be to accept a rule that is wrong.
+     */
+    val dismissedRecurring: Set<String> = emptySet(),
 )
 
 /** The tracking boundary as a date, or null when everything is tracked. */
@@ -67,6 +76,7 @@ class SettingsRepository @Inject constructor(
         val backupFolderUri = stringPreferencesKey("backup_folder_uri")
         val lastBackupAt = longPreferencesKey("last_backup_at")
         val trackingStart = longPreferencesKey("tracking_start_epoch_day")
+        val dismissedRecurring = stringSetPreferencesKey("dismissed_recurring")
     }
 
     val settings: Flow<KoshaSettings> = context.dataStore.data.map { p ->
@@ -80,7 +90,14 @@ class SettingsRepository @Inject constructor(
             backupFolderUri = p[Keys.backupFolderUri],
             lastBackupAtMillis = p[Keys.lastBackupAt] ?: 0,
             trackingStartEpochDay = p[Keys.trackingStart] ?: 0,
+            dismissedRecurring = p[Keys.dismissedRecurring] ?: emptySet(),
         )
+    }
+
+    /** Lower-cased on the way in so the detector's matching stays case-blind. */
+    suspend fun dismissRecurringSuggestion(merchantNormalized: String) = context.dataStore.edit {
+        it[Keys.dismissedRecurring] =
+            (it[Keys.dismissedRecurring] ?: emptySet()) + merchantNormalized.lowercase().trim()
     }
 
     /** Pass null to go back to tracking everything. */

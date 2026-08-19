@@ -32,6 +32,7 @@
 
     <string name="insights_title">Insights</string>
     <string name="insights_loading">Gathering your numbers…</string>
+    <string name="insights_this_month">This month</string>
     <string name="insights_empty_flow">Nothing has flowed yet. Log an entry or set your income and this fills in.</string>
     <string name="insights_empty_rhythm">No spending recorded this period yet.</string>
     <string name="insights_empty_shape">No categorised spending yet — the mix appears once you log a few entries.</string>

@@ -196,6 +196,22 @@ private fun ManualTab(state: AddUiState, viewModel: AddViewModel) {
             modifier = Modifier.fillMaxWidth(),
         )
 
+        // Arriving from a Home quick-add chip already said which category this
+        // is. Highlighting it in the grid below and then still requiring the
+        // user to find and tap it is asking the same question twice — this is
+        // the answer they already gave, offered as one tap.
+        state.form.presetCategoryId
+            ?.let { id -> state.categories.firstOrNull { it.id == id } }
+            ?.let { preset ->
+                KoshaChip(
+                    label = stringResource(R.string.add_save_to, preset.name),
+                    selected = true,
+                    accent = KoshaColors.AccentTeal,
+                    onClick = { if (state.form.canSave) viewModel.saveWithCategory(preset) },
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+            }
+
         Text(
             text = stringResource(R.string.add_pick_category),
             style = KoshaType.Label,

@@ -33,6 +33,7 @@
     <string name="recurring_auto_log">Log automatically</string>
     <string name="recurring_remind">Just remind me</string>
     <string name="recurring_card_due">Credit-card bill</string>
+    <string name="recurring_freq_daily">Daily</string>
     <string name="recurring_freq_monthly">Monthly</string>
     <string name="recurring_freq_weekly">Weekly</string>
     <string name="recurring_freq_quarterly">Quarterly</string>
@@ -41,5 +42,10 @@
     <string name="recurring_due_now">Due today</string>
     <string name="recurring_save">Save</string>
     <string name="recurring_remove">Remove</string>
+    <string name="recurring_found_title">Looks like these repeat</string>
+    <string name="recurring_your_rules">Your rules</string>
+    <string name="recurring_found_detail">Seen %1$d times · %2$s</string>
+    <string name="recurring_found_accept">Make it a rule</string>
+    <string name="recurring_found_no">Not recurring</string>
     <string name="budget_applies_to">Applies to</string>
 </resources>
