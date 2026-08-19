@@ -155,6 +155,21 @@ data class LedgerUiState(
     val sort: LedgerSort = LedgerSort.NEWEST,
     /** True when rows exist but the current filters hide them all. */
     val hiddenByFilter: Boolean = false,
+    /**
+     * Balance after each transaction, by transaction id.
+     *
+     * Only populated when the list is filtered to ONE account. A running
+     * balance across several accounts at once is not a number that means
+     * anything — it would add a credit card to a savings account and present
+     * the result as a fact — so mixed views get none rather than a misleading
+     * one.
+     */
+    val runningBalances: Map<Long, Money> = emptyMap(),
+    /**
+     * Rows picked for a bulk action. Empty means selection mode is off — the
+     * list behaves normally and nothing about it changes.
+     */
+    val selectedIds: Set<Long> = emptySet(),
 ) {
     /** System Transfers row — the "this is my own account" shortcut. */
     val transfersCategoryId: Long?
@@ -287,6 +302,56 @@ class LedgerViewModel @Inject constructor(
         _filters.value = _filters.value.copy(categoryId = categoryId)
     }
 
+    private val _selection = MutableStateFlow<Set<Long>>(emptySet())
+
+    /**
+     * Correcting a parser's work is rarely a one-row job — a merchant Kosha
+     * read wrong is read wrong every time it appears. Without this the only
+     * bulk tools were in the review queue, so anything already committed had
+     * to be fixed one row at a time.
+     */
+    fun toggleSelected(id: Long) {
+        _selection.value = _selection.value.let { if (id in it) it - id else it + id }
+    }
+
+    fun clearSelection() {
+        _selection.value = emptySet()
+    }
+
+    fun selectAllVisible() {
+        _selection.value = uiState.value.let { state ->
+            (state.flatRows + state.months.flatMap { m -> m.days.flatMap { it.rows } })
+                .map { it.txn.id }
+                .toSet()
+        }
+    }
+
+    fun deleteSelected() {
+        val ids = _selection.value.toList()
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            val captured = transactionRepository.deleteAllCapturing(ids)
+            _selection.value = emptySet()
+            if (captured != null) {
+                _undo.value = UndoableAction(UndoKind.DELETED) {
+                    transactionRepository.restore(captured)
+                }
+            }
+        }
+    }
+
+    fun recategorizeSelected(categoryId: Long) {
+        val ids = _selection.value.toList()
+        if (ids.isEmpty()) return
+        viewModelScope.launch {
+            val before = transactionRepository.recategorizeAllCapturing(ids, categoryId)
+            _selection.value = emptySet()
+            _undo.value = UndoableAction(UndoKind.RECATEGORIZED) {
+                transactionRepository.restoreCategories(before)
+            }
+        }
+    }
+
     fun clearFilters() {
         _filters.value = LedgerFilters()
     }
@@ -301,8 +366,8 @@ class LedgerViewModel @Inject constructor(
         categoryRepository.observeAll(),
         transactionDao.observeReviewCount(),
         accountRepository.observeActive(),
-        combine(_filters, _sort) { f, s -> f to s },
-    ) { rows, categories, reviewCount, accounts, (filters, sort) ->
+        combine(_filters, _sort, _selection) { f, s, sel -> Triple(f, s, sel) },
+    ) { rows, categories, reviewCount, accounts, (filters, sort, selection) ->
         val visible = rows.filter { row -> filters.matches(row) }.sortedWith(sort.comparator())
         // The same exclusions the savings gap and the charts use (spec G12),
         // and the same set the rows are dimmed by — one definition, so the
@@ -326,8 +391,40 @@ class LedgerViewModel @Inject constructor(
             // "Nothing here" reads as a bug when the cause is a filter you
             // forgot you set, so the two empties say different things.
             hiddenByFilter = visible.isEmpty() && rows.isNotEmpty(),
+            runningBalances = runningBalances(filters.accountId, accounts, rows),
+            selectedIds = selection,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LedgerUiState())
+
+    /**
+     * Balance after each transaction on one account.
+     *
+     * Computed from ALL of that account's rows in date order, not from the
+     * filtered subset: a balance is a running total of everything that
+     * happened, so hiding half the rows must not change what the visible ones
+     * say the balance was. Same basis as the stored balance — opening plus
+     * committed parents — so the last row agrees with the account card.
+     */
+    private fun runningBalances(
+        accountId: Long?,
+        accounts: List<AccountEntity>,
+        allRows: List<LedgerRow>,
+    ): Map<Long, Money> {
+        if (accountId == null) return emptyMap()
+        val opening = accounts.firstOrNull { it.id == accountId }?.openingBalancePaise ?: return emptyMap()
+        var balance = opening
+        return allRows
+            .filter { it.txn.accountId == accountId }
+            .sortedBy { it.txn.timestampMillis }
+            .associate { row ->
+                balance += if (row.txn.type == TxnType.CREDIT) {
+                    row.txn.amountPaise
+                } else {
+                    -row.txn.amountPaise
+                }
+                row.txn.id to Money(balance)
+            }
+    }
 
     private fun LedgerFilters.matches(row: LedgerRow): Boolean {
         val directionOk = when (direction) {

@@ -5,6 +5,8 @@
     <string name="ledger_accounts">Accounts</string>
     <string name="ledger_scan_sms">Scan bank messages</string>
     <string name="ledger_done">Done</string>
+    <string name="ledger_selected">%1$d selected</string>
+    <string name="ledger_select_all">Select all</string>
     <string name="ledger_has_photo">Receipt photo attached</string>
     <string name="ledger_not_in_total">· not in total</string>
     <string name="ledger_recategorize">Recategorize</string>

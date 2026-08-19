@@ -693,3 +693,15 @@ they are whole, and has silently lost data.
   three unlabelled lines · There was no way to tell which end was now, let
   alone which month a bend belonged to, and it was one of only two charts that
   still did nothing when tapped.
+
+- **2026-08-15 · The running balance appears only on a single-account view** ·
+  show one everywhere · A running total across several accounts adds a credit
+  card to a savings account and presents the result as a fact. It is computed
+  from ALL of that account's rows in date order rather than from the filtered
+  subset, because a balance is a running total of everything that happened —
+  hiding half the rows must not change what the visible ones claim.
+- **2026-08-15 · Multi-select recategorizes exactly the rows chosen** · reuse
+  the by-merchant bulk update · Picking three of a merchant's twenty rows and
+  having all twenty change would be the app overruling the selection it had
+  just asked for. The selection bar replaces the filter bar rather than sitting
+  beside it, so the controls on screen always describe the mode you are in.

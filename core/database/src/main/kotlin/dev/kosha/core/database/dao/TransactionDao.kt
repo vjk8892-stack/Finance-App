@@ -252,6 +252,18 @@ interface TransactionDao {
     @Query("SELECT id, categoryId FROM transactions WHERE merchantNormalized = :merchantNormalized")
     suspend fun categoryStateForMerchant(merchantNormalized: String): List<CategoryState>
 
+    /** The same, for an explicit set of rows — the ledger's multi-select. */
+    @Query("SELECT id, categoryId FROM transactions WHERE id IN (:ids)")
+    suspend fun categoryStateFor(ids: List<Long>): List<CategoryState>
+
+    @Query(
+        """
+        UPDATE transactions SET categoryId = :categoryId, updatedAtMillis = :now
+        WHERE id IN (:ids)
+        """
+    )
+    suspend fun recategorizeBatch(ids: List<Long>, categoryId: Long?, now: Long)
+
     /** Accounts touched by a set of rows, so balances can be recomputed once each. */
     @Query("SELECT DISTINCT accountId FROM transactions WHERE id IN (:ids)")
     suspend fun accountIdsFor(ids: List<Long>): List<Long>

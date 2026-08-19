@@ -145,6 +145,20 @@ class TransactionRepository @Inject constructor(
         return before
     }
 
+    /**
+     * Recategorize an explicit set of rows, capturing what they were.
+     *
+     * Separate from the by-merchant version because a multi-select is a choice
+     * about THESE rows: picking three of a merchant's twenty and having all
+     * twenty change would be the app overruling the selection it just asked
+     * for.
+     */
+    suspend fun recategorizeAllCapturing(ids: List<Long>, categoryId: Long?): List<CategoryState> {
+        val before = transactionDao.categoryStateFor(ids)
+        transactionDao.recategorizeBatch(ids, categoryId, System.currentTimeMillis())
+        return before
+    }
+
     suspend fun restoreCategories(states: List<CategoryState>) {
         val now = System.currentTimeMillis()
         states.forEach { transactionDao.recategorize(it.id, it.categoryId, now) }

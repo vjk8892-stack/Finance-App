@@ -1,6 +1,8 @@
 package dev.kosha.feature.ledger
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -97,6 +99,7 @@ fun LedgerScreen(
     val queryState by viewModel.query.collectAsState()
     val detail by viewModel.detail.collectAsState()
     var recategorizing by remember { mutableStateOf<LedgerRow?>(null) }
+    var bulkRecategorizing by remember { mutableStateOf(false) }
     var acting by remember { mutableStateOf<LedgerRow?>(null) }
     var filtersOpen by remember { mutableStateOf(false) }
     var sortOpen by remember { mutableStateOf(false) }
@@ -226,7 +229,18 @@ fun LedgerScreen(
         // something is hiding rows without telling you what — and a ledger
         // quietly showing a third of itself is how a total comes to look
         // wrong for no visible reason.
-        ActiveFilterBar(
+        // Replaces the filter bar while a selection is running: two bars of
+        // controls at once is a screen arguing with itself about what you are
+        // in the middle of doing.
+        if (state.selectedIds.isNotEmpty()) {
+            SelectionBar(
+                count = state.selectedIds.size,
+                onSelectAll = viewModel::selectAllVisible,
+                onRecategorize = { bulkRecategorizing = true },
+                onDelete = viewModel::deleteSelected,
+                onCancel = viewModel::clearSelection,
+            )
+        } else ActiveFilterBar(
             state = state,
             onClearDirection = { viewModel.setDirection(LedgerFilter.ALL) },
             onClearAccount = { viewModel.setAccount(null) },
@@ -265,6 +279,10 @@ fun LedgerScreen(
                     TransactionRow(
                         row = row,
                         isExcluded = row.txn.categoryId in state.excludedCategoryIds,
+                        runningBalance = state.runningBalances[row.txn.id],
+                        selected = row.txn.id in state.selectedIds,
+                        selectionActive = state.selectedIds.isNotEmpty(),
+                        onToggleSelected = { viewModel.toggleSelected(row.txn.id) },
                         onOpen = { viewModel.openDetail(row) },
                         onRecategorize = { recategorizing = row },
                         onActions = { acting = row },
@@ -300,6 +318,10 @@ fun LedgerScreen(
                         row = row,
                         isExcluded = row.txn.categoryId in state.excludedCategoryIds,
                         showDate = true,
+                        runningBalance = state.runningBalances[row.txn.id],
+                        selected = row.txn.id in state.selectedIds,
+                        selectionActive = state.selectedIds.isNotEmpty(),
+                        onToggleSelected = { viewModel.toggleSelected(row.txn.id) },
                         onOpen = { viewModel.openDetail(row) },
                         onRecategorize = { recategorizing = row },
                         onActions = { acting = row },
@@ -325,6 +347,10 @@ fun LedgerScreen(
                             TransactionRow(
                                 row = row,
                                 isExcluded = row.txn.categoryId in state.excludedCategoryIds,
+                                runningBalance = state.runningBalances[row.txn.id],
+                                selected = row.txn.id in state.selectedIds,
+                                selectionActive = state.selectedIds.isNotEmpty(),
+                                onToggleSelected = { viewModel.toggleSelected(row.txn.id) },
                                 onOpen = { viewModel.openDetail(row) },
                                 onRecategorize = { recategorizing = row },
                                 onActions = { acting = row },
@@ -335,6 +361,19 @@ fun LedgerScreen(
                 item { Spacer(Modifier.height(KoshaSpacing.xxl)) }
             }
         }
+    }
+
+    if (bulkRecategorizing) {
+        RecategorizeSheet(
+            categories = state.categories.filter { !it.isSystem },
+            merchantName = null,
+            onPick = { category ->
+                viewModel.recategorizeSelected(category.id)
+                bulkRecategorizing = false
+            },
+            onPickForMerchant = { },
+            onDismiss = { bulkRecategorizing = false },
+        )
     }
 
     recategorizing?.let { row ->
@@ -573,6 +612,7 @@ private fun MonthHeader(label: String, total: Money, excludedTransfers: Money) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TransactionRow(
     row: LedgerRow,
@@ -584,6 +624,11 @@ private fun TransactionRow(
      * tell when anything happened.
      */
     showDate: Boolean = false,
+    /** Balance on this account after this transaction; null in mixed views. */
+    runningBalance: Money? = null,
+    selected: Boolean = false,
+    selectionActive: Boolean = false,
+    onToggleSelected: () -> Unit = {},
     onOpen: () -> Unit,
     onRecategorize: () -> Unit,
     onActions: () -> Unit,
@@ -635,8 +680,14 @@ private fun TransactionRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(KoshaColors.Charcoal)
-                .clickable(onClick = onOpen)
+                .background(if (selected) KoshaColors.CharcoalOverlay else KoshaColors.Charcoal)
+                // Long-press starts a selection; once one is running a plain
+                // tap extends it rather than opening a row, because opening a
+                // detail sheet mid-selection loses the selection.
+                .combinedClickable(
+                    onClick = { if (selectionActive) onToggleSelected() else onOpen() },
+                    onLongClick = onToggleSelected,
+                )
                 .padding(horizontal = KoshaSpacing.screenPadding, vertical = KoshaSpacing.s),
         ) {
             // An excluded row still moved money, so it belongs in the list —
@@ -734,6 +785,7 @@ private fun TransactionRow(
                     }
                 }
             }
+            Column(horizontalAlignment = Alignment.End) {
             AmountText(
                 amount = if (row.txn.type == TxnType.DEBIT) Money(-row.txn.amountPaise) else Money(row.txn.amountPaise),
                 style = KoshaType.AmountBody,
@@ -746,6 +798,18 @@ private fun TransactionRow(
                     ).copy(alpha = dim),
                 signed = row.txn.type == TxnType.CREDIT,
             )
+            // What the account held AFTER this row. Only present on a
+            // single-account view, where it is a real number rather than a
+            // sum of unrelated accounts.
+            runningBalance?.let { balance ->
+                AmountText(
+                    amount = balance,
+                    style = KoshaType.Caption,
+                    color = KoshaColors.OffWhiteFaint,
+                    withPaise = false,
+                )
+            }
+            }
         }
     }
 }
@@ -911,6 +975,49 @@ private fun ActionsSheet(
  * for opening one.
  */
 private const val EXCLUDED_ALPHA = 0.45f
+
+/**
+ * What is selected, and what can be done with it. Sits where the filter bar
+ * normally is, so the row of controls always describes the mode you are in.
+ */
+@Composable
+private fun SelectionBar(
+    count: Int,
+    onSelectAll: () -> Unit,
+    onRecategorize: () -> Unit,
+    onDelete: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    Spacer(Modifier.height(KoshaSpacing.xs))
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = KoshaSpacing.screenPadding),
+    ) {
+        Text(
+            text = stringResource(R.string.ledger_selected, count),
+            style = KoshaType.LabelStrong,
+            color = KoshaColors.AccentTealBright,
+        )
+        KoshaChip(label = stringResource(R.string.ledger_select_all), onClick = onSelectAll)
+        KoshaChip(
+            label = stringResource(R.string.ledger_recategorize),
+            onClick = onRecategorize,
+            accent = KoshaColors.AccentTeal,
+            selected = true,
+        )
+        KoshaChip(
+            label = stringResource(R.string.ledger_delete),
+            onClick = onDelete,
+            accent = KoshaColors.Amber,
+            selected = true,
+        )
+        KoshaChip(label = stringResource(R.string.ledger_cancel), onClick = onCancel)
+    }
+}
 
 private val ROW_DATE: java.time.format.DateTimeFormatter =
     java.time.format.DateTimeFormatter.ofPattern("d MMM")
