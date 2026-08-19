@@ -56,8 +56,18 @@ class EncryptedDbRoundTripTest {
         assertNotNull(db.categoryDao().bySystemKey(dev.kosha.core.database.model.SystemCategoryKey.UNCATEGORIZED))
         db.close()
 
-        val header = File(dbFile.absolutePath).inputStream().use { it.readNBytes(16) }
+        // Read the header by hand rather than with readNBytes: that method is
+        // Java 9 and only reaches Android at API 33, so on anything older —
+        // including this project's minSdk 26 — it throws NoSuchMethodError at
+        // runtime. Nothing catches that at compile time.
+        val header = ByteArray(SQLITE_MAGIC.length)
+        File(dbFile.absolutePath).inputStream().use { it.read(header) }
         val magic = String(header, Charsets.US_ASCII)
-        assertFalse("DB file must not be plaintext SQLite", magic.startsWith("SQLite format 3"))
+        assertFalse("DB file must not be plaintext SQLite", magic.startsWith(SQLITE_MAGIC))
+    }
+
+    private companion object {
+        /** The bytes an UNENCRYPTED SQLite file starts with — what must be absent. */
+        const val SQLITE_MAGIC = "SQLite format 3"
     }
 }

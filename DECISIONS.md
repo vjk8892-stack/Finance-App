@@ -778,3 +778,14 @@ the total it is a breakdown of.
   does not bring it. `:core:database` had it only by accident, via espresso. It
   is now declared in the library convention plugin beside the
   `testInstrumentationRunner` line it satisfies.
+
+## A test that could never have passed on a real phone
+
+`EncryptedDbRoundTripTest` read the database header with `FileInputStream.readNBytes`.
+That is a Java 9 method which Android only gained at API 33, so on anything
+older — including this project's own `minSdk 26` — it throws `NoSuchMethodError`
+at runtime. It compiled cleanly and nothing flagged it, because the test had
+never been executed on a device. Replaced with a plain `read(ByteArray)`.
+
+The emulator job also now passes `--continue`, so one failing module stops
+hiding whether the others ran at all.

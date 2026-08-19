@@ -132,7 +132,10 @@ jobs:
           disable-animations: true
           # The library modules carry no product flavors — only :app does — so
           # the variant here is plain debug.
-          script: ./gradlew :core:database:connectedDebugAndroidTest :feature:export:connectedDebugAndroidTest --stacktrace
+          # --continue: without it Gradle stops at the first failing module, so
+          # one broken test in :core:database hid whether :feature:export's
+          # tests ran at all. Every module's result, every run.
+          script: ./gradlew :core:database:connectedDebugAndroidTest :feature:export:connectedDebugAndroidTest --continue --stacktrace
 
       - name: Upload instrumented reports
         if: always()
