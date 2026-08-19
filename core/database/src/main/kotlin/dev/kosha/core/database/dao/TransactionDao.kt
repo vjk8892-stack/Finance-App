@@ -108,6 +108,30 @@ interface TransactionDao {
     @Query("SELECT COUNT(*) FROM transactions WHERE status = 'pending_review'")
     fun observeReviewCount(): Flow<Int>
 
+    /**
+     * Counts either side of the tracking boundary, done in SQL.
+     *
+     * Settings used to load every ledger row just to count them, on every
+     * settings emission — reading the whole table to produce two integers.
+     */
+    @Query(
+        """
+        SELECT COUNT(*) FROM transactions
+        WHERE parentTransactionId IS NULL AND status = 'committed'
+          AND timestampMillis >= :fromMillis
+        """
+    )
+    suspend fun countAtOrAfter(fromMillis: Long): Int
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM transactions
+        WHERE parentTransactionId IS NULL AND status = 'committed'
+          AND timestampMillis < :fromMillis
+        """
+    )
+    suspend fun countBefore(fromMillis: Long): Int
+
     @Query("SELECT MIN(timestampMillis) FROM transactions WHERE status = 'pending_review'")
     fun observeOldestReviewMillis(): Flow<Long?>
 

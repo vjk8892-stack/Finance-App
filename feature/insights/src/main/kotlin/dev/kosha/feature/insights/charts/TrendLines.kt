@@ -1,6 +1,7 @@
 package dev.kosha.feature.insights.charts
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,9 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import dev.kosha.core.database.repo.InsightsRepository
 import dev.kosha.core.designsystem.token.KoshaColors
@@ -37,6 +41,7 @@ import dev.kosha.core.designsystem.token.KoshaType
 fun TrendLines(
     points: List<InsightsRepository.TrendPoint>,
     modifier: Modifier = Modifier,
+    onSelect: ((InsightsRepository.TrendPoint) -> Unit)? = null,
 ) {
     if (points.isEmpty()) return
 
@@ -46,6 +51,9 @@ fun TrendLines(
     val maxValue = maxOf(incomes.max(), expenses.max(), gaps.max(), 1L)
     val minValue = minOf(gaps.min(), 0L)
     val span = (maxValue - minValue).coerceAtLeast(1)
+
+    val textMeasurer = rememberTextMeasurer()
+    val axisStyle = KoshaType.Caption.copy(color = KoshaColors.OffWhiteFaint)
 
     val last = points.last()
     val description = "Twelve month trajectory. Latest income " +
@@ -58,6 +66,23 @@ fun TrendLines(
             Modifier
                 .fillMaxWidth()
                 .height(180.dp)
+                // Every other chart opens the rows behind it; this one and the
+                // radar were the two that still just sat there. A month is the
+                // obvious unit here, so tapping anywhere in a month's column
+                // opens it.
+                .then(
+                    if (onSelect != null && points.isNotEmpty()) {
+                        Modifier.pointerInput(points) {
+                            detectTapGestures { offset ->
+                                val slot = size.width / points.size
+                                val index = (offset.x / slot).toInt().coerceIn(0, points.lastIndex)
+                                onSelect(points[index])
+                            }
+                        }
+                    } else {
+                        Modifier
+                    },
+                )
                 .semantics { contentDescription = description },
         ) {
             fun yFor(value: Long) = size.height - ((value - minValue).toFloat() / span) * size.height
@@ -76,6 +101,17 @@ fun TrendLines(
             drawSeries(incomes, stepX, KoshaColors.AccentTeal, ::yFor)
             drawSeries(expenses, stepX, KoshaColors.OffWhiteMuted, ::yFor)
             drawSeries(gaps, stepX, KoshaColors.AccentViolet, ::yFor)
+
+            // Axis labels. Three unlabelled lines over twelve unnamed months
+            // is a shape, not a chart — there was no way to tell which end was
+            // now, let alone which month a bend belonged to.
+            val firstLabel = textMeasurer.measure(MONTH_AXIS.format(points.first().period.start), axisStyle)
+            val lastLabel = textMeasurer.measure(MONTH_AXIS.format(points.last().period.start), axisStyle)
+            drawText(firstLabel, topLeft = Offset(0f, size.height - firstLabel.size.height))
+            drawText(
+                lastLabel,
+                topLeft = Offset(size.width - lastLabel.size.width, size.height - lastLabel.size.height),
+            )
         }
         Spacer(Modifier.height(KoshaSpacing.xs))
         Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.s)) {
@@ -85,6 +121,9 @@ fun TrendLines(
         }
     }
 }
+
+private val MONTH_AXIS: java.time.format.DateTimeFormatter =
+    java.time.format.DateTimeFormatter.ofPattern("MMM yy")
 
 private fun DrawScope.drawSeries(
     values: List<Long>,

@@ -682,3 +682,14 @@ they are whole, and has silently lost data.
   transaction's DAY** · open the app · "Tap to check it" landing on an
   unfiltered ledger is the notification overselling itself. The day travels in
   the intent and reuses the ledger's existing date filter.
+
+- **2026-08-15 · Counts either side of the tracking boundary are done in SQL**
+  · load every row and count in Kotlin · Settings read the whole ledger on
+  every settings emission to produce two integers.
+- **2026-08-15 · Decoded thumbnails are cached, small and LRU** · decode on
+  every scroll · Scrolling back up re-read and re-decoded the same files from
+  disk. Bounded on purpose: an unbounded cache of bitmaps is a slower leak.
+- **2026-08-15 · The trajectory chart has axis labels and opens a month** ·
+  three unlabelled lines · There was no way to tell which end was now, let
+  alone which month a bend belonged to, and it was one of only two charts that
+  still did nothing when tapped.

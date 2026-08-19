@@ -98,7 +98,7 @@ fun InsightsScreen(
         item { FlowSection(data, onOpenLedger) }
         item { RhythmSection(data, onOpenLedger) }
         item { ShapeSection(data, onOpenLedger) }
-        item { TrajectorySection(data) }
+        item { TrajectorySection(data, onOpenLedger) }
         item { HealthSection(data) }
         item { AdvisorSection(data) }
         item { LeaksAndAnomaliesSection(data, onOpenLedger) }
@@ -381,7 +381,10 @@ private fun ShapeSection(
 }
 
 @Composable
-private fun TrajectorySection(data: InsightsRepository.Insights) {
+private fun TrajectorySection(
+    data: InsightsRepository.Insights,
+    onOpenLedger: (LedgerTarget) -> Unit,
+) {
     Section(
         title = stringResource(R.string.insights_trajectory),
         subtitle = stringResource(R.string.insights_trajectory_sub),
@@ -393,7 +396,18 @@ private fun TrajectorySection(data: InsightsRepository.Insights) {
             EmptyNote(stringResource(R.string.insights_empty_trajectory))
             return@Section
         }
-        TrendLines(data.trend)
+        TrendLines(
+            points = data.trend,
+            onSelect = { point ->
+                onOpenLedger(LedgerTarget.month(java.time.YearMonth.from(point.period.start)))
+            },
+        )
+        Spacer(Modifier.height(KoshaSpacing.xxs))
+        Text(
+            text = stringResource(R.string.insights_tap_for_rows),
+            style = KoshaType.Caption,
+            color = KoshaColors.OffWhiteFaint,
+        )
     }
 }
 

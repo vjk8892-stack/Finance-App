@@ -69,13 +69,14 @@ class SettingsViewModel @Inject constructor(
             val boundary = settings.trackingStartDate
             val cutoff = boundary?.atStartOfDay(zone)?.toInstant()?.toEpochMilli() ?: 0L
             // Counted rather than estimated: "482 hidden" is a fact the user
-            // can act on, where "some older transactions" is not.
-            val all = transactionDao.observeLedger().first()
+            // can act on, where "some older transactions" is not. Counted in
+            // SQL rather than by loading the whole table to produce two
+            // integers, which is what this did before.
             SettingsUiState(
                 settings = settings,
                 trackingStart = boundary,
-                trackedTransactions = all.count { it.txn.timestampMillis >= cutoff },
-                hiddenTransactions = all.count { it.txn.timestampMillis < cutoff },
+                trackedTransactions = transactionDao.countAtOrAfter(cutoff),
+                hiddenTransactions = transactionDao.countBefore(cutoff),
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())

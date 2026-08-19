@@ -43,9 +43,16 @@ fun KoshaLocalImage(
     val targetPx = with(density) { targetSize.roundToPx() }.coerceAtLeast(1)
 
     val bitmap: ImageBitmap? by produceState<ImageBitmap?>(initialValue = null, uri, targetPx) {
-        value = withContext(Dispatchers.IO) {
+        val key = "$uri@$targetPx"
+        cache[key]?.let {
+            value = it
+            return@produceState
+        }
+        val decoded = withContext(Dispatchers.IO) {
             runCatching { decodeDownsampled(context, Uri.parse(uri), targetPx) }.getOrNull()
         }
+        if (decoded != null) cache.put(key, decoded)
+        value = decoded
     }
 
     Box(modifier) {
@@ -59,6 +66,17 @@ fun KoshaLocalImage(
         }
     }
 }
+
+/**
+ * Thumbnails already decoded, keyed by URI and requested size.
+ *
+ * Without it every scroll back up re-reads and re-decodes the same files from
+ * disk. Deliberately small and LRU: these are thumbnails, so a few dozen is
+ * ample, and an unbounded cache of bitmaps is just a slower memory leak.
+ */
+private val cache = object : android.util.LruCache<String, ImageBitmap>(CACHE_ENTRIES) {}
+
+private const val CACHE_ENTRIES = 48
 
 private fun decodeDownsampled(
     context: android.content.Context,
