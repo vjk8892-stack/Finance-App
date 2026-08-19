@@ -62,15 +62,19 @@ jobs:
       # The one APK worth installing, on its own.
       #
       # `kosha-debug-apk` below is every flavor crossed with every ABI split
-      # plus the universals, which zips to well over 200 MB — a download nobody
-      # wants on a phone, to then pick the right file out of by hand. This is
-      # the full flavor's universal build: runs on any device, has the SMS and
-      # camera capture in it, and is what "give me the app to try" means.
+      # plus the universals — six files that zip to over 200 MB, which you then
+      # have to pick the right one out of by hand.
+      #
+      # arm64-v8a, not universal: the universal carries the native libraries
+      # for BOTH architectures, so it is ~90 MB against ~44 MB for this one,
+      # and every 64-bit Android phone (which is all of them for years now)
+      # throws half of it away. armeabi-v7a in the full bundle covers genuinely
+      # old 32-bit hardware.
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
           name: kosha-install
-          path: app/build/outputs/apk/full/debug/*universal*.apk
+          path: app/build/outputs/apk/full/debug/*arm64-v8a*.apk
           if-no-files-found: error
           retention-days: 14
 

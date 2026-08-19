@@ -789,3 +789,25 @@ never been executed on a device. Replaced with a plain `read(ByteArray)`.
 
 The emulator job also now passes `--continue`, so one failing module stops
 hiding whether the others ran at all.
+
+## APK size baseline, finally written down (2026-08-19)
+
+The Phase-0 gate asked for this and it had never been recorded, so "has the APK
+grown?" had no answer to check against. Debug builds, commit `b5391c1`:
+
+| APK | Bytes | ~ |
+|---|---|---|
+| `app-full-universal-debug.apk` | 89,839,821 | 90 MB |
+| `app-lite-universal-debug.apk` | 89,839,673 | 90 MB |
+| `app-full-arm64-v8a-debug.apk` | 43,750,024 | 44 MB |
+| `app-lite-arm64-v8a-debug.apk` | 43,749,876 | 44 MB |
+| `app-full-armeabi-v7a-debug.apk` | 37,702,948 | 38 MB |
+| `app-lite-armeabi-v7a-debug.apk` | 37,702,800 | 38 MB |
+
+The `kosha-debug-apk` CI artifact is all six zipped together — 232 MB. That is
+a sum, not a size: no single APK is anywhere near it. The universal is roughly
+double the arm64 one because it ships both architectures' native libraries.
+
+These are DEBUG builds: unminified, R8 off, full debug symbols. A release build
+is substantially smaller, and the Phase-12 budget (baseline + 8 MB) should be
+set from a release build, not from this table.
