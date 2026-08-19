@@ -88,37 +88,47 @@ jobs:
           path: app/build/outputs/apk/**/debug/*.apk
           retention-days: 14
 
-      # A link that works without a GitHub account.
+      # A download link that works without a GitHub account.
       #
-      # Actions artifacts require the downloader to be signed in to GitHub —
-      # even on a public repo — so opening one on a phone gives a bare 404 and
-      # no hint why. Release assets have no such rule: this URL is a plain
-      # public download, which is what installing your own app should take.
+      # Actions artifacts require the downloader to be SIGNED IN to GitHub, even
+      # on a public repo, and a signed-out browser gets a bare 404 with no hint
+      # that a login is the missing piece. Release assets carry no such rule.
       #
-      # One rolling tag, replaced each build, so the link never changes:
-      # https://github.com/<owner>/<repo>/releases/download/dev-latest/kosha-latest.apk
-      - name: Publish the APK where a phone can reach it
+      # Tag and filenames match what the `debug-latest` release has used since
+      # it was first put up by hand: three APKs, each stamped with the short
+      # commit, so you can tell at a glance which build is on your phone. That
+      # release then sat frozen on whatever commit last uploaded to it — this
+      # step is what keeps it in step with the branch.
+      #
+      #   .../releases/download/debug-latest/kosha-full-arm64-<sha>.apk
+      - name: Publish debug APKs to the debug-latest release
         if: github.ref_name == github.event.repository.default_branch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          apk=$(find app/build/outputs/apk/full/debug -name '*arm64-v8a*.apk' | head -1)
-          test -n "$apk"
-          cp "$apk" kosha-latest.apk
-          # Delete first: a release asset cannot be overwritten in place, and
-          # --cleanup-tag keeps the tag from drifting off an old commit.
-          gh release delete dev-latest --yes --cleanup-tag || true
-          gh release create dev-latest kosha-latest.apk \
+          short=$(git rev-parse --short "$GITHUB_SHA")
+          out=$(mktemp -d)
+          cp app/build/outputs/apk/full/debug/*arm64-v8a*.apk "$out/kosha-full-arm64-$short.apk"
+          cp app/build/outputs/apk/full/debug/*universal*.apk "$out/kosha-full-universal-$short.apk"
+          cp app/build/outputs/apk/lite/debug/*arm64-v8a*.apk "$out/kosha-lite-arm64-$short.apk"
+
+          # Recreated rather than edited: a release asset cannot be replaced in
+          # place, and the filenames change with every commit, so editing would
+          # pile up a new set of three on each build. --cleanup-tag stops the
+          # tag pointing at a commit the assets no longer come from.
+          gh release delete debug-latest --yes --cleanup-tag || true
+          gh release create debug-latest "$out"/*.apk \
             --prerelease \
-            --title "Latest debug build" \
-            --notes "Debug build of ${GITHUB_SHA}.
+            --title "Kosha debug APK (latest)" \
+            --notes "Debug build of \`$short\`.
 
-          For 64-bit phones (arm64-v8a) — which is any phone from the last several years.
+          **Most phones: \`kosha-full-arm64-$short.apk\`.** \`full\` has SMS and camera
+          capture; \`lite\` leaves them out. \`universal\` is only for genuinely old
+          32-bit hardware and is twice the size because it carries both architectures.
 
-          This is a DEBUG build: it installs alongside a release build rather than over it,
-          and it is larger than a release build would be. Kosha has no INTERNET permission,
-          verified on every build."
+          Debug builds install alongside a release build rather than over it, and are
+          bigger than a release build. No INTERNET permission — verified on every build."
 
       - name: Upload test reports on failure
         if: failure()
