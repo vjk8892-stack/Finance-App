@@ -113,6 +113,11 @@ jobs:
           cp app/build/outputs/apk/full/debug/*universal*.apk "$out/kosha-full-universal-$short.apk"
           cp app/build/outputs/apk/lite/debug/*arm64-v8a*.apk "$out/kosha-lite-arm64-$short.apk"
 
+          # One-off tidy-up: a dev-latest release was published here by mistake
+          # before debug-latest was found to be the tag already in use. Safe to
+          # delete this line once it has run.
+          gh release delete dev-latest --yes --cleanup-tag || true
+
           # Recreated rather than edited: a release asset cannot be replaced in
           # place, and the filenames change with every commit, so editing would
           # pile up a new set of three on each build. --cleanup-tag stops the
