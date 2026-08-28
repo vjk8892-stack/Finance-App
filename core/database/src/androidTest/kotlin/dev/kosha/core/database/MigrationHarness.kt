@@ -6,10 +6,19 @@ import org.junit.Rule
 
 /**
  * Migration test harness (Phase-1 exit gate: "migration test harness in
- * place"). Exported schema JSON lands in `core/database/schemas/` (committed
- * from the CI build that first freezes the schema). Every schema change after
- * Phase 2 adds a `Migration` plus a test here that seeds a fixture DB at the
- * old version and asserts data survives `runMigrationsAndValidate`.
+ * place"). `MigrationTestHelper.createDatabase` needs a committed schema
+ * JSON asset for the "before" version
+ * (`dev.kosha.core.database.KoshaDatabase/<version>.json`) — CI's "Export
+ * Room schemas" step only ever regenerates the CURRENT version into an
+ * untracked `core/database/schemas/`, and none has ever been committed to
+ * git. The first real migration (v1 → v2, `net_worth_snapshots`) hit exactly
+ * this: `Migration1To2Test` couldn't use this harness because `1.json` does
+ * not exist, and tests `MIGRATION_1_2` directly against a bare SQLite file
+ * instead. Whoever adds the NEXT migration should commit
+ * `core/database/schemas/dev.kosha.core.database.KoshaDatabase/2.json` (copy
+ * it out of a CI run's workspace, or a local build once the Android SDK is
+ * available) before relying on this class — with that file committed, this
+ * harness works exactly as written below.
  */
 abstract class MigrationHarness {
 
@@ -19,10 +28,10 @@ abstract class MigrationHarness {
         KoshaDatabase::class.java,
     )
 
-    // First real migration test arrives with schema v2 (post-freeze), e.g.:
-    // @Test fun migrate1To2() {
-    //     helper.createDatabase(TEST_DB, 1).use { db -> /* seed v1 fixture */ }
-    //     helper.runMigrationsAndValidate(TEST_DB, 2, true, MIGRATION_1_2)
+    // Once a schema JSON is committed for the version being migrated FROM:
+    // @Test fun migrateNToNPlus1() {
+    //     helper.createDatabase(TEST_DB, N).use { db -> /* seed an N fixture */ }
+    //     helper.runMigrationsAndValidate(TEST_DB, N + 1, true, MIGRATION_N_NPLUS1)
     // }
 
     companion object {
