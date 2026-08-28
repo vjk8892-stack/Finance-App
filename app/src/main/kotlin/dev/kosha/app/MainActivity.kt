@@ -25,6 +25,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.kosha.app.navigation.KoshaAppScaffold
 import dev.kosha.app.onboarding.OnboardingScreen
+import dev.kosha.app.tour.FeatureTourScreen
 import dev.kosha.core.database.settings.KoshaSettings
 import dev.kosha.core.database.settings.SettingsRepository
 import dev.kosha.core.designsystem.theme.KoshaTheme
@@ -90,6 +91,10 @@ class MainActivity : FragmentActivity() {
                     locked -> LockScreen(onUnlock = { showBiometricPrompt() })
 
                     !current.onboardingDone -> OnboardingScreen(onDone = {})
+
+                    // Shown exactly once, right after onboarding, on the
+                    // very first install — never again once the flag is set.
+                    !current.featureTourDone -> FeatureTourScreen(onDone = {})
 
                     else -> KoshaAppScaffold(
                         startAction = intent?.action,

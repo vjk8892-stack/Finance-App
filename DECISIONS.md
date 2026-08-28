@@ -852,3 +852,31 @@ Home Pulse.
   savings-gap number itself is not removed from the app; it is still what the
   weather line above the Pulse is computed from, it's just no longer the
   number inside the ring.
+
+## Phase 2: a one-time feature tour after onboarding
+
+Onboarding (spec C8) sets the app UP — accounts, income, permissions — but
+never taught anyone how to USE it, and a first-time user landed on Home
+having seen the Pulse philosophy screen and nothing else. `KoshaSettings`
+gains `featureTourDone` (own DataStore key, own setter
+`setFeatureTourDone()`), deliberately separate from `onboardingDone`: the
+tour can show and describe real screens because the app already exists by
+the time it runs, where folding it into onboarding would mean describing
+screens that aren't there yet.
+
+`MainActivity`'s startup `when` gets one more branch, same reactive pattern
+as onboarding itself (`OnboardingViewModel.finish()`): once onboarding is
+done and the tour is not, `FeatureTourScreen` renders instead of
+`KoshaAppScaffold`; `FeatureTourViewModel.finish()` flips the flag and the
+`when` recomposes to the real app on its own. There is no code path that
+clears the flag back to false, so this genuinely runs once per install
+(reset by clearing app data or reinstalling, same as onboarding).
+
+Eight pages (`app/tour/FeatureTourScreen.kt`), ordered to match the app's own
+IA — bottom-nav destinations first, then what's reached from them — so the
+tour doubles as a map: Welcome → Home (the new money-out Pulse) → Add →
+Ledger (swipe actions, query search) → Insights → Budgets/Goals/Debt/Net
+worth → Vault → Recurring/Export/Backup. Skippable from any page but the
+last; each dot in the header is a page, not a click target — Back/Next are
+the only navigation, since the app doesn't have a gesture-driven pager
+component yet and this isn't the place to add the first one.

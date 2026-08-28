@@ -49,6 +49,35 @@
     <string name="lock_prompt_title">Unlock Kosha</string>
     <string name="lock_prompt_subtitle">Your ledger stays private</string>
 
+    <string name="tour_skip">Skip</string>
+    <string name="tour_back">Back</string>
+    <string name="tour_next">Next</string>
+    <string name="tour_start">Get started</string>
+
+    <string name="tour_welcome_title">A quick tour</string>
+    <string name="tour_welcome_body">Eight short screens, once, covering everything below — the same map you\'d otherwise have to find by tapping around. Skip anytime; nothing here is required reading.</string>
+
+    <string name="tour_home_title">Home</string>
+    <string name="tour_home_body">The ring shows money OUT this period — the number that actually needs a decision — with money in as the small figure beneath it. The weather line above it says whether you\'re ahead. Budget rings and any waiting review items sit below.</string>
+
+    <string name="tour_add_title">Add · the center button</string>
+    <string name="tour_add_body">Opens straight to the camera for a bank SMS screenshot or a paper bill. Switch tabs for a manual entry (amount-first keypad, 3 taps) or to import existing screenshots from your gallery.</string>
+
+    <string name="tour_ledger_title">Ledger</string>
+    <string name="tour_ledger_body">Every transaction, grouped by day. Swipe a row to recategorize, edit, split, or mark it as a transfer. The search bar doubles as a question box — try "dining last month" — and the filter icon opens the full query builder.</string>
+
+    <string name="tour_insights_title">Insights</string>
+    <string name="tour_insights_body">Where the flow of your money, spending rhythm, category shape, and 12-month trajectory live, alongside your financial health score, an advisor that explains its own reasoning, and leak/anomaly/what-if tools.</string>
+
+    <string name="tour_goals_title">Budgets, Goals &amp; more</string>
+    <string name="tour_goals_body">Reach budgets, sinking-fund goals, the debt payoff planner, net worth, and recurring bills from Home and Settings. Nothing here ever recommends a product — only your own numbers.</string>
+
+    <string name="tour_vault_title">Vault</string>
+    <string name="tour_vault_body">A separate lock for account numbers and cards you\'d rather not see on every ledger row. Reveal one field at a time with biometrics; it re-masks itself, and it never leaves this phone in an export or backup.</string>
+
+    <string name="tour_upkeep_title">Export &amp; backup</string>
+    <string name="tour_upkeep_body">A PDF statement or CSV whenever you need one, and an encrypted local backup you control — no cloud, ever. Everything in this tour is reachable again from Settings.</string>
+
     <string name="permissions_title">Permissions</string>
     <string name="permissions_intro">Kosha asks for nothing at launch. Each permission below unlocks one feature, and the app stays useful with all of them off.</string>
     <string name="permissions_state_on">On</string>

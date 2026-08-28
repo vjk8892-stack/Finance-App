@@ -18,6 +18,15 @@ private val Context.dataStore by preferencesDataStore(name = "kosha_settings")
 
 data class KoshaSettings(
     val onboardingDone: Boolean = false,
+    /**
+     * The one-time feature tour (Home/Ledger/Add/Insights/Vault and the rest)
+     * shown once, right after onboarding, on the very first install. Separate
+     * flag from [onboardingDone] rather than folded into the onboarding flow
+     * itself: onboarding sets UP the app (accounts, income, permissions), the
+     * tour TEACHES the app that is now set up — the tour can show real
+     * empty-state screens because the app already exists.
+     */
+    val featureTourDone: Boolean = false,
     /** Ring 0 (spec B4): optional app lock via BiometricPrompt + device credential. */
     val appLockEnabled: Boolean = false,
     /** 0 = lock immediately; else background-grace in millis (1 min / 5 min). */
@@ -68,6 +77,7 @@ class SettingsRepository @Inject constructor(
 ) {
     private object Keys {
         val onboardingDone = booleanPreferencesKey("onboarding_done")
+        val featureTourDone = booleanPreferencesKey("feature_tour_done")
         val appLockEnabled = booleanPreferencesKey("app_lock_enabled")
         val appLockTimeout = longPreferencesKey("app_lock_timeout_ms")
         val periodAnchorDay = intPreferencesKey("period_anchor_day")
@@ -82,6 +92,7 @@ class SettingsRepository @Inject constructor(
     val settings: Flow<KoshaSettings> = context.dataStore.data.map { p ->
         KoshaSettings(
             onboardingDone = p[Keys.onboardingDone] ?: false,
+            featureTourDone = p[Keys.featureTourDone] ?: false,
             appLockEnabled = p[Keys.appLockEnabled] ?: false,
             appLockTimeoutMillis = p[Keys.appLockTimeout] ?: 0,
             periodAnchorDay = (p[Keys.periodAnchorDay] ?: 1).coerceIn(1, 28),
@@ -114,6 +125,8 @@ class SettingsRepository @Inject constructor(
     }
 
     suspend fun setOnboardingDone() = context.dataStore.edit { it[Keys.onboardingDone] = true }
+
+    suspend fun setFeatureTourDone() = context.dataStore.edit { it[Keys.featureTourDone] = true }
 
     suspend fun setAppLock(enabled: Boolean, timeoutMillis: Long) = context.dataStore.edit {
         it[Keys.appLockEnabled] = enabled
