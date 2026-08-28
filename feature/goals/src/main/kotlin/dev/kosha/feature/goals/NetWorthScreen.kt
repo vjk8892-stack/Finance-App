@@ -117,9 +117,9 @@ private fun NetWorthSummaryCard(
     val netWorth = state.netWorth ?: return
     KoshaCard(modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth()) {
-            LabeledAmount(stringResource(R.string.networth_assets), netWorth.assets, KoshaColors.AccentTeal)
+            LabeledAmount(stringResource(R.string.networth_assets), netWorth.assets, KoshaColors.AccentTealBright)
             Spacer(Modifier.width(KoshaSpacing.m))
-            LabeledAmount(stringResource(R.string.networth_liabilities), netWorth.liabilities, KoshaColors.OffWhiteMuted)
+            LabeledAmount(stringResource(R.string.networth_liabilities), netWorth.liabilities, KoshaColors.AmberBright)
         }
         Spacer(Modifier.height(KoshaSpacing.xs))
         Text(stringResource(R.string.networth_net), style = KoshaType.Label, color = KoshaColors.OffWhiteFaint)
@@ -204,7 +204,7 @@ private fun NetWorthSparkline(history: List<NetWorthSnapshotEntity>) {
 @Composable
 private fun LabeledAmount(label: String, amount: Money, color: Color) {
     Column {
-        Text(label, style = KoshaType.Caption, color = KoshaColors.OffWhiteFaint)
+        Text(label, style = KoshaType.Label, color = KoshaColors.OffWhiteMuted)
         AmountText(amount = amount, style = KoshaType.AmountBody, color = color, withPaise = false)
     }
 }

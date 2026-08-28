@@ -39,7 +39,9 @@ data class MonthBar(
  * sits at the top of the Insights tab.
  *
  * Deliberately plain: labelled bars, a dashed budget line, and the value on
- * the tallest bar. No gradient — the accent is reserved for money-flow visuals.
+ * the current and previous bars — the two months an "am I spending more than
+ * usual" comparison actually needs. No gradient — the accent is reserved for
+ * money-flow visuals.
  */
 @Composable
 fun MonthlyBars(
@@ -51,7 +53,12 @@ fun MonthlyBars(
 ) {
     val textMeasurer = rememberTextMeasurer()
     val labelStyle = KoshaType.Caption.copy(color = KoshaColors.OffWhiteFaint)
-    val valueStyle = KoshaType.Caption.copy(color = KoshaColors.OffWhiteMuted)
+    // The current month's figure is the one the whole chart exists to
+    // answer, so it gets the boldest, brightest treatment on the canvas —
+    // the previous version used the same faint 11sp caption as the axis
+    // labels, which is why the number never actually "popped" above the bar.
+    val currentValueStyle = KoshaType.LabelStrong.copy(color = KoshaColors.AccentTealBright)
+    val previousValueStyle = KoshaType.Label.copy(color = KoshaColors.OffWhiteMuted)
 
     val peak = maxOf(
         months.maxOfOrNull { it.spent.paise } ?: 0L,
@@ -88,33 +95,43 @@ fun MonthlyBars(
         if (months.isEmpty()) return@Canvas
 
         val labelHeight = textMeasurer.measure("Aug", labelStyle).size.height + 8.dp.toPx()
-        val valueHeight = textMeasurer.measure("₹0", valueStyle).size.height + 6.dp.toPx()
+        val valueHeight = textMeasurer.measure("₹0", currentValueStyle).size.height + 6.dp.toPx()
         val plotHeight = size.height - labelHeight - valueHeight
         val slot = size.width / months.size
         val barWidth = (slot * 0.56f).coerceAtMost(40.dp.toPx())
+        val currentIndex = months.indexOfFirst { it.isCurrent }
 
         months.forEachIndexed { index, month ->
             val fraction = month.spent.paise.toFloat() / peak
             val barHeight = plotHeight * fraction
             val left = index * slot + (slot - barWidth) / 2f
             val top = valueHeight + (plotHeight - barHeight)
+            val isPrevious = currentIndex > 0 && index == currentIndex - 1
 
-            // The current month is the one being judged, so it reads brighter
-            // than the history it is being compared against.
+            // The current month is the one being judged, so it reads
+            // brighter than the history it is being compared against; the
+            // month right before it gets a lighter version of the same
+            // treatment, since that's the one comparison anyone actually
+            // wants ("more than usual, more than last month").
             val overBudget = budget != null && month.spent.paise > budget.paise
             drawRect(
                 color = when {
                     overBudget -> KoshaColors.Amber
-                    month.isCurrent -> KoshaColors.OffWhiteMuted
+                    month.isCurrent -> KoshaColors.AccentTeal
+                    isPrevious -> KoshaColors.OffWhiteMuted
                     else -> KoshaColors.Outline
                 },
                 topLeft = Offset(left, top),
                 size = Size(barWidth, barHeight.coerceAtLeast(1f)),
             )
 
-            // Value only on the current month; every bar labelled is noise.
-            if (month.isCurrent && month.spent.paise > 0) {
-                val layout = textMeasurer.measure(month.spent.format(withPaise = false), valueStyle)
+            // Value on the current AND previous bars — a direct two-number
+            // comparison — everything older stays label-only; a dozen bars
+            // all carrying full rupee figures is noise and overlaps at
+            // phone width.
+            if (month.spent.paise > 0 && (month.isCurrent || isPrevious)) {
+                val style = if (month.isCurrent) currentValueStyle else previousValueStyle
+                val layout = textMeasurer.measure(month.spent.format(withPaise = false), style)
                 drawText(
                     layout,
                     topLeft = Offset(

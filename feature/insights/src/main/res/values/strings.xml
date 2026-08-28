@@ -14,6 +14,15 @@
     <string name="pulse_tap_hint">Tap to see what made it</string>
 
     <string name="home_insight_leak_detail">%1$d times, about %2$s each</string>
+    <string name="home_insight_kind_leak">Recurring leak</string>
+    <string name="home_insight_kind_anomaly">Unusual spend</string>
+    <string name="home_insight_kind_advice">Advisor</string>
+    <string name="home_insight_kind_debt">Debt strategy</string>
+    <string name="home_insight_kind_trend">Trending up</string>
+    <string name="home_insight_debt_detail_with_months">Switch to Avalanche: save %1$s in interest and finish %2$d months sooner.</string>
+    <string name="home_insight_debt_detail_no_months">Switch to Avalanche: save %1$s in interest.</string>
+    <string name="home_insight_mom_was">was %1$s last month</string>
+    <string name="home_insight_mom_pct">+%1$d%%</string>
 
     <string name="home_quick_add">Quick add</string>
     <string name="home_review_chip">%1$d to review</string>

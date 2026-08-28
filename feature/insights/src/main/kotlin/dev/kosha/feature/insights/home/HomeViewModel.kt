@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.kosha.core.common.Money
 import dev.kosha.core.common.Period
+import dev.kosha.core.common.Periods
 import dev.kosha.core.database.dao.PlanningDao
 import dev.kosha.core.database.dao.TransactionDao
 import dev.kosha.core.database.model.CategoryEntity
@@ -15,6 +16,7 @@ import dev.kosha.core.database.repo.InsightsRepository
 import dev.kosha.core.database.repo.PeriodRepository
 import dev.kosha.core.database.repo.TransactionRepository
 import dev.kosha.core.database.settings.SettingsRepository
+import dev.kosha.core.engine.debt.DebtPlanner
 import dev.kosha.core.engine.forecast.ForecastEngine
 import dev.kosha.core.engine.insight.AnomalyEngine
 import dev.kosha.core.engine.insight.LeakDetector
@@ -43,6 +45,26 @@ sealed interface HomeInsightCard {
     data class LeakCard(val leak: LeakDetector.Leak) : HomeInsightCard
     data class AnomalyCard(val flag: AnomalyEngine.Flag) : HomeInsightCard
     data class AdvisorCard(val reasoning: String) : HomeInsightCard
+
+    /**
+     * `InsightsRepository` already runs `DebtPlanner.compare()` on every
+     * Home load to answer "avalanche or snowball" — it was just never shown
+     * anywhere (`DebtScreen` re-derives its own copy independently). Zero new
+     * engine math: this only surfaces a number that already existed.
+     */
+    data class DebtStrategyCard(val comparison: DebtPlanner.Comparison) : HomeInsightCard
+
+    /**
+     * "Is anything drifting?" at the category level. `PeriodMath.spendByCategory`
+     * is already computed for both this period and last period elsewhere in
+     * this same ViewModel — this only diffs the two maps, no new engine code.
+     */
+    data class CategoryMoMCard(
+        val categoryLabel: String,
+        val current: Money,
+        val previous: Money,
+        val percentChange: Int,
+    ) : HomeInsightCard
 }
 
 data class HomeUiState(
@@ -131,8 +153,33 @@ class HomeViewModel @Inject constructor(
                 if (insights.advice.allocations.isNotEmpty()) {
                     add(HomeInsightCard.AdvisorCard(insights.advice.reasoning))
                 }
+                // Only worth a card when avalanche actually beats snowball by
+                // real money — a tie (one debt, or all debts at the same
+                // rate) has nothing to recommend.
+                insights.debtComparison?.takeIf { it.interestSaved.paise > 0 }?.let {
+                    add(HomeInsightCard.DebtStrategyCard(it))
+                }
             }
         }.getOrDefault(emptyList())
+
+        // Category month-over-month: reuses this same period's spendByCategory
+        // (already computed above for the budget rings) against last period's,
+        // with a floor on both the absolute amount and the percent jump so a
+        // ₹40 category that doubled to ₹80 doesn't read as a crisis.
+        val categoryMoM = runCatching {
+            val previousPeriod = Periods.previousMonthlyPeriod(period, settings.periodAnchorDay)
+            val previousSpend = periodRepository.snapshot(previousPeriod).spendByCategory
+            snapshot.spendByCategory.entries
+                .mapNotNull { (categoryId, current) ->
+                    val category = categoryId?.let { byId[it] } ?: return@mapNotNull null
+                    val previousPaise = previousSpend[categoryId]?.paise ?: 0L
+                    if (previousPaise <= 0L || current.paise < MOM_MIN_PAISE) return@mapNotNull null
+                    val percentChange = ((current.paise - previousPaise) * 100 / previousPaise).toInt()
+                    if (percentChange < MOM_THRESHOLD_PCT) return@mapNotNull null
+                    HomeInsightCard.CategoryMoMCard(category.name, current, Money(previousPaise), percentChange)
+                }
+                .maxByOrNull { it.percentChange }
+        }.getOrNull()
 
         HomeUiState(
             loaded = true,
@@ -148,7 +195,13 @@ class HomeViewModel @Inject constructor(
             budgetRings = rings,
             quickCategories = quick,
             forecast = runCatching { forecastRepository.forecast() }.getOrNull(),
-            insightCards = insightCards,
+            insightCards = insightCards + listOfNotNull(categoryMoM),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+
+    private companion object {
+        /** Below this, a category doubling is noise, not a trend. */
+        const val MOM_MIN_PAISE = 50_000L
+        const val MOM_THRESHOLD_PCT = 25
+    }
 }

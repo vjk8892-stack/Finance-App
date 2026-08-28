@@ -63,8 +63,8 @@ fun ForecastStrip(forecast: ForecastEngine.Forecast?) {
             Spacer(Modifier.height(KoshaSpacing.xxs))
             Text(
                 text = stringResource(R.string.forecast_dips_negative),
-                style = KoshaType.Caption,
-                color = KoshaColors.Amber,
+                style = KoshaType.LabelStrong,
+                color = KoshaColors.AmberBright,
             )
         }
     }

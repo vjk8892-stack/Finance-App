@@ -32,6 +32,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -47,16 +49,22 @@ import dev.kosha.core.designsystem.token.KoshaType
  * — bottom-nav destinations first, then the things reached from them — so
  * the tour doubles as a map of where everything lives, not just a features
  * list.
+ *
+ * Each page carries its own accent — the same color that page's destination
+ * uses once you're actually in the app (bottom nav, Goals' amber, Insights'
+ * violet) — so the very first thing anyone sees is not a wall of one color,
+ * and the tour previews the app's actual color language rather than a flat
+ * teal placeholder for everything.
  */
-internal enum class TourPage(val icon: ImageVector, val titleRes: Int, val bodyRes: Int) {
-    WELCOME(Icons.Outlined.CloudOff, R.string.tour_welcome_title, R.string.tour_welcome_body),
-    HOME(Icons.Outlined.Insights, R.string.tour_home_title, R.string.tour_home_body),
-    ADD(Icons.Outlined.PhotoCamera, R.string.tour_add_title, R.string.tour_add_body),
-    LEDGER(Icons.Outlined.AccountBalanceWallet, R.string.tour_ledger_title, R.string.tour_ledger_body),
-    INSIGHTS(Icons.Outlined.PieChart, R.string.tour_insights_title, R.string.tour_insights_body),
-    GOALS(Icons.Outlined.Flag, R.string.tour_goals_title, R.string.tour_goals_body),
-    VAULT(Icons.Outlined.Lock, R.string.tour_vault_title, R.string.tour_vault_body),
-    UPKEEP(Icons.Outlined.Repeat, R.string.tour_upkeep_title, R.string.tour_upkeep_body),
+internal enum class TourPage(val icon: ImageVector, val titleRes: Int, val bodyRes: Int, val accent: Color) {
+    WELCOME(Icons.Outlined.CloudOff, R.string.tour_welcome_title, R.string.tour_welcome_body, KoshaColors.AccentTealBright),
+    HOME(Icons.Outlined.Insights, R.string.tour_home_title, R.string.tour_home_body, KoshaColors.AccentTealBright),
+    ADD(Icons.Outlined.PhotoCamera, R.string.tour_add_title, R.string.tour_add_body, KoshaColors.AmberBright),
+    LEDGER(Icons.Outlined.AccountBalanceWallet, R.string.tour_ledger_title, R.string.tour_ledger_body, KoshaColors.AccountPalette[2]),
+    INSIGHTS(Icons.Outlined.PieChart, R.string.tour_insights_title, R.string.tour_insights_body, KoshaColors.AccentVioletBright),
+    GOALS(Icons.Outlined.Flag, R.string.tour_goals_title, R.string.tour_goals_body, KoshaColors.AmberBright),
+    VAULT(Icons.Outlined.Lock, R.string.tour_vault_title, R.string.tour_vault_body, KoshaColors.OffWhite),
+    UPKEEP(Icons.Outlined.Repeat, R.string.tour_upkeep_title, R.string.tour_upkeep_body, KoshaColors.AccentTealBright),
 }
 
 @Composable
@@ -86,7 +94,7 @@ fun FeatureTourScreen(
                             .size(if (i == pageIndex) 18.dp else 6.dp, 6.dp)
                             .clip(CircleShape)
                             .background(
-                                if (i == pageIndex) KoshaColors.AccentTealBright else KoshaColors.HudBorderDim,
+                                if (i == pageIndex) pages[i].accent else KoshaColors.HudBorderDim,
                             ),
                     )
                 }
@@ -114,13 +122,13 @@ fun FeatureTourScreen(
                         Modifier
                             .size(96.dp)
                             .clip(RoundedCornerShape(KoshaSpacing.cardRadius))
-                            .background(KoshaColors.GlassTop),
+                            .background(Brush.radialGradient(listOf(shown.accent.copy(alpha = 0.22f), KoshaColors.GlassTop))),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             shown.icon,
                             contentDescription = null,
-                            tint = KoshaColors.AccentTealBright,
+                            tint = shown.accent,
                             modifier = Modifier.size(40.dp),
                         )
                     }
@@ -159,7 +167,7 @@ fun FeatureTourScreen(
                 Text(
                     text = stringResource(if (isLast) R.string.tour_start else R.string.tour_next),
                     style = KoshaType.LabelStrong,
-                    color = KoshaColors.AccentTealBright,
+                    color = page.accent,
                 )
             }
         }

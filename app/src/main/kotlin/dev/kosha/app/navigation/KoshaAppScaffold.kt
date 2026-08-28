@@ -18,6 +18,7 @@ import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -58,13 +59,19 @@ import dev.kosha.feature.widgets.KoshaDeepLinks
 /**
  * Bottom nav per spec C1: Home · Ledger · Add (center, camera-first) ·
  * Insights · Vault. Budgets, Income and Recurring are reached from Home.
+ *
+ * Each destination gets its own selected-state color rather than a single
+ * flat tint — the persistent nav is the most-seen surface in the app, so a
+ * uniform color there is the single biggest reason the app can read as
+ * monochrome. Vault stays neutral on purpose: its own darker, unlit skin is
+ * a deliberate design decision (see DECISIONS.md), not an oversight to fix.
  */
-enum class KoshaDestination(val route: String, val labelRes: Int, val icon: ImageVector) {
-    HOME("home", R.string.nav_home, Icons.Outlined.Home),
-    LEDGER("ledger", R.string.nav_ledger, Icons.Outlined.AccountBalanceWallet),
-    ADD("add", R.string.nav_add, Icons.Outlined.PhotoCamera),
-    INSIGHTS("insights", R.string.nav_insights, Icons.Outlined.Insights),
-    VAULT("vault", R.string.nav_vault, Icons.Outlined.Lock),
+enum class KoshaDestination(val route: String, val labelRes: Int, val icon: ImageVector, val accent: Color) {
+    HOME("home", R.string.nav_home, Icons.Outlined.Home, KoshaColors.AccentTealBright),
+    LEDGER("ledger", R.string.nav_ledger, Icons.Outlined.AccountBalanceWallet, KoshaColors.AccountPalette[2]),
+    ADD("add", R.string.nav_add, Icons.Outlined.PhotoCamera, KoshaColors.AmberBright),
+    INSIGHTS("insights", R.string.nav_insights, Icons.Outlined.Insights, KoshaColors.AccentVioletBright),
+    VAULT("vault", R.string.nav_vault, Icons.Outlined.Lock, KoshaColors.OffWhite),
 }
 
 const val ROUTE_ACCOUNTS = "accounts"
@@ -150,13 +157,13 @@ fun KoshaAppScaffold(
                         icon = {
                             Icon(destination.icon, contentDescription = stringResource(destination.labelRes))
                         },
-                        label = { Text(stringResource(destination.labelRes), style = KoshaType.Caption) },
+                        label = { Text(stringResource(destination.labelRes), style = KoshaType.Label) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = KoshaColors.OffWhite,
-                            selectedTextColor = KoshaColors.OffWhite,
+                            selectedIconColor = destination.accent,
+                            selectedTextColor = destination.accent,
                             unselectedIconColor = KoshaColors.OffWhiteFaint,
                             unselectedTextColor = KoshaColors.OffWhiteFaint,
-                            indicatorColor = KoshaColors.CharcoalOverlay,
+                            indicatorColor = destination.accent.copy(alpha = 0.16f),
                         ),
                     )
                 }

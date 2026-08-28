@@ -1108,3 +1108,67 @@ What changed, concretely:
   Home-scoped); `HudBorder` strengthened from ~12% to ~30% AccentTeal;
   `GlassTop`/`GlassBottom` retinted teal-leaning instead of neutral
   charcoal, to read as a lit glass surface rather than flat grey.
+
+## Follow-up pass: color variety, readability, swipe UX, and two new intelligent Home cards
+
+Still on the Bioluminescent Deep-Space direction — this was feedback on it,
+not another redesign. Two research passes (one over the UI: fonts, color
+usage, onboarding, chart labeling; one over `engines/engine`: what's
+computed but never shown) found the actual causes before any code changed,
+same discipline as the mockup-first process above.
+
+**Why it still read as monochrome.** `AccentTeal`/`AccentTealBright` had
+~128 call sites app-wide against ~13 for the violet family, and the 16-color
+`CategoryPalette` + 8-color `AccountPalette` — built specifically to fix
+"everything reads as one wash" — were only ever painted into pixels in
+~7 files (Ledger, Accounts, the category treemap). Home, Budget, Insights,
+and the bottom nav never touched either palette, so the screens people
+actually live in stayed teal/amber/off-white regardless of how good the
+card glow looked. Fix: give the five bottom-nav destinations their own
+selected-state color (Home teal, Ledger a palette violet, Add amber, Insights
+violet, Vault stays neutral on purpose — its darker skin is deliberate, see
+above), tint Home's quick-add icons and budget-ring progress by
+`categoryColor()`, color-code the rotating insight card by kind (echoed in
+its own paging dot), and carry the same per-page accent into the one-time
+feature tour so the very first thing anyone sees isn't a single color either.
+
+**Fonts that didn't pop.** The bottom nav labels — the most-read text in the
+app, present on every screen — were `Caption` (11sp plain sans-serif)
+instead of `Label` (12sp Chakra Petch chrome face); same gap on the ledger
+row's category tag, the forecast "dips negative" warning, Home's income
+figure under the Pulse ring, and NetWorth's Assets/Liabilities labels.
+Bumped all of these to `Label`/`LabelStrong`, and gave the forecast warning
+`AmberBright` instead of the dimmer `Amber` so it reads as urgent rather
+than filed away.
+
+**"Recurring things not easily slideable."** This was Home's Budget Rings
+row (and, for consistency, the Quick Add row above it) — a plain
+`Modifier.horizontalScroll` over fixed 112dp cards has no fling snapping at
+all, so a flick either drifts past every ring or stalls between two of them.
+Both are now `LazyRow` with `rememberSnapFlingBehavior`, so a swipe settles
+on one card, plus trailing content padding so the next card visibly peeks in
+as a "there's more" affordance.
+
+**Monthly comparison chart amounts.** `MonthlyBars` only ever labelled the
+current month's bar, and did it in the same faint 11sp caption as the axis
+labels — technically present, never actually visible. Now the current bar's
+figure is `LabelStrong`/`AccentTealBright` (impossible to miss) and the
+immediately preceding bar gets a lighter second value, so the chart shows an
+explicit two-number comparison instead of one number nobody noticed.
+
+**Two new "intelligent" Home cards — both zero new engine code.** The
+engine survey's clearest finding: `InsightsRepository.Insights.debtComparison`
+(`DebtPlanner.compare()`, avalanche vs snowball) was computed on *every*
+Home load and never rendered anywhere — `DebtScreen` even re-derives its own
+copy independently. It's now a `HomeInsightCard.DebtStrategyCard`, shown
+only when avalanche actually beats snowball by real money. Separately,
+`PeriodMath.spendByCategory` for the current and previous period were both
+already available in `HomeViewModel` (used for the budget rings); diffing
+them per category — with a ₹500 floor and a 25%-jump floor, so a small
+category doubling doesn't read as a crisis — surfaces a
+`HomeInsightCard.CategoryMoMCard` ("Dining is up 40% vs last month") with no
+new `engines/engine` math or tests. A proactive push notification for
+`ForecastEngine`'s `negativeBeforeNextCredit` (mirroring
+`BudgetAlertWorker`'s pattern) was considered and deliberately deferred —
+it needs its own notification channel and WorkManager wiring, a larger and
+separately-testable change from this pass's font/color/UX fixes.

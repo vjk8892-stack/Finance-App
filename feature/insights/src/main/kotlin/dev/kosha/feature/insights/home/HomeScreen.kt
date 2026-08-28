@@ -4,10 +4,11 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -311,7 +315,7 @@ private fun Pulse(state: HomeUiState, onOpenLedger: () -> Unit) {
 @Composable
 private fun BreakdownItem(label: String, amount: Money, color: androidx.compose.ui.graphics.Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = KoshaType.Caption, color = KoshaColors.OffWhiteFaint)
+        Text(label, style = KoshaType.Label, color = KoshaColors.OffWhiteMuted)
         AmountText(amount = amount, style = KoshaType.AmountSmall, color = color, withPaise = false, countUp = true)
     }
 }
@@ -351,7 +355,7 @@ private fun RotatingInsightCard(cards: List<HomeInsightCard>, onOpenInsights: ()
                         Modifier
                             .size(if (i == index) 14.dp else 5.dp, 4.dp)
                             .background(
-                                if (i == index) KoshaColors.AccentTealBright else KoshaColors.HudBorderDim,
+                                if (i == index) cards[i].kindColor() else KoshaColors.HudBorderDim,
                             ),
                     )
                 }
@@ -360,38 +364,110 @@ private fun RotatingInsightCard(cards: List<HomeInsightCard>, onOpenInsights: ()
     }
 }
 
+/**
+ * Each rotating-card kind gets its own color, echoed in the paging dot too —
+ * so "what kind of insight is this" is answerable at a glance, rather than
+ * every card reading as the same shade of amber/white.
+ */
+private fun HomeInsightCard.kindColor(): Color = when (this) {
+    is HomeInsightCard.LeakCard -> KoshaColors.Amber
+    is HomeInsightCard.AnomalyCard -> KoshaColors.AccentVioletBright
+    is HomeInsightCard.AdvisorCard -> KoshaColors.AccentTealBright
+    is HomeInsightCard.DebtStrategyCard -> KoshaColors.AccentVioletBright
+    is HomeInsightCard.CategoryMoMCard -> KoshaColors.Amber
+}
+
+@Composable
+private fun KindTag(label: String, color: Color) {
+    Text(text = label.uppercase(), style = KoshaType.Label, color = color)
+    Spacer(Modifier.height(KoshaSpacing.xxs))
+}
+
 @Composable
 private fun InsightCardContent(card: HomeInsightCard) {
-    when (card) {
-        is HomeInsightCard.LeakCard -> Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(card.leak.merchant, style = KoshaType.Body, color = KoshaColors.OffWhite)
-                Text(
-                    stringResource(
-                        R.string.home_insight_leak_detail,
-                        card.leak.occurrences,
-                        card.leak.averageAmount.format(withPaise = false),
-                    ),
-                    style = KoshaType.Caption,
-                    color = KoshaColors.OffWhiteFaint,
+    Column {
+        KindTag(
+            when (card) {
+                is HomeInsightCard.LeakCard -> stringResource(R.string.home_insight_kind_leak)
+                is HomeInsightCard.AnomalyCard -> stringResource(R.string.home_insight_kind_anomaly)
+                is HomeInsightCard.AdvisorCard -> stringResource(R.string.home_insight_kind_advice)
+                is HomeInsightCard.DebtStrategyCard -> stringResource(R.string.home_insight_kind_debt)
+                is HomeInsightCard.CategoryMoMCard -> stringResource(R.string.home_insight_kind_trend)
+            },
+            card.kindColor(),
+        )
+        when (card) {
+            is HomeInsightCard.LeakCard -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(card.leak.merchant, style = KoshaType.Body, color = KoshaColors.OffWhite)
+                    Text(
+                        stringResource(
+                            R.string.home_insight_leak_detail,
+                            card.leak.occurrences,
+                            card.leak.averageAmount.format(withPaise = false),
+                        ),
+                        style = KoshaType.Caption,
+                        color = KoshaColors.OffWhiteFaint,
+                    )
+                }
+                AmountText(amount = card.leak.annualized, style = KoshaType.AmountBody, color = KoshaColors.Amber, withPaise = false)
+            }
+
+            is HomeInsightCard.AnomalyCard -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(card.flag.label, style = KoshaType.Body, color = KoshaColors.OffWhite)
+                    Text(card.flag.explanation, style = KoshaType.Caption, color = KoshaColors.OffWhiteFaint)
+                }
+                AmountText(
+                    amount = card.flag.amount,
+                    style = KoshaType.AmountBody,
+                    color = KoshaColors.AccentVioletBright,
+                    withPaise = false,
                 )
             }
-            AmountText(amount = card.leak.annualized, style = KoshaType.AmountBody, color = KoshaColors.Amber, withPaise = false)
-        }
 
-        is HomeInsightCard.AnomalyCard -> Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(card.flag.label, style = KoshaType.Body, color = KoshaColors.OffWhite)
-                Text(card.flag.explanation, style = KoshaType.Caption, color = KoshaColors.OffWhiteFaint)
+            is HomeInsightCard.AdvisorCard -> Text(
+                text = card.reasoning,
+                style = KoshaType.InsightSerif,
+                color = KoshaColors.OffWhite,
+            )
+
+            is HomeInsightCard.DebtStrategyCard -> Text(
+                text = if (card.comparison.monthsSaved > 0) {
+                    stringResource(
+                        R.string.home_insight_debt_detail_with_months,
+                        card.comparison.interestSaved.format(withPaise = false),
+                        card.comparison.monthsSaved,
+                    )
+                } else {
+                    stringResource(
+                        R.string.home_insight_debt_detail_no_months,
+                        card.comparison.interestSaved.format(withPaise = false),
+                    )
+                },
+                style = KoshaType.InsightSerif,
+                color = KoshaColors.OffWhite,
+            )
+
+            is HomeInsightCard.CategoryMoMCard -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(card.categoryLabel, style = KoshaType.Body, color = KoshaColors.OffWhite)
+                    Text(
+                        stringResource(R.string.home_insight_mom_was, card.previous.format(withPaise = false)),
+                        style = KoshaType.Caption,
+                        color = KoshaColors.OffWhiteFaint,
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    AmountText(amount = card.current, style = KoshaType.AmountBody, color = KoshaColors.Amber, withPaise = false)
+                    Text(
+                        text = stringResource(R.string.home_insight_mom_pct, card.percentChange),
+                        style = KoshaType.LabelStrong,
+                        color = KoshaColors.Amber,
+                    )
+                }
             }
-            AmountText(amount = card.flag.amount, style = KoshaType.AmountBody, color = KoshaColors.Amber, withPaise = false)
         }
-
-        is HomeInsightCard.AdvisorCard -> Text(
-            text = card.reasoning,
-            style = KoshaType.InsightSerif,
-            color = KoshaColors.OffWhite,
-        )
     }
 }
 
@@ -404,13 +480,19 @@ private fun QuickAddRow(state: HomeUiState, onQuickAdd: (Long) -> Unit) {
         color = KoshaColors.OffWhiteFaint,
     )
     Spacer(Modifier.height(KoshaSpacing.xs))
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
+    // LazyRow + snap fling, not a plain horizontalScroll: a bare
+    // horizontalScroll has no fling snapping at all, which on a real device
+    // reads as "stuck" rather than "swipeable" — a flick either overshoots
+    // past the row or stalls mid-item instead of settling on one.
+    val listState = rememberLazyListState()
+    LazyRow(
+        state = listState,
+        modifier = Modifier.fillMaxWidth(),
+        flingBehavior = rememberSnapFlingBehavior(listState),
+        contentPadding = PaddingValues(end = KoshaSpacing.xl),
         horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs),
     ) {
-        state.quickCategories.forEach { category ->
+        items(state.quickCategories, key = { it.id }) { category ->
             KoshaChip(
                 label = category.name,
                 onClick = { onQuickAdd(category.id) },
@@ -418,7 +500,11 @@ private fun QuickAddRow(state: HomeUiState, onQuickAdd: (Long) -> Unit) {
                     Icon(
                         KoshaIcons.forToken(category.icon),
                         contentDescription = null,
-                        tint = KoshaColors.OffWhiteMuted,
+                        // Each category keeps its own identity color here too
+                        // (spec G3's palette, otherwise mostly confined to the
+                        // ledger) — a quick-add row of eight identical grey
+                        // icons is the same "everything reads the same" gap.
+                        tint = KoshaColors.categoryColor(category.name),
                         modifier = Modifier.size(16.dp),
                     )
                 },
@@ -444,13 +530,26 @@ private fun BudgetRings(state: HomeUiState, onOpenBudgets: () -> Unit) {
         return
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
+    // This was the row the "hard to swipe" complaint was actually about: a
+    // bare horizontalScroll over fixed 112dp cards has no fling snapping, so
+    // a flick either drifts past every ring or stalls between two of them.
+    // LazyRow + rememberSnapFlingBehavior settles on one card per swipe, and
+    // the trailing content padding leaves the next card peeking in as a
+    // "there's more here" affordance.
+    val listState = rememberLazyListState()
+    LazyRow(
+        state = listState,
+        modifier = Modifier.fillMaxWidth(),
+        flingBehavior = rememberSnapFlingBehavior(listState),
+        contentPadding = PaddingValues(end = KoshaSpacing.xl),
         horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
     ) {
-        state.budgetRings.forEach { ring ->
+        items(state.budgetRings) { ring ->
+            // Each budget's own category color, not a flat grey ring — a row
+            // of five identical white rings is where "everything is one
+            // color" is most obvious, since it's the row right above the
+            // chip that leads to Recurring.
+            val accent = KoshaColors.categoryColor(ring.label.ifBlank { null })
             KoshaCard(
                 onClick = onOpenBudgets,
                 contentPadding = KoshaSpacing.s,
@@ -462,18 +561,18 @@ private fun BudgetRings(state: HomeUiState, onOpenBudgets: () -> Unit) {
                         size = 56.dp,
                         strokeWidth = 4.dp,
                         // Ring turns amber at alertThresholdPct (spec C2.5)
-                        color = if (ring.progress.isAtThreshold) KoshaColors.Amber else KoshaColors.OffWhiteMuted,
+                        color = if (ring.progress.isAtThreshold) KoshaColors.Amber else accent,
                     )
                     Text(
                         text = "${ring.progress.pct}%",
                         style = KoshaType.AmountSmall,
-                        color = if (ring.progress.isAtThreshold) KoshaColors.Amber else KoshaColors.OffWhiteMuted,
+                        color = if (ring.progress.isAtThreshold) KoshaColors.Amber else accent,
                     )
                 }
                 Spacer(Modifier.height(KoshaSpacing.xxs))
                 Text(
                     text = ring.label.ifEmpty { stringResource(R.string.home_budgets) },
-                    style = KoshaType.Caption,
+                    style = KoshaType.Label,
                     color = KoshaColors.OffWhiteMuted,
                     maxLines = 1,
                 )

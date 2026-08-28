@@ -797,8 +797,8 @@ private fun TransactionRow(
                     Spacer(Modifier.width(KoshaSpacing.xxs))
                     Text(
                         text = row.categoryName ?: "",
-                        style = KoshaType.Caption,
-                        color = categoryTint.copy(alpha = 0.85f * dim),
+                        style = KoshaType.Label,
+                        color = categoryTint.copy(alpha = dim),
                         maxLines = 1,
                     )
                     if (showDate) {
