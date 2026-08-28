@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -28,6 +27,7 @@ import dev.kosha.core.designsystem.component.AmountText
 import dev.kosha.core.designsystem.component.KoshaChip
 import dev.kosha.core.designsystem.component.KoshaLocalImage
 import dev.kosha.core.designsystem.token.KoshaColors
+import dev.kosha.core.designsystem.token.KoshaShapes
 import dev.kosha.core.designsystem.token.KoshaSpacing
 import dev.kosha.core.designsystem.token.KoshaType
 import java.time.Instant
@@ -113,7 +113,7 @@ fun TransactionDetailSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(320.dp)
-                        .clip(RoundedCornerShape(KoshaSpacing.cardRadius)),
+                        .clip(KoshaShapes.chamfered(KoshaSpacing.cardCut)),
                 )
             }
 
@@ -132,7 +132,7 @@ fun TransactionDetailSheet(
                         color = KoshaColors.OffWhite,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(KoshaSpacing.cardRadius))
+                            .clip(KoshaShapes.chamfered(KoshaSpacing.cardCut))
                             .background(KoshaColors.CharcoalRaised)
                             .padding(KoshaSpacing.s),
                     )

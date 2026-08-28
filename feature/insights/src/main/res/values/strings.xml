@@ -6,7 +6,7 @@
     <string name="weather_heads_up">Heads-up — spending is %1$s past income this period.</string>
     <string name="weather_no_data">A quiet start. Log a few entries and the picture fills in.</string>
 
-    <string name="pulse_label">Savings gap</string>
+    <string name="pulse_label">Money out</string>
     <string name="pulse_income">Income</string>
     <string name="pulse_expense">Spent</string>
     <string name="pulse_gap">Gap</string>

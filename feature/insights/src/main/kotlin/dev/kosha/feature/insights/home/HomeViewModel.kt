@@ -46,14 +46,16 @@ data class HomeUiState(
     val forecast: ForecastEngine.Forecast? = null,
 ) {
     /**
-     * Pulse ring fill: savings gap as a fraction of income. Negative gap
-     * shows an empty ring — the amber weather line carries that message.
+     * Pulse ring fill: money spent as a fraction of income — how much of
+     * this period's income is gone. Clamped to 1 once spend passes income;
+     * the hero figure turning amber is what carries "you've gone past it"
+     * from there, not a ring that keeps sweeping around again.
      */
-    val pulseFraction: Float
+    val spendFraction: Float
         get() {
-            val reference = maxOf(expectedIncome.paise, income.paise)
-            if (reference <= 0 || savingsGap.paise <= 0) return 0f
-            return (savingsGap.paise.toFloat() / reference).coerceIn(0f, 1f)
+            val reference = maxOf(expectedIncome.paise, income.paise, 1L)
+            if (expense.paise <= 0) return 0f
+            return (expense.paise.toFloat() / reference).coerceIn(0f, 1f)
         }
 }
 

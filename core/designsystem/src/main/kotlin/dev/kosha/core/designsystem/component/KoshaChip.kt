@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,11 +16,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import dev.kosha.core.designsystem.token.KoshaColors
+import dev.kosha.core.designsystem.token.KoshaShapes
 import dev.kosha.core.designsystem.token.KoshaSpacing
 import dev.kosha.core.designsystem.token.KoshaType
 
 /**
- * Pill chip. Selection is a FILLED accent pill, not a slightly different grey.
+ * Chamfered chip (Kosha DS v2). Selection is a FILLED accent panel, not a
+ * slightly different grey.
  *
  * The quiet version was unreadable in practice: on a charcoal card, "selected"
  * differed from "not selected" by one step of grey on both border and fill, so
@@ -37,10 +38,10 @@ fun KoshaChip(
     leading: (@Composable () -> Unit)? = null,
     accent: Color = KoshaColors.OffWhite,
 ) {
-    val shape = RoundedCornerShape(percent = 50)
+    val shape = KoshaShapes.chamfered(KoshaSpacing.chipCut)
     val border = BorderStroke(
         if (selected) 1.5.dp else 1.dp,
-        if (selected) accent else KoshaColors.Outline,
+        if (selected) accent else KoshaColors.HudBorderDim,
     )
     Row(
         verticalAlignment = Alignment.CenterVertically,

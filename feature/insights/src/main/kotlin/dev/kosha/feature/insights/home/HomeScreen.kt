@@ -205,22 +205,34 @@ private fun WeatherLine(state: HomeUiState) {
 
 @Composable
 private fun Pulse(state: HomeUiState, onOpenLedger: () -> Unit) {
+    // Money OUT is the hero (not the income-minus-expense gap): it's the
+    // number that needs a decision, where the gap made you do the
+    // subtraction in your head every time. Money in stays on screen, just
+    // small, beneath it — context for the hero figure, not competing with it.
+    // The ring itself now reads as "how much of this period's income is
+    // gone", and turns amber (never red) the moment spend passes income,
+    // same language the budget rings already use.
+    val reference = maxOf(state.expectedIncome.paise, state.income.paise, 1L)
+    val overspent = state.hasData && state.expense.paise > reference
     Box(
         Modifier
             .fillMaxWidth()
-            // The gap is a question — "where did it go?" — so tapping it goes
-            // to the answer. It used to toggle a breakdown that is now always
-            // on screen, which made the tap a dead end.
+            // The figure is a question — "where did it go?" — so tapping it
+            // goes to the answer rather than being a dead end.
             .clickable(onClick = onOpenLedger),
         contentAlignment = Alignment.Center,
     ) {
-        // The one place the teal→violet accent gradient appears on Home.
+        // The one place the teal→violet accent gradient appears on Home —
+        // unless spend has outrun income, when it turns the same amber the
+        // budget rings use for the same condition.
         KoshaRing(
-            progress = state.pulseFraction,
+            progress = state.spendFraction,
             size = 236.dp,
             strokeWidth = 10.dp,
-            gradient = true,
+            gradient = !overspent,
+            color = KoshaColors.Amber,
             breathing = true,
+            dial = true,
         )
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -230,14 +242,14 @@ private fun Pulse(state: HomeUiState, onOpenLedger: () -> Unit) {
             )
             Spacer(Modifier.height(KoshaSpacing.xxs))
             AmountText(
-                amount = state.savingsGap,
+                amount = state.expense,
                 style = KoshaType.AmountHero,
-                color = if (state.savingsGap.isNegative) KoshaColors.Amber else KoshaColors.OffWhite,
+                color = if (overspent) KoshaColors.Amber else KoshaColors.OffWhite,
                 withPaise = false,
                 countUp = true,
             )
             Spacer(Modifier.height(KoshaSpacing.s))
-            PulseBreakdown(state)
+            BreakdownItem(stringResource(R.string.pulse_income), state.income, KoshaColors.AccentTealBright)
             Spacer(Modifier.height(KoshaSpacing.xxs))
             Text(
                 text = stringResource(R.string.pulse_tap_hint),
@@ -245,14 +257,6 @@ private fun Pulse(state: HomeUiState, onOpenLedger: () -> Unit) {
                 color = KoshaColors.OffWhiteFaint,
             )
         }
-    }
-}
-
-@Composable
-private fun PulseBreakdown(state: HomeUiState) {
-    Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.m)) {
-        BreakdownItem(stringResource(R.string.pulse_income), state.income, KoshaColors.AccentTeal)
-        BreakdownItem(stringResource(R.string.pulse_expense), state.expense, KoshaColors.OffWhiteMuted)
     }
 }
 

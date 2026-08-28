@@ -811,3 +811,44 @@ double the arm64 one because it ships both architectures' native libraries.
 These are DEBUG builds: unminified, R8 off, full debug symbols. A release build
 is substantially smaller, and the Phase-12 budget (baseline + 8 MB) should be
 set from a release build, not from this table.
+
+## Kosha DS v2, "Futuristic Calm" — phase 1 of the post-launch enhancement pass
+
+A user-requested reskin plus a set of product gaps from a design review are
+being worked as a phased sequence rather than one pass, since they touch
+almost every screen. Phase 1: the shared design-system primitives, and the
+Home Pulse.
+
+- **Shape language:** every card, chip, keypad key and the transaction-detail
+  image/message blocks now clip to `KoshaShapes.chamfered(...)` — an
+  instrument-panel chamfered corner — instead of `RoundedCornerShape`. This is
+  a token-file + component-file change (`KoshaCard`, `KoshaChip`,
+  `KoshaKeypad`, `KoshaUndoBar`, plus the two stray `RoundedCornerShape` uses
+  in `TransactionDetailSheet`), so it reaches every screen that already builds
+  on the shared components without those screens changing.
+- **Type:** chrome styles (`Title`, `ScreenTitle`, `Label`, `LabelStrong`,
+  `SectionHeader`) and all `Amount*` styles moved from sans-serif to
+  monospace — a console/HUD cadence. `Body`, `Caption` and `InsightSerif` stay
+  as they were: a screen that is monospace top to bottom reads as a terminal,
+  not a calm ledger, so prose keeps its own voice.
+- **Cards** are now a subtle vertical-gradient "glass" panel
+  (`GlassTop`→`GlassBottom`) with a low-alpha teal hairline (`HudBorderDim`)
+  instead of a flat surface color + grey outline.
+- **`KoshaRing`** gained a `dial` mode — radar-style tick marks and a faint
+  outer glow arc — reserved for hero use (the Pulse ring) so a 48dp budget
+  ring doesn't inherit the same visual weight.
+- **Accent-restraint rule unchanged:** the teal→violet gradient is still only
+  money-flow visuals. The new `HudBorder`/`HudBorderDim` tokens are
+  structural (low-alpha card/chip edges), not a second accent — a card edge
+  glowing at 12% is not the same claim as a chart using the gradient to mean
+  money movement.
+- **Home Pulse now leads with money OUT, not the income-minus-expense gap**
+  (explicit product decision, overriding spec C2.2's original hero metric):
+  the hero figure inside the ring is `expense`; `income` is the one small
+  figure beneath it. The ring's fill (`HomeUiState.spendFraction`, replacing
+  `pulseFraction`) now reads as "how much of this period's income is gone",
+  and turns amber — never red — the moment spend passes income, same
+  language the budget rings already use for the same condition. The
+  savings-gap number itself is not removed from the app; it is still what the
+  weather line above the Pulse is computed from, it's just no longer the
+  number inside the ring.

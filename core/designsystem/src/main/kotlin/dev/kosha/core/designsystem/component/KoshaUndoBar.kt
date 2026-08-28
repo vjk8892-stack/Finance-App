@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import dev.kosha.core.designsystem.token.KoshaColors
+import dev.kosha.core.designsystem.token.KoshaShapes
 import dev.kosha.core.designsystem.token.KoshaSpacing
 import dev.kosha.core.designsystem.token.KoshaType
 import kotlinx.coroutines.delay
@@ -62,7 +63,7 @@ fun KoshaUndoBar(
         exit = slideOutVertically { it },
         modifier = modifier,
     ) {
-        val shape = RoundedCornerShape(KoshaSpacing.cardRadius)
+        val shape = KoshaShapes.chamfered(KoshaSpacing.cardCut)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier

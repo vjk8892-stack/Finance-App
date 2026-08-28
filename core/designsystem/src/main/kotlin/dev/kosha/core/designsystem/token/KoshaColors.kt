@@ -71,6 +71,18 @@ object KoshaColors {
         return CategoryPalette[hash.mod(CategoryPalette.size)]
     }
 
+    /**
+     * Kosha DS v2 ("Futuristic Calm") structural tokens: thin instrument-panel
+     * borders and glass-panel gradients. These are LOW-alpha STRUCTURE, not a
+     * second money-flow accent — the accent-restraint rule above still holds;
+     * a card's edge glowing teal at 12% is not the same claim as a chart using
+     * the accent gradient to mean money movement.
+     */
+    val HudBorder = Color(0x662DD4BF)     // ~40% AccentTeal — selected/active edges
+    val HudBorderDim = Color(0x1F2DD4BF)  // ~12% AccentTeal — idle card/chip hairline
+    val GlassTop = Color(0xFF1A1E24)
+    val GlassBottom = Color(0xFF13161B)
+
     // Vault skin (darker variant)
     val VaultBackground = Color(0xFF0A0C0E)
     val VaultRaised = Color(0xFF101317)
