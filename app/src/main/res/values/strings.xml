@@ -131,6 +131,22 @@
     <string name="settings_recurring">Recurring &amp; EMIs</string>
     <string name="settings_goals">Goals</string>
     <string name="settings_warranties">Warranties</string>
+    <string name="settings_constitution">Constitution</string>
+
+    <string name="constitution_title">Constitution</string>
+    <string name="constitution_empty">No rules yet. Write one for yourself, or set a category limit Kosha can check automatically.</string>
+    <string name="constitution_trend_improving">Violations are trending down over the last 30 days.</string>
+    <string name="constitution_trend_slipping">Violations are trending up over the last 30 days.</string>
+    <string name="constitution_trend_steady">Violations are steady over the last 30 days.</string>
+    <string name="constitution_trend_none">Not enough history yet to show a trend.</string>
+    <string name="constitution_add">Add a rule</string>
+    <string name="constitution_free_text">Write it myself</string>
+    <string name="constitution_category_limit">Category limit</string>
+    <string name="constitution_free_text_hint">e.g. \"No impulse buys over ₹5,000 without sleeping on it\"</string>
+    <string name="constitution_free_text_note">Free-text rules aren\'t checked automatically — they\'re yours to judge, and Kosha never scores them.</string>
+    <string name="constitution_limit_amount_hint">Monthly limit (₹)</string>
+    <string name="constitution_limit_note">Checked automatically against this calendar month\'s spend, and re-checked every time you open this screen.</string>
+    <string name="constitution_save">Save</string>
     <string name="settings_anchor">Month starts on day %1$d</string>
     <string name="settings_anchor_sub">Set this to your salary day so a \"month\" matches your pay cycle.</string>
     <string name="settings_anchor_day">%1$d</string>

@@ -102,4 +102,11 @@ class ConstitutionEngineTest {
             ConstitutionEngine.violationTrend(listOf(2, 2)),
         )
     }
+
+    @Test
+    fun `a rule round-trips through JSON unchanged`() {
+        val check = sumLimit(2_000)
+        val decoded = ConstitutionEngine.parseCheck(ConstitutionEngine.encodeCheck(check))
+        assertEquals(check, decoded)
+    }
 }

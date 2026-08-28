@@ -28,6 +28,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.kosha.app.R
+import dev.kosha.app.constitution.ConstitutionScreen
 import dev.kosha.app.settings.PermissionsScreen
 import dev.kosha.app.settings.SettingsScreen
 import dev.kosha.core.designsystem.token.KoshaColors
@@ -78,6 +79,7 @@ const val ROUTE_GOALS = "goals"
 const val ROUTE_DEBT = "debt"
 const val ROUTE_NET_WORTH = "net-worth"
 const val ROUTE_WARRANTY = "warranty"
+const val ROUTE_CONSTITUTION = "constitution"
 const val ROUTE_SMS_SCAN = "sms-scan"
 const val ROUTE_PERMISSIONS = "permissions"
 const val ROUTE_SETTINGS = "settings"
@@ -331,6 +333,7 @@ fun KoshaAppScaffold(
                     onOpenRecurring = { navController.navigate(ROUTE_RECURRING) },
                     onOpenGoals = { navController.navigate(ROUTE_GOALS) },
                     onOpenWarranties = { navController.navigate(ROUTE_WARRANTY) },
+                    onOpenConstitution = { navController.navigate(ROUTE_CONSTITUTION) },
                     onOpenPermissions = { navController.navigate(ROUTE_PERMISSIONS) },
                     onScanSms = { navController.navigate(ROUTE_SMS_SCAN) },
                     onOpenAccounts = { navController.navigate(ROUTE_ACCOUNTS) },
@@ -338,6 +341,9 @@ fun KoshaAppScaffold(
             }
             composable(ROUTE_WARRANTY) {
                 WarrantyScreen(onBack = { navController.popBackStack() })
+            }
+            composable(ROUTE_CONSTITUTION) {
+                ConstitutionScreen(onBack = { navController.popBackStack() })
             }
             composable(ROUTE_GOALS) {
                 GoalsScreen(

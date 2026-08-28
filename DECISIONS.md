@@ -985,3 +985,38 @@ either.
   exactly 30 or exactly 7 — `==`, not `<=`, so it's one notification per
   milestone, not a week of repeats. Scheduled from `KoshaApp.onCreate`
   alongside the other workers.
+
+## Phase 7: Personal Financial Constitution finally gets a screen
+
+Design review finding, the starkest one: `ConstitutionEngine` had its own
+test suite and `ConstitutionRuleEntity`/`RuleViolationEntity` had full DAO
+CRUD, but there was no screen, no nav route, and no menu entry anywhere —
+zero way for a user to ever reach a "novel" flagship feature from the spec.
+
+- **Evaluation is read-only, on demand — deliberately not wired into
+  `PipelineCommitter`.** `ConstitutionRepository.evaluateActive` runs active
+  machine-checkable rules through the same `QueryRepository` the query
+  builder and NLU assistant already use (read `Query` → filter committed
+  transactions → aggregate), each time the Constitution screen loads, and
+  logs at most one violation per rule per day. `PipelineCommitter` decides
+  whether a transaction is allowed to exist at all and is guarded by tests
+  (`MultiAccountAttributionTest` and others) that this feature has no
+  business risking on a first pass — a rule violated a few minutes before
+  the user opens the screen is still violated when they do.
+- **Rule authoring is scoped to two shapes, not a full filter builder:**
+  free text (self-review, never scored — matches spec's own "Kosha never
+  judges a free-text rule automatically") and one machine-checkable shape,
+  a category monthly spending cap, encoded as a `MachineCheck` via the
+  engine's own `encodeCheck`/`parseCheck` (round-trip covered by a new
+  engine test) so the JSON shape stays in one place. The full generic
+  filter grammar (`SavedQuery`'s shape) already supports far more than this;
+  a builder UI for the rest is future work, noted rather than silently
+  dropped.
+- Violation trend is a two-window read (this 30 days vs. the previous 30),
+  not per-pay-period bookkeeping — violations aren't anchored to the income
+  period the way spend totals are, so this is the honest granularity rather
+  than a forced fit.
+- New `MetaDao.deleteConstitutionRule` and `observeAllConstitutionRules`
+  (the existing query was active-only, which can't drive a toggle back on).
+  Both additive, no migration needed.
+- Reachable from Settings → Money, next to Warranties.

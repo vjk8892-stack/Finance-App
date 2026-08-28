@@ -3,6 +3,7 @@ package dev.kosha.core.engine.constitution
 import dev.kosha.core.common.Money
 import dev.kosha.core.engine.query.QueryFilter
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
@@ -42,6 +43,9 @@ object ConstitutionEngine {
         if (machineCheckJson.isNullOrBlank()) return null
         return runCatching { json.decodeFromString<MachineCheck>(machineCheckJson) }.getOrNull()
     }
+
+    /** The other direction of [parseCheck] — keeps the JSON shape in one place. */
+    fun encodeCheck(check: MachineCheck): String = json.encodeToString(check)
 
     /**
      * Evaluates one rule against the totals its filter selected. Returns null

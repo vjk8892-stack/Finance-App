@@ -64,6 +64,7 @@ fun SettingsScreen(
     onOpenRecurring: () -> Unit,
     onOpenGoals: () -> Unit,
     onOpenWarranties: () -> Unit,
+    onOpenConstitution: () -> Unit,
     onOpenPermissions: () -> Unit,
     onScanSms: () -> Unit,
     onOpenAccounts: () -> Unit,
@@ -202,6 +203,7 @@ fun SettingsScreen(
                 LinkRow(stringResource(R.string.settings_recurring), null, onOpenRecurring)
                 LinkRow(stringResource(R.string.settings_goals), null, onOpenGoals)
                 LinkRow(stringResource(R.string.settings_warranties), null, onOpenWarranties)
+                LinkRow(stringResource(R.string.settings_constitution), null, onOpenConstitution)
                 Spacer(Modifier.height(KoshaSpacing.xs))
                 Text(
                     text = stringResource(R.string.settings_anchor, state.settings.periodAnchorDay),

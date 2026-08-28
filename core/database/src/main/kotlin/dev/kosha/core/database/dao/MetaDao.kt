@@ -50,8 +50,15 @@ interface MetaDao {
     @Update
     suspend fun updateConstitutionRule(rule: ConstitutionRuleEntity)
 
+    @Delete
+    suspend fun deleteConstitutionRule(rule: ConstitutionRuleEntity)
+
     @Query("SELECT * FROM constitution_rules WHERE isActive = 1")
     fun observeConstitutionRules(): Flow<List<ConstitutionRuleEntity>>
+
+    /** Every rule, including inactive ones — the management screen lets you turn those back on. */
+    @Query("SELECT * FROM constitution_rules ORDER BY id")
+    fun observeAllConstitutionRules(): Flow<List<ConstitutionRuleEntity>>
 
     @Insert
     suspend fun insertRuleViolation(violation: RuleViolationEntity): Long
