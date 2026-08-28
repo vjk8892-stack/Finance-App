@@ -1020,3 +1020,24 @@ zero way for a user to ever reach a "novel" flagship feature from the spec.
   (the existing query was active-only, which can't drive a toggle back on).
   Both additive, no migration needed.
 - Reachable from Settings → Money, next to Warranties.
+
+## Geofenced logging nudges: deliberately cut, not silently dropped
+
+The design review flagged this as completely unimplemented — zero code,
+despite being a locked v1 feature with its own row in the G9 permissions
+matrix. Asked the user directly rather than guessing at scope, since this
+item is a different shape from the rest of the backlog: it needs Android's
+"Allow all the time" background-location permission — the most sensitive
+runtime permission on the platform, sitting inside an app whose whole pitch
+is privacy restraint (no `INTERNET`, ever) — and there is no existing
+location data model to extend; it would be new schema, a new manual
+add/edit screen, Play Services Geofencing registration, and a background
+receiver, none of which can be verified without a physical device with real
+GPS and Play Services.
+
+Decision: cut from this pass. Joins the spec's own "deliberately deferred"
+list (P2P sync, Drive backup, LLM assistant, multi-currency, non-Latin OCR,
+exact-time alarms, iOS) rather than being quietly absent — a future pass
+can pick it up starting from `docs/koshabuildspec.md` spec B1/C8/G9, and
+should plan on a `docs/DEVICE_GATES.md` entry for it from the start, the
+same way SMS-under-doze and OCR accuracy already are.
