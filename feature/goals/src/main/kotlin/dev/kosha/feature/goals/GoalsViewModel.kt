@@ -8,16 +8,13 @@ import dev.kosha.core.common.Periods
 import dev.kosha.core.database.dao.AccountDao
 import dev.kosha.core.database.dao.GoalsDao
 import dev.kosha.core.database.dao.TransactionDao
-import dev.kosha.core.database.model.AssetLiabilityEntity
 import dev.kosha.core.database.model.AssetLiabilityKind
-import dev.kosha.core.database.model.DebtAccountEntity
 import dev.kosha.core.database.model.FinancialGoalEntity
 import dev.kosha.core.database.model.GoalKind
 import dev.kosha.core.database.model.TaxTag
 import dev.kosha.core.database.model.TxnStatus
 import dev.kosha.core.database.repo.PeriodRepository
 import dev.kosha.core.database.settings.SettingsRepository
-import dev.kosha.core.engine.debt.DebtPlanner
 import dev.kosha.core.engine.debt.NetWorthCalculator
 import java.time.LocalDate
 import java.time.ZoneId
@@ -25,18 +22,25 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/**
+ * Debt and Net Worth moved to their own screens/ViewModels (design review:
+ * a debt avalanche/snowball simulator and a net-worth tracker are each
+ * substantial enough to be their own destination). What's left here is
+ * sinking-fund goals and the tax report, plus a one-line summary of the two
+ * that moved out — enough to decide whether to open them, not a duplicate
+ * of what's on those screens.
+ */
+data class DebtSummary(val count: Int, val totalOwed: Money)
+
 data class GoalsUiState(
     val goals: List<FinancialGoalEntity> = emptyList(),
-    val debts: List<DebtAccountEntity> = emptyList(),
-    val assetsLiabilities: List<AssetLiabilityEntity> = emptyList(),
-    val netWorth: NetWorthCalculator.NetWorth? = null,
-    val debtComparison: DebtPlanner.Comparison? = null,
     val averageMonthlyExpense: Money = Money.ZERO,
     val emergencyFundMonths: Int = 3,
+    val debtSummary: DebtSummary = DebtSummary(0, Money.ZERO),
+    val netWorth: NetWorthCalculator.NetWorth? = null,
     val taxTotals: List<Pair<TaxTag, Money>> = emptyList(),
     val financialYearLabel: String = "",
 )
@@ -75,20 +79,6 @@ class GoalsViewModel @Inject constructor(
             accountBalances = accountTotal,
         )
 
-        val comparison = debts.takeIf { it.isNotEmpty() }?.let { list ->
-            DebtPlanner.compare(
-                list.map {
-                    DebtPlanner.Debt(
-                        id = it.id,
-                        name = it.name,
-                        principal = Money(it.principalPaise),
-                        rateBps = it.rateBps,
-                        minimumPayment = Money(it.emiAmountPaise),
-                    )
-                },
-            )
-        }
-
         // Tax report groups by India FY, 1 April – 31 March (spec G1).
         val fy = Periods.financialYearContaining(LocalDate.now(zone))
         val taxTotals = transactionDao
@@ -107,12 +97,10 @@ class GoalsViewModel @Inject constructor(
 
         GoalsUiState(
             goals = goals,
-            debts = debts,
-            assetsLiabilities = items,
-            netWorth = netWorth,
-            debtComparison = comparison,
             averageMonthlyExpense = avgExpense,
             emergencyFundMonths = settings.emergencyFundMonths,
+            debtSummary = DebtSummary(debts.size, Money(debts.sumOf { it.principalPaise })),
+            netWorth = netWorth,
             taxTotals = taxTotals,
             financialYearLabel = "${fy.start.year}–${fy.endInclusive.year % 100}",
         )
@@ -136,51 +124,5 @@ class GoalsViewModel @Inject constructor(
 
     fun deleteGoal(goal: FinancialGoalEntity) {
         viewModelScope.launch { goalsDao.deleteGoal(goal) }
-    }
-
-    fun addDebt(
-        name: String,
-        principalRupees: String,
-        ratePercent: String,
-        emiRupees: String,
-        tenureMonths: String,
-    ) {
-        val principal = Money.parseOrNull(principalRupees) ?: return
-        val emi = Money.parseOrNull(emiRupees) ?: return
-        val rateBps = ((ratePercent.toDoubleOrNull() ?: 0.0) * 100).toInt()
-        viewModelScope.launch {
-            goalsDao.insertDebt(
-                DebtAccountEntity(
-                    name = name,
-                    principalPaise = principal.paise,
-                    rateBps = rateBps,
-                    emiAmountPaise = emi.paise,
-                    tenureMonths = tenureMonths.toIntOrNull() ?: 0,
-                    startDateMillis = System.currentTimeMillis(),
-                ),
-            )
-        }
-    }
-
-    fun deleteDebt(debt: DebtAccountEntity) {
-        viewModelScope.launch { goalsDao.deleteDebt(debt) }
-    }
-
-    fun addAssetLiability(name: String, valueRupees: String, isLiability: Boolean) {
-        val value = Money.parseOrNull(valueRupees) ?: return
-        viewModelScope.launch {
-            goalsDao.insertAssetLiability(
-                AssetLiabilityEntity(
-                    name = name,
-                    kind = if (isLiability) AssetLiabilityKind.LIABILITY else AssetLiabilityKind.ASSET,
-                    valuePaise = value.paise,
-                    valuationDateMillis = System.currentTimeMillis(),
-                ),
-            )
-        }
-    }
-
-    fun deleteAssetLiability(item: AssetLiabilityEntity) {
-        viewModelScope.launch { goalsDao.deleteAssetLiability(item) }
     }
 }

@@ -2,7 +2,6 @@ package dev.kosha.feature.goals
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,13 +15,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -38,8 +35,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.kosha.core.common.Money
-import dev.kosha.core.database.model.AssetLiabilityKind
-import dev.kosha.core.database.model.DebtAccountEntity
 import dev.kosha.core.database.model.FinancialGoalEntity
 import dev.kosha.core.database.model.GoalKind
 import dev.kosha.core.designsystem.component.AmountText
@@ -52,6 +47,8 @@ import dev.kosha.core.designsystem.token.KoshaType
 @Composable
 fun GoalsScreen(
     onBack: () -> Unit,
+    onOpenDebt: () -> Unit,
+    onOpenNetWorth: () -> Unit,
     viewModel: GoalsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -99,20 +96,29 @@ fun GoalsScreen(
 
             item {
                 Spacer(Modifier.height(KoshaSpacing.m))
-                SectionHeader(stringResource(R.string.debt_section)) { editor = Editor.Debt }
-            }
-            if (state.debts.isEmpty()) {
-                item { EmptyNote(stringResource(R.string.debt_empty)) }
-            } else {
-                items(state.debts.size) { i ->
-                    DebtCard(state.debts[i]) { viewModel.deleteDebt(state.debts[i]) }
-                }
-                item { state.debtComparison?.let { DebtComparisonCard(it) } }
+                NavigationCard(
+                    title = stringResource(R.string.debt_section),
+                    detail = if (state.debtSummary.count == 0) {
+                        stringResource(R.string.debt_empty)
+                    } else {
+                        stringResource(
+                            R.string.goals_debt_summary,
+                            state.debtSummary.count,
+                            state.debtSummary.totalOwed.format(withPaise = false),
+                        )
+                    },
+                    onClick = onOpenDebt,
+                )
             }
 
             item {
-                Spacer(Modifier.height(KoshaSpacing.m))
-                NetWorthCard(state, onAddAsset = { editor = Editor.Asset }, onAddLiability = { editor = Editor.Liability })
+                NavigationCard(
+                    title = stringResource(R.string.networth_section),
+                    detail = state.netWorth?.let {
+                        stringResource(R.string.goals_networth_summary, it.net.format(withPaise = false))
+                    } ?: "",
+                    onClick = onOpenNetWorth,
+                )
             }
 
             item {
@@ -131,26 +137,11 @@ fun GoalsScreen(
             },
             onDismiss = { editor = null },
         )
-        Editor.Debt -> DebtEditorSheet(
-            onSave = { name, principal, rate, emi, tenure ->
-                viewModel.addDebt(name, principal, rate, emi, tenure)
-                editor = null
-            },
-            onDismiss = { editor = null },
-        )
-        Editor.Asset, Editor.Liability -> AssetEditorSheet(
-            isLiability = editor == Editor.Liability,
-            onSave = { name, value ->
-                viewModel.addAssetLiability(name, value, editor == Editor.Liability)
-                editor = null
-            },
-            onDismiss = { editor = null },
-        )
         null -> Unit
     }
 }
 
-private enum class Editor { Goal, Debt, Asset, Liability }
+private enum class Editor { Goal }
 
 @Composable
 private fun SectionHeader(title: String, onAdd: () -> Unit) {
@@ -165,9 +156,22 @@ private fun SectionHeader(title: String, onAdd: () -> Unit) {
     }
 }
 
+/** A tappable summary of a screen that used to be a section here (design review). */
 @Composable
-private fun EmptyNote(text: String) {
-    Text(text, style = KoshaType.InsightSerif, color = KoshaColors.OffWhiteMuted)
+private fun NavigationCard(title: String, detail: String, onClick: () -> Unit) {
+    KoshaCard(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = KoshaType.Body, color = KoshaColors.OffWhite)
+                Text(detail, style = KoshaType.Caption, color = KoshaColors.OffWhiteFaint)
+            }
+            Icon(
+                Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                contentDescription = null,
+                tint = KoshaColors.OffWhiteFaint,
+            )
+        }
+    }
 }
 
 /** Sinking-fund jar that visibly fills (spec C7). */
@@ -238,114 +242,6 @@ private fun Jar(fraction: Float) {
 }
 
 @Composable
-private fun DebtCard(debt: DebtAccountEntity, onDelete: () -> Unit) {
-    KoshaCard(modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(debt.name, style = KoshaType.Body, color = KoshaColors.OffWhite)
-                Text(
-                    text = "${debt.rateBps / 100.0}% · EMI ${Money(debt.emiAmountPaise).format(withPaise = false)}",
-                    style = KoshaType.Caption,
-                    color = KoshaColors.OffWhiteFaint,
-                )
-            }
-            AmountText(amount = Money(debt.principalPaise), style = KoshaType.AmountBody, withPaise = false)
-            TextButton(onClick = onDelete) {
-                Text("×", style = KoshaType.Title, color = KoshaColors.OffWhiteFaint)
-            }
-        }
-    }
-}
-
-@Composable
-private fun DebtComparisonCard(comparison: dev.kosha.core.engine.debt.DebtPlanner.Comparison) {
-    KoshaCard(modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth()) {
-            StrategyColumn(
-                title = stringResource(R.string.debt_avalanche),
-                months = comparison.avalanche.monthsToDebtFree,
-                interest = comparison.avalanche.totalInterest,
-                modifier = Modifier.weight(1f),
-            )
-            StrategyColumn(
-                title = stringResource(R.string.debt_snowball),
-                months = comparison.snowball.monthsToDebtFree,
-                interest = comparison.snowball.totalInterest,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Spacer(Modifier.height(KoshaSpacing.xs))
-        Text(
-            text = if (comparison.interestSaved.paise > 0 || comparison.monthsSaved > 0) {
-                stringResource(
-                    R.string.debt_avalanche_saves,
-                    comparison.interestSaved.format(withPaise = false),
-                    comparison.monthsSaved,
-                )
-            } else {
-                stringResource(R.string.debt_same_either_way)
-            },
-            style = KoshaType.InsightSerif,
-            color = KoshaColors.OffWhite,
-        )
-    }
-}
-
-@Composable
-private fun StrategyColumn(title: String, months: Int, interest: Money, modifier: Modifier = Modifier) {
-    Column(modifier) {
-        Text(title, style = KoshaType.Label, color = KoshaColors.OffWhiteFaint)
-        Text(
-            text = stringResource(R.string.debt_payoff_months, months),
-            style = KoshaType.Body,
-            color = KoshaColors.OffWhite,
-        )
-        Text(
-            text = stringResource(R.string.debt_total_interest, interest.format(withPaise = false)),
-            style = KoshaType.Caption,
-            color = KoshaColors.OffWhiteMuted,
-        )
-    }
-}
-
-@Composable
-private fun NetWorthCard(
-    state: GoalsUiState,
-    onAddAsset: () -> Unit,
-    onAddLiability: () -> Unit,
-) {
-    val netWorth = state.netWorth ?: return
-    KoshaCard(modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.networth_section), style = KoshaType.Title, color = KoshaColors.OffWhite)
-        Spacer(Modifier.height(KoshaSpacing.xs))
-        Row(Modifier.fillMaxWidth()) {
-            LabeledAmount(stringResource(R.string.networth_assets), netWorth.assets, KoshaColors.AccentTeal)
-            Spacer(Modifier.width(KoshaSpacing.m))
-            LabeledAmount(stringResource(R.string.networth_liabilities), netWorth.liabilities, KoshaColors.OffWhiteMuted)
-        }
-        Spacer(Modifier.height(KoshaSpacing.xs))
-        Text(stringResource(R.string.networth_net), style = KoshaType.Label, color = KoshaColors.OffWhiteFaint)
-        AmountText(
-            amount = netWorth.net,
-            style = KoshaType.AmountLarge,
-            color = if (netWorth.net.isNegative) KoshaColors.Amber else KoshaColors.OffWhite,
-            withPaise = false,
-            countUp = true,
-        )
-        Spacer(Modifier.height(KoshaSpacing.xs))
-        Text(
-            text = stringResource(R.string.networth_loan_hint),
-            style = KoshaType.Caption,
-            color = KoshaColors.OffWhiteFaint,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs)) {
-            KoshaChip(label = stringResource(R.string.networth_add_asset), onClick = onAddAsset)
-            KoshaChip(label = stringResource(R.string.networth_add_liability), onClick = onAddLiability)
-        }
-    }
-}
-
-@Composable
 private fun TaxCard(state: GoalsUiState) {
     KoshaCard(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -373,14 +269,6 @@ private fun TaxCard(state: GoalsUiState) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun LabeledAmount(label: String, amount: Money, color: androidx.compose.ui.graphics.Color) {
-    Column {
-        Text(label, style = KoshaType.Caption, color = KoshaColors.OffWhiteFaint)
-        AmountText(amount = amount, style = KoshaType.AmountBody, color = color, withPaise = false)
     }
 }
 
@@ -418,97 +306,4 @@ private fun GoalEditorSheet(
             Text(stringResource(R.string.goals_save), color = KoshaColors.AccentTeal)
         }
     }
-}
-
-@Composable
-private fun DebtEditorSheet(
-    onSave: (name: String, principal: String, rate: String, emi: String, tenure: String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var name by remember { mutableStateOf("") }
-    var principal by remember { mutableStateOf("") }
-    var rate by remember { mutableStateOf("") }
-    var emi by remember { mutableStateOf("") }
-    var tenure by remember { mutableStateOf("") }
-
-    EditorSheet(onDismiss) {
-        Text(stringResource(R.string.debt_add), style = KoshaType.Title, color = KoshaColors.OffWhite)
-        GoalField(name, { name = it }, stringResource(R.string.debt_name))
-        GoalField(principal, { if (it.all { c -> c.isDigit() || c == '.' }) principal = it }, stringResource(R.string.debt_principal))
-        GoalField(rate, { if (it.all { c -> c.isDigit() || c == '.' }) rate = it }, stringResource(R.string.debt_rate))
-        GoalField(emi, { if (it.all { c -> c.isDigit() || c == '.' }) emi = it }, stringResource(R.string.debt_emi))
-        GoalField(tenure, { if (it.all(Char::isDigit)) tenure = it }, stringResource(R.string.debt_tenure))
-        TextButton(
-            onClick = { onSave(name.trim(), principal, rate, emi, tenure) },
-            enabled = name.isNotBlank() && principal.isNotBlank() && emi.isNotBlank(),
-        ) {
-            Text(stringResource(R.string.goals_save), color = KoshaColors.AccentTeal)
-        }
-    }
-}
-
-@Composable
-private fun AssetEditorSheet(
-    isLiability: Boolean,
-    onSave: (name: String, value: String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var name by remember { mutableStateOf("") }
-    var value by remember { mutableStateOf("") }
-
-    EditorSheet(onDismiss) {
-        Text(
-            text = stringResource(
-                if (isLiability) R.string.networth_add_liability else R.string.networth_add_asset,
-            ),
-            style = KoshaType.Title,
-            color = KoshaColors.OffWhite,
-        )
-        if (isLiability) {
-            Text(
-                text = stringResource(R.string.networth_loan_hint),
-                style = KoshaType.Caption,
-                color = KoshaColors.Amber,
-            )
-        }
-        GoalField(name, { name = it }, stringResource(R.string.networth_item_name))
-        GoalField(value, { if (it.all { c -> c.isDigit() || c == '.' }) value = it }, stringResource(R.string.networth_value))
-        TextButton(
-            onClick = { onSave(name.trim(), value) },
-            enabled = name.isNotBlank() && value.isNotBlank(),
-        ) {
-            Text(stringResource(R.string.goals_save), color = KoshaColors.AccentTeal)
-        }
-    }
-}
-
-@Composable
-private fun EditorSheet(onDismiss: () -> Unit, content: @Composable () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = KoshaColors.CharcoalOverlay) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(KoshaSpacing.m),
-            verticalArrangement = Arrangement.spacedBy(KoshaSpacing.s),
-        ) {
-            content()
-            Spacer(Modifier.height(KoshaSpacing.l))
-        }
-    }
-}
-
-@Composable
-private fun GoalField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
-    TextField(
-        value = value,
-        onValueChange = onValueChange,
-        placeholder = { Text(placeholder, color = KoshaColors.OffWhiteFaint) },
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = KoshaColors.CharcoalRaised,
-            unfocusedContainerColor = KoshaColors.CharcoalRaised,
-            focusedTextColor = KoshaColors.OffWhite,
-            unfocusedTextColor = KoshaColors.OffWhite,
-        ),
-        modifier = Modifier.fillMaxWidth(),
-    )
 }

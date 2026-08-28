@@ -254,6 +254,21 @@ data class AssetLiabilityEntity(
     val notes: String? = null,
 )
 
+/**
+ * One point on the net-worth trend line (schema v2). Recorded at most once
+ * per day — whoever opens the Net Worth screen writes today's figure if it
+ * isn't there yet — so the trend is real history built from actual
+ * `NetWorthCalculator` runs, never backfilled or interpolated.
+ */
+@Entity(tableName = "net_worth_snapshots")
+data class NetWorthSnapshotEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val epochDay: Long,
+    val assetsPaise: Long,
+    val liabilitiesPaise: Long,
+    val netPaise: Long,
+)
+
 /** Ring-2 encrypted (spec B4): fields blob is ciphertext, never plaintext. */
 @Entity(tableName = "vault_entries")
 data class VaultEntryEntity(

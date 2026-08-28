@@ -35,7 +35,9 @@ import dev.kosha.core.designsystem.token.KoshaType
 import dev.kosha.feature.budget.BudgetScreen
 import dev.kosha.feature.budget.recurring.RecurringScreen
 import dev.kosha.feature.export.ExportScreen
+import dev.kosha.feature.goals.DebtScreen
 import dev.kosha.feature.goals.GoalsScreen
+import dev.kosha.feature.goals.NetWorthScreen
 import dev.kosha.feature.income.IncomeScreen
 import dev.kosha.feature.ingest.ocr.ImportScreen
 import dev.kosha.feature.ingest.ocr.ScanScreen
@@ -72,6 +74,8 @@ const val ROUTE_INCOME = "income"
 const val ROUTE_RECURRING = "recurring"
 const val ROUTE_EXPORT = "export"
 const val ROUTE_GOALS = "goals"
+const val ROUTE_DEBT = "debt"
+const val ROUTE_NET_WORTH = "net-worth"
 const val ROUTE_SMS_SCAN = "sms-scan"
 const val ROUTE_PERMISSIONS = "permissions"
 const val ROUTE_SETTINGS = "settings"
@@ -324,7 +328,17 @@ fun KoshaAppScaffold(
                 )
             }
             composable(ROUTE_GOALS) {
-                GoalsScreen(onBack = { navController.popBackStack() })
+                GoalsScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenDebt = { navController.navigate(ROUTE_DEBT) },
+                    onOpenNetWorth = { navController.navigate(ROUTE_NET_WORTH) },
+                )
+            }
+            composable(ROUTE_DEBT) {
+                DebtScreen(onBack = { navController.popBackStack() })
+            }
+            composable(ROUTE_NET_WORTH) {
+                NetWorthScreen(onBack = { navController.popBackStack() })
             }
             composable(ROUTE_SMS_SCAN) {
                 SmsScanScreen(onBack = { navController.popBackStack() })

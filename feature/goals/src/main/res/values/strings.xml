@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="goals_title">Goals &amp; net worth</string>
+    <string name="goals_title">Goals</string>
+    <string name="goals_debt_summary">%1$d debts · %2$s owed</string>
+    <string name="goals_networth_summary">%1$s net</string>
     <string name="goals_section">Sinking funds</string>
     <string name="goals_empty">No goals yet. An emergency fund is the usual first one.</string>
     <string name="goals_add">Add goal</string>
@@ -37,6 +39,8 @@
     <string name="networth_item_name">Name</string>
     <string name="networth_value">Value (₹)</string>
     <string name="networth_loan_hint">Has an EMI? Add it as a debt instead — Kosha counts tracked loans automatically so nothing gets entered twice.</string>
+    <string name="networth_trend_title">Trend</string>
+    <string name="networth_trend_empty">Check back after a couple of visits — one point is recorded per day, so the trend fills in as you go rather than being guessed backwards.</string>
 
     <string name="tax_section">Tax tags (FY %1$s)</string>
     <string name="tax_empty">No tax-tagged transactions this financial year.</string>

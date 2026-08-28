@@ -19,6 +19,7 @@ import dev.kosha.core.database.model.Converters
 import dev.kosha.core.database.model.DebtAccountEntity
 import dev.kosha.core.database.model.FinancialGoalEntity
 import dev.kosha.core.database.model.IncomeSourceEntity
+import dev.kosha.core.database.model.NetWorthSnapshotEntity
 import dev.kosha.core.database.model.OcrTemplateEntity
 import dev.kosha.core.database.model.PeriodSummaryEntity
 import dev.kosha.core.database.model.RecurringRuleEntity
@@ -35,6 +36,11 @@ import dev.kosha.core.database.model.WarrantyItemEntity
  * Full B5 schema, shipped complete in Phase 1 to avoid migration churn.
  * Migration policy (spec B5): destructive migrations FORBIDDEN after
  * Phase 2 — every later schema change ships a tested Migration.
+ *
+ * v2 (`net_worth_snapshots`, additive): the app's first real migration —
+ * see `MIGRATION_1_2` in `Migrations.kt` and `Migration1To2Test` in
+ * `androidTest`, which is what actually exercises the policy above instead
+ * of just stating it.
  */
 @Database(
     entities = [
@@ -57,8 +63,9 @@ import dev.kosha.core.database.model.WarrantyItemEntity
         RuleViolationEntity::class,
         WarrantyItemEntity::class,
         SavedQueryEntity::class,
+        NetWorthSnapshotEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)

@@ -8,6 +8,7 @@ import androidx.room.Update
 import dev.kosha.core.database.model.AssetLiabilityEntity
 import dev.kosha.core.database.model.DebtAccountEntity
 import dev.kosha.core.database.model.FinancialGoalEntity
+import dev.kosha.core.database.model.NetWorthSnapshotEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -50,4 +51,14 @@ interface GoalsDao {
 
     @Query("SELECT * FROM assets_liabilities ORDER BY kind, id")
     fun observeAssetsLiabilities(): Flow<List<AssetLiabilityEntity>>
+
+    @Insert
+    suspend fun insertNetWorthSnapshot(snapshot: NetWorthSnapshotEntity): Long
+
+    /** Whether today already has a point on the trend line — write at most one per day. */
+    @Query("SELECT * FROM net_worth_snapshots WHERE epochDay = :epochDay LIMIT 1")
+    suspend fun netWorthSnapshotForDay(epochDay: Long): NetWorthSnapshotEntity?
+
+    @Query("SELECT * FROM net_worth_snapshots WHERE epochDay >= :sinceEpochDay ORDER BY epochDay")
+    fun observeNetWorthSnapshotsSince(sinceEpochDay: Long): Flow<List<NetWorthSnapshotEntity>>
 }

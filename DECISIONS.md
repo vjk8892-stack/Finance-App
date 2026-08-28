@@ -898,3 +898,39 @@ Two IA fixes from the design review, both on Home:
   Permissions are already full rows inside Settings, so they're removed from
   Home rather than duplicated with a second access pattern; the row now holds
   only the two planning shortcuts worth one tap from the dashboard.
+
+## Phase 4: Goals split into Goals / Debt / Net Worth, plus the app's first real migration
+
+Design review finding: the Goals screen crammed four unrelated tools — sinking
+funds, a debt avalanche/snowball simulator, net worth, and a tax report — into
+one long scroll behind a single nav route, each pulling from the same
+`GoalsViewModel`.
+
+- **Split into three destinations.** `GoalsScreen` now holds only sinking-fund
+  jars and the tax report, plus two tappable summary cards ("3 debts · ₹X
+  owed", "₹Y net") that open the new `DebtScreen` (`ROUTE_DEBT`) and
+  `NetWorthScreen` (`ROUTE_NET_WORTH`). `GoalsViewModel` was trimmed to match;
+  `DebtViewModel` and `NetWorthViewModel` own their own screens' full state.
+  Shared bits (`EmptyNote`, `EditorSheet`, `GoalField`) moved to
+  `GoalsCommon.kt` so all three screens use the same editor-sheet look
+  without three copies of it.
+- **Net worth gets an actual trend line** (design review: the spec calls for
+  one; the old card only ever showed today's figure with no history). New
+  `net_worth_snapshots` table, one row per day at most, written by
+  `NetWorthViewModel` the first time the screen is opened that day — real
+  recorded history, never backfilled or interpolated, so a fresh install's
+  trend starts empty and fills in over actual visits. Rendered the same way
+  `ForecastStrip` already renders the 30-day balance sparkline (accent-
+  gradient polyline), for visual and code consistency between the app's two
+  money-over-time charts.
+- **This is the app's first real schema migration.** `KoshaDatabase` was
+  still on `version = 1` with `.fallbackToDestructiveMigration()` and no
+  `Migration` ever written — the "destructive migrations forbidden" policy
+  (spec B5) had never actually been exercised. `MIGRATION_1_2` adds the one
+  new table (purely additive, nothing else touched), is registered via
+  `.addMigrations(MIGRATION_1_2)` ahead of the destructive fallback (Room
+  always prefers an explicit path for a version it has one for, so the
+  fallback isn't shadowing anything), and `Migration1To2Test` in
+  `core/database` androidTest seeds a v1 fixture, runs the migration, and
+  writes/reads a row back — the pattern `MigrationHarness` had been
+  scaffolded for since Phase 1 but never used.

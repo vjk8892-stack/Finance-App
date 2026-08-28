@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.kosha.core.database.KoshaDatabase
+import dev.kosha.core.database.MIGRATION_1_2
 import dev.kosha.core.database.security.DbKeyManager
 import javax.inject.Singleton
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
@@ -31,8 +32,10 @@ object DatabaseModule {
         val factory = SupportOpenHelperFactory(keyManager.getOrCreateDbPassphrase())
         return Room.databaseBuilder(context, KoshaDatabase::class.java, KoshaDatabase.NAME)
             .openHelperFactory(factory)
-            // Pre-Phase-2 only; replaced by tested Migrations once the schema
-            // freezes (spec B5 migration policy).
+            .addMigrations(MIGRATION_1_2)
+            // Remaining safety net for any version this build has no explicit
+            // path for; Room always prefers an explicit Migration when one is
+            // registered for the exact hop, so this never shadows MIGRATION_1_2.
             .fallbackToDestructiveMigration()
             .build()
     }
