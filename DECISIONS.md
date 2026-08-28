@@ -934,3 +934,34 @@ one long scroll behind a single nav route, each pulling from the same
   `core/database` androidTest seeds a v1 fixture, runs the migration, and
   writes/reads a row back — the pattern `MigrationHarness` had been
   scaffolded for since Phase 1 but never used.
+
+## Phase 5: Home's rotating insight card (spec C2.7 — never actually built)
+
+The design review found this: `HomeScreen.kt` carried a stale comment saying
+the rotating insight card "arrives in Phases 5 and 6" even though the app
+claims all 12 phases are done. It was never built — Home had no proactive
+insight surface at all, so leaks/anomalies/advice only showed up if you went
+looking in the Insights hub yourself.
+
+- `HomeViewModel` now also injects `InsightsRepository` (the same one the
+  Insights hub reads from) and, best-effort inside a `runCatching`, builds up
+  to three `HomeInsightCard`s: the top leak, the top anomaly, and the
+  advisor's reasoning sentence if it has an allocation to suggest. A failure
+  here (e.g. too little history for the anomaly engine) just means no card
+  this visit — never a Home crash.
+- **Opportunity-cost, the spec's third rotating slot, is swapped for the
+  advisor's reasoning.** Opportunity-cost needs a user-entered benchmark rate
+  (spec C5.9) — there's nothing to compute automatically, so it can't rotate
+  in on its own. The advisor's plain-language reasoning is the other thing
+  the same engines produce with zero extra input, so it fills that slot
+  instead.
+- **Auto-rotating, not swiped.** The spec says "swipe to cycle"; this
+  auto-advances every 6 seconds instead. Reasoning: a swipe gesture is not
+  something a build with no attached device can verify actually works, where
+  a timer is; the "motion = feedback, not decoration" rule already rules out
+  anything more elaborate than the plain crossfade used here.
+- Tapping the card navigates to the Insights tab the same way the bottom nav
+  does (`popUpTo(HOME)` + `launchSingleTop`), not a stacked push — consistent
+  with the Pulse's own tap-through to the ledger.
+- Renders nothing when there are no cards — the same "empty states
+  disappear" rule the review queue chip already follows.

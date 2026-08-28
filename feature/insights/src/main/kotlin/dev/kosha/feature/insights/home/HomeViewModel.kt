@@ -11,10 +11,13 @@ import dev.kosha.core.database.model.CategoryEntity
 import dev.kosha.core.database.model.CategoryType
 import dev.kosha.core.database.repo.CategoryRepository
 import dev.kosha.core.database.repo.ForecastRepository
+import dev.kosha.core.database.repo.InsightsRepository
 import dev.kosha.core.database.repo.PeriodRepository
 import dev.kosha.core.database.repo.TransactionRepository
 import dev.kosha.core.database.settings.SettingsRepository
 import dev.kosha.core.engine.forecast.ForecastEngine
+import dev.kosha.core.engine.insight.AnomalyEngine
+import dev.kosha.core.engine.insight.LeakDetector
 import dev.kosha.core.engine.period.BudgetMath
 import dev.kosha.core.engine.period.PeriodMath
 import javax.inject.Inject
@@ -28,6 +31,19 @@ data class HomeBudgetRing(
     val label: String,
     val icon: String?,
 )
+
+/**
+ * Home's rotating insight card (spec C2.7). The spec's third slot is
+ * opportunity-cost, but that simulator needs a user-entered benchmark rate
+ * (spec C5.9) — nothing to rotate to automatically — so the advisor's own
+ * reasoning fills that slot instead: it's the other thing the Insights hub
+ * computes with no extra input needed.
+ */
+sealed interface HomeInsightCard {
+    data class LeakCard(val leak: LeakDetector.Leak) : HomeInsightCard
+    data class AnomalyCard(val flag: AnomalyEngine.Flag) : HomeInsightCard
+    data class AdvisorCard(val reasoning: String) : HomeInsightCard
+}
 
 data class HomeUiState(
     val loaded: Boolean = false,
@@ -44,6 +60,8 @@ data class HomeUiState(
     /** Most-used categories for the quick-add row (spec C2.3). */
     val quickCategories: List<CategoryEntity> = emptyList(),
     val forecast: ForecastEngine.Forecast? = null,
+    /** Renders only when non-empty — no placeholder card for nothing to say. */
+    val insightCards: List<HomeInsightCard> = emptyList(),
 ) {
     /**
      * Pulse ring fill: money spent as a fraction of income — how much of
@@ -63,6 +81,7 @@ data class HomeUiState(
 class HomeViewModel @Inject constructor(
     private val periodRepository: PeriodRepository,
     private val forecastRepository: ForecastRepository,
+    private val insightsRepository: InsightsRepository,
     private val planningDao: PlanningDao,
     transactionDao: TransactionDao,
     transactionRepository: TransactionRepository,
@@ -100,6 +119,21 @@ class HomeViewModel @Inject constructor(
         val fallback = categories.filter { !it.isSystem && it.type == CategoryType.EXPENSE }
         val quick = (ranked + fallback).distinctBy { it.id }.take(5)
 
+        // Best-effort: a heavier read of the same engines the Insights hub
+        // uses. A failure here (e.g. too little history for the anomaly
+        // engine) should never take Home down with it — it just means no
+        // rotating card this visit, same as any other empty state.
+        val insightCards = runCatching {
+            val insights = insightsRepository.load(settings.periodAnchorDay, settings.emergencyFundMonths)
+            buildList {
+                insights.leaks.firstOrNull()?.let { add(HomeInsightCard.LeakCard(it)) }
+                insights.anomalies.firstOrNull()?.let { add(HomeInsightCard.AnomalyCard(it)) }
+                if (insights.advice.allocations.isNotEmpty()) {
+                    add(HomeInsightCard.AdvisorCard(insights.advice.reasoning))
+                }
+            }
+        }.getOrDefault(emptyList())
+
         HomeUiState(
             loaded = true,
             period = period,
@@ -114,6 +148,7 @@ class HomeViewModel @Inject constructor(
             budgetRings = rings,
             quickCategories = quick,
             forecast = runCatching { forecastRepository.forecast() }.getOrNull(),
+            insightCards = insightCards,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 }

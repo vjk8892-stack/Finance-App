@@ -184,6 +184,12 @@ fun KoshaAppScaffold(
                         navController.navigate("${KoshaDestination.ADD.route}?$ARG_QUICK_CATEGORY=$categoryId")
                     },
                     onOpenReview = { navController.navigate(ROUTE_REVIEW) },
+                    onOpenInsights = {
+                        navController.navigate(KoshaDestination.INSIGHTS.route) {
+                            popUpTo(KoshaDestination.HOME.route)
+                            launchSingleTop = true
+                        }
+                    },
                 )
             }
             composable(

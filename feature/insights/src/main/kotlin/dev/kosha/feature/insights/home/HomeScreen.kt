@@ -1,6 +1,8 @@
 package dev.kosha.feature.insights.home
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -23,8 +25,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -42,11 +48,12 @@ import dev.kosha.core.designsystem.token.KoshaType
 import dev.kosha.core.engine.period.PeriodMath
 import dev.kosha.feature.insights.R
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.delay
 
 /**
  * Home v1 (spec C2), top → bottom: weather line · Pulse · quick add ·
- * review chip (only when non-empty) · budget rings. Forecast strip and the
- * rotating insight card arrive in Phases 5 and 6.
+ * review chip (only when non-empty) · budget rings · forecast strip ·
+ * rotating insight card.
  */
 @Composable
 fun HomeScreen(
@@ -58,6 +65,7 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onQuickAdd: (categoryId: Long) -> Unit,
     onOpenReview: () -> Unit,
+    onOpenInsights: () -> Unit,
     onOpenRecurring: () -> Unit = {},
     onOpenGoals: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
@@ -157,6 +165,8 @@ fun HomeScreen(
         BudgetRings(state, onOpenBudgets)
         Spacer(Modifier.height(KoshaSpacing.l))
         ForecastStrip(state.forecast)
+        Spacer(Modifier.height(KoshaSpacing.l))
+        RotatingInsightCard(state.insightCards, onOpenInsights)
         Spacer(Modifier.height(KoshaSpacing.s))
         // Only the two planning tools someone actually opens often enough to
         // want one tap from Home. Export, backup and permissions are
@@ -272,6 +282,85 @@ private fun BreakdownItem(label: String, amount: Money, color: androidx.compose.
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = KoshaType.Caption, color = KoshaColors.OffWhiteFaint)
         AmountText(amount = amount, style = KoshaType.AmountSmall, color = color, withPaise = false, countUp = true)
+    }
+}
+
+/**
+ * One rotating card — leak / anomaly / advisor (spec C2.7) — auto-advancing
+ * rather than swiped: a device-less build can verify a timer, not a gesture,
+ * and "motion = feedback, not decoration" already rules out anything flashier
+ * than a plain crossfade. Tapping goes to the full Insights hub, same as the
+ * Pulse tapping through to the ledger. Renders nothing when there's nothing
+ * to say — an empty state that disappears, not a placeholder card.
+ */
+@Composable
+private fun RotatingInsightCard(cards: List<HomeInsightCard>, onOpenInsights: () -> Unit) {
+    if (cards.isEmpty()) return
+    var index by rememberSaveable(cards.size) { mutableIntStateOf(0) }
+
+    LaunchedEffect(cards.size) {
+        while (cards.size > 1) {
+            delay(6_000)
+            index = (index + 1) % cards.size
+        }
+    }
+
+    KoshaCard(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onOpenInsights,
+    ) {
+        AnimatedContent(targetState = cards[index.coerceIn(cards.indices)], label = "homeInsightCard") { card ->
+            InsightCardContent(card)
+        }
+        if (cards.size > 1) {
+            Spacer(Modifier.height(KoshaSpacing.xs))
+            Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xxs)) {
+                cards.indices.forEach { i ->
+                    Box(
+                        Modifier
+                            .size(if (i == index) 14.dp else 5.dp, 4.dp)
+                            .background(
+                                if (i == index) KoshaColors.AccentTealBright else KoshaColors.HudBorderDim,
+                            ),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InsightCardContent(card: HomeInsightCard) {
+    when (card) {
+        is HomeInsightCard.LeakCard -> Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(card.leak.merchant, style = KoshaType.Body, color = KoshaColors.OffWhite)
+                Text(
+                    stringResource(
+                        R.string.home_insight_leak_detail,
+                        card.leak.occurrences,
+                        card.leak.averageAmount.format(withPaise = false),
+                    ),
+                    style = KoshaType.Caption,
+                    color = KoshaColors.OffWhiteFaint,
+                )
+            }
+            AmountText(amount = card.leak.annualized, style = KoshaType.AmountBody, color = KoshaColors.Amber, withPaise = false)
+        }
+
+        is HomeInsightCard.AnomalyCard -> Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(card.flag.label, style = KoshaType.Body, color = KoshaColors.OffWhite)
+                Text(card.flag.explanation, style = KoshaType.Caption, color = KoshaColors.OffWhiteFaint)
+            }
+            AmountText(amount = card.flag.amount, style = KoshaType.AmountBody, color = KoshaColors.Amber, withPaise = false)
+        }
+
+        is HomeInsightCard.AdvisorCard -> Text(
+            text = card.reasoning,
+            style = KoshaType.InsightSerif,
+            color = KoshaColors.OffWhite,
+        )
     }
 }
 
