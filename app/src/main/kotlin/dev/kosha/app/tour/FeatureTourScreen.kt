@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
@@ -49,7 +48,7 @@ import dev.kosha.core.designsystem.token.KoshaType
  * the tour doubles as a map of where everything lives, not just a features
  * list.
  */
-private enum class TourPage(val icon: ImageVector, val titleRes: Int, val bodyRes: Int) {
+internal enum class TourPage(val icon: ImageVector, val titleRes: Int, val bodyRes: Int) {
     WELCOME(Icons.Outlined.CloudOff, R.string.tour_welcome_title, R.string.tour_welcome_body),
     HOME(Icons.Outlined.Insights, R.string.tour_home_title, R.string.tour_home_body),
     ADD(Icons.Outlined.PhotoCamera, R.string.tour_add_title, R.string.tour_add_body),
