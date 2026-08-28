@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Icon
@@ -32,7 +33,6 @@ import dev.kosha.core.database.model.WarrantyItemEntity
 import dev.kosha.core.designsystem.component.KoshaCard
 import dev.kosha.core.designsystem.component.KoshaLocalImage
 import dev.kosha.core.designsystem.token.KoshaColors
-import dev.kosha.core.designsystem.token.KoshaShapes
 import dev.kosha.core.designsystem.token.KoshaSpacing
 import dev.kosha.core.designsystem.token.KoshaType
 import java.time.Instant
@@ -105,7 +105,7 @@ private fun WarrantyCard(item: WarrantyItemEntity, today: LocalDate, onDelete: (
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(48.dp)
-                        .clip(KoshaShapes.chamfered(KoshaSpacing.chipCut)),
+                        .clip(RoundedCornerShape(KoshaSpacing.chipRadius)),
                 )
                 Spacer(Modifier.width(KoshaSpacing.s))
             }

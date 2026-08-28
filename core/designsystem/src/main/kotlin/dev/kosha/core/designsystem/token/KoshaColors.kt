@@ -72,16 +72,20 @@ object KoshaColors {
     }
 
     /**
-     * Kosha DS v2 ("Futuristic Calm") structural tokens: thin instrument-panel
-     * borders and glass-panel gradients. These are LOW-alpha STRUCTURE, not a
-     * second money-flow accent — the accent-restraint rule above still holds;
-     * a card's edge glowing teal at 12% is not the same claim as a chart using
-     * the accent gradient to mean money movement.
+     * Kosha DS ("Bioluminescent Deep-Space") structural tokens: glowing
+     * instrument-panel borders and glass-panel gradients. These are
+     * STRUCTURE — a card's edge glowing teal is not the same claim as a
+     * chart using the accent gradient to mean money movement, so the
+     * accent-restraint rule above still holds.
      */
-    val HudBorder = Color(0x662DD4BF)     // ~40% AccentTeal — selected/active edges
-    val HudBorderDim = Color(0x1F2DD4BF)  // ~12% AccentTeal — idle card/chip hairline
-    val GlassTop = Color(0xFF1A1E24)
-    val GlassBottom = Color(0xFF13161B)
+    val HudBorder = Color(0x4D2DD4BF)     // ~30% AccentTeal — lit card/chip edges
+    val HudBorderDim = Color(0x1F2DD4BF)  // ~12% AccentTeal — idle hairline
+    val GlassTop = Color(0xFF1A2420)      // teal-tinted glass highlight
+    val GlassBottom = Color(0xFF0F1114)
+
+    /** Soft radial "glow blob" backdrops — Home screen only, not global. */
+    val GlowBlobTeal = Color(0x292DD4BF)    // ~16% AccentTeal
+    val GlowBlobViolet = Color(0x268B5CF6)  // ~15% AccentViolet
 
     // Vault skin (darker variant)
     val VaultBackground = Color(0xFF0A0C0E)

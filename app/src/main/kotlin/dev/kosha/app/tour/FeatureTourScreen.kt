@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CloudOff
@@ -38,7 +39,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import dev.kosha.app.R
 import dev.kosha.core.designsystem.component.KoshaCard
 import dev.kosha.core.designsystem.token.KoshaColors
-import dev.kosha.core.designsystem.token.KoshaShapes
 import dev.kosha.core.designsystem.token.KoshaSpacing
 import dev.kosha.core.designsystem.token.KoshaType
 
@@ -113,7 +113,7 @@ fun FeatureTourScreen(
                     Box(
                         Modifier
                             .size(96.dp)
-                            .clip(KoshaShapes.chamfered(KoshaSpacing.cardCut))
+                            .clip(RoundedCornerShape(KoshaSpacing.cardRadius))
                             .background(KoshaColors.GlassTop),
                         contentAlignment = Alignment.Center,
                     ) {

@@ -1041,3 +1041,70 @@ exact-time alarms, iOS) rather than being quietly absent — a future pass
 can pick it up starting from `docs/koshabuildspec.md` spec B1/C8/G9, and
 should plan on a `docs/DEVICE_GATES.md` entry for it from the start, the
 same way SMS-under-doze and OCR accuracy already are.
+
+## Kosha DS "Bioluminescent Deep-Space": replacing the rejected "Futuristic Calm" pass
+
+The first futuristic-theme attempt ("Kosha DS v2 / Futuristic Calm" —
+chamfered/angular card corners, a 12%-alpha teal hairline, and the system
+default monospace font standing in for a "HUD" feel) shipped, was installed
+on a real device, and was rejected outright: "neither futuristic nor
+appealing." Rather than guess a third time and burn another full
+CI-build-then-install cycle to find out, three genuinely distinct visual
+directions were mocked up as an interactive HTML canvas (Bioluminescent
+Deep-Space, Neon HUD / Cyberpunk Terminal, Aurora Glass / Holographic) and
+shown to the user before any Compose code changed again. The user picked
+Direction 1's whole visual system, with Direction 2's headline typeface
+substituted in. Lesson for future visual/aesthetic asks: mock up fast,
+get explicit sign-off, then implement — don't iterate blind against a
+20+ minute build loop.
+
+What changed, concretely:
+- **Shapes**: the chamfered-corner system (`KoshaShapes.chamfered`) is
+  deleted. Direction 1 uses soft rounded corners, not angular cuts. Cards,
+  chips, the keypad, the undo bar, and every ad-hoc chamfered `.clip()` call
+  (tour icon frame, receipt thumbnails, the transaction-detail message
+  block) are back on `RoundedCornerShape` using the pre-existing
+  `cardRadius`/`chipRadius` tokens. The dead `cardCut`/`chipCut`/`keyCut`
+  spacing tokens are removed.
+- **Typography**: real bundled Google Fonts replace `FontFamily.Monospace`
+  everywhere it stood in for a display face. Chakra Petch (Direction 2, the
+  requested font) is now `KoshaType.ChakraPetch`, applied to
+  `Title`/`ScreenTitle`/`Label`/`LabelStrong`/`SectionHeader`. JetBrains Mono
+  is now `KoshaType.JetBrainsMono`, applied to every `Amount*` style — it
+  reads as a digital-readout typeface and keeps the tabular-figure alignment
+  the amounts already relied on. `Body`/`Caption`/`InsightSerif` are
+  untouched. Both families are bundled as `.ttf` resources under
+  `core/designsystem/src/main/res/font/` (5 weights each, Google Fonts,
+  OFL-licensed) rather than requested via the Downloadable Fonts API, so
+  typography works fully offline on first launch — consistent with the
+  "no `INTERNET` permission, ever" rule, which this app cannot rely on
+  Play Services' font-fetch network calls to honor.
+- **Cards** (`KoshaCard`): rounded corners, a diagonal teal-tinted glass
+  gradient wash, a visibly lit ~30%-alpha teal border (was a barely-visible
+  ~12%), and a soft two-tone teal/violet colored glow via
+  `Modifier.shadow(ambientColor=, spotColor=)`. Colored ambient/spot shadow
+  tinting is a platform (RenderNode) capability gated to API 28+; below that
+  Compose silently falls back to a plain grey shadow. Accepted as a
+  cosmetic-only degradation on `minSdk 26`/27 — the card is still elevated
+  and legible, just not glowing.
+- **Chips** (`KoshaChip`): pill shape (`RoundedCornerShape(percent = 50)`)
+  replaces the chamfered chip. The selected state is now a gradient fill
+  plus a matching colored glow, not a flat low-alpha tint, so "which filter
+  is active" stays readable at a glance — the same readability problem the
+  v2 pass already fixed once for chip selection, now carried into the new
+  visual language.
+- **Background**: `HomeScreen` (only — not the global Scaffold, so Vault
+  keeps its own deliberately darker, unlit skin) gets two soft
+  `Brush.radialGradient` "glow blobs" (teal top-right, violet lower-left)
+  behind the scrolling content. Radial gradients are soft-edged by
+  construction on every Android API level, so this needed no blur/
+  `RenderEffect` (API 31+) at all — zero cross-API risk, unlike the card
+  glow above.
+- **Pulse ring** (`KoshaRing`, `dial` mode): the outer glow arc's alpha,
+  radius, and stroke width are all increased to read as a stronger glow,
+  matching the mockup's Pulse ring more closely than the original subtle
+  version.
+- New color tokens: `GlowBlobTeal`/`GlowBlobViolet` (background blobs,
+  Home-scoped); `HudBorder` strengthened from ~12% to ~30% AccentTeal;
+  `GlassTop`/`GlassBottom` retinted teal-leaning instead of neutral
+  charcoal, to read as a lit glass surface rather than flat grey.

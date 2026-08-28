@@ -93,13 +93,13 @@ fun KoshaRing(
                 )
             }
             drawArc(
-                color = KoshaColors.AccentTeal.copy(alpha = 0.10f),
+                color = KoshaColors.AccentTeal.copy(alpha = 0.22f),
                 startAngle = -90f,
                 sweepAngle = 360f,
                 useCenter = false,
-                topLeft = Offset(inset - 6f, inset - 6f),
-                size = Size(arcSize.width + 12f, arcSize.height + 12f),
-                style = Stroke(width = stroke.width + 10f, cap = StrokeCap.Round),
+                topLeft = Offset(inset - 10f, inset - 10f),
+                size = Size(arcSize.width + 20f, arcSize.height + 20f),
+                style = Stroke(width = stroke.width + 18f, cap = StrokeCap.Round),
             )
         }
 
