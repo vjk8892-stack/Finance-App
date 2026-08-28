@@ -965,3 +965,23 @@ looking in the Insights hub yourself.
   with the Pulse's own tap-through to the ledger.
 - Renders nothing when there are no cards — the same "empty states
   disappear" rule the review queue chip already follows.
+
+## Phase 6: Warranty tracker gets a screen (capture existed, retrieval didn't)
+
+Design review finding: the OCR bill-scan flow already prompts to save a
+warranty (`CaptureViewModel.saveWarranty`) and `WarrantyItemEntity` has full
+DAO CRUD in `MetaDao`, but there was no screen anywhere to see what got
+saved — once captured, a warranty was invisible until you happened to
+remember it existed. Spec G12's 30-day/7-day expiry reminders didn't exist
+either.
+
+- `WarrantyScreen` + `WarrantyViewModel` (`feature/ingest/ocr`, alongside the
+  capture flow that creates these rows): soonest-expiring first, receipt
+  thumbnail when one was attached, delete. Reachable from Settings → Money,
+  next to Goals.
+- `WarrantyReminderWorker`: a daily check (mirrors `RecurringWorker`'s
+  existing shape — channel, `POST_NOTIFICATIONS` gate, inexact periodic
+  work per spec G9) that fires once when an item's days-to-expiry hits
+  exactly 30 or exactly 7 — `==`, not `<=`, so it's one notification per
+  milestone, not a week of repeats. Scheduled from `KoshaApp.onCreate`
+  alongside the other workers.

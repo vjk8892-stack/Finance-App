@@ -130,6 +130,7 @@
     <string name="settings_budgets">Budgets</string>
     <string name="settings_recurring">Recurring &amp; EMIs</string>
     <string name="settings_goals">Goals</string>
+    <string name="settings_warranties">Warranties</string>
     <string name="settings_anchor">Month starts on day %1$d</string>
     <string name="settings_anchor_sub">Set this to your salary day so a \"month\" matches your pay cycle.</string>
     <string name="settings_anchor_day">%1$d</string>

@@ -14,4 +14,9 @@ dependencies {
     // On-device only. No cloud fallback — by design (spec B1).
     implementation(libs.mlkit.text.recognition)
     implementation(libs.androidx.activity.compose)
+
+    // Warranty expiry reminders (spec G12).
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 }

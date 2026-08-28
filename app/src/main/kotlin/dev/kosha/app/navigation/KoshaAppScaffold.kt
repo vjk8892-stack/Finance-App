@@ -41,6 +41,7 @@ import dev.kosha.feature.goals.NetWorthScreen
 import dev.kosha.feature.income.IncomeScreen
 import dev.kosha.feature.ingest.ocr.ImportScreen
 import dev.kosha.feature.ingest.ocr.ScanScreen
+import dev.kosha.feature.ingest.ocr.WarrantyScreen
 import dev.kosha.feature.ingest.review.ReviewQueueScreen
 import dev.kosha.feature.ingest.sms.CaptureNotifier
 import dev.kosha.feature.ingest.sms.SmsScanScreen
@@ -76,6 +77,7 @@ const val ROUTE_EXPORT = "export"
 const val ROUTE_GOALS = "goals"
 const val ROUTE_DEBT = "debt"
 const val ROUTE_NET_WORTH = "net-worth"
+const val ROUTE_WARRANTY = "warranty"
 const val ROUTE_SMS_SCAN = "sms-scan"
 const val ROUTE_PERMISSIONS = "permissions"
 const val ROUTE_SETTINGS = "settings"
@@ -328,10 +330,14 @@ fun KoshaAppScaffold(
                     onOpenBudgets = { navController.navigate(ROUTE_BUDGETS) },
                     onOpenRecurring = { navController.navigate(ROUTE_RECURRING) },
                     onOpenGoals = { navController.navigate(ROUTE_GOALS) },
+                    onOpenWarranties = { navController.navigate(ROUTE_WARRANTY) },
                     onOpenPermissions = { navController.navigate(ROUTE_PERMISSIONS) },
                     onScanSms = { navController.navigate(ROUTE_SMS_SCAN) },
                     onOpenAccounts = { navController.navigate(ROUTE_ACCOUNTS) },
                 )
+            }
+            composable(ROUTE_WARRANTY) {
+                WarrantyScreen(onBack = { navController.popBackStack() })
             }
             composable(ROUTE_GOALS) {
                 GoalsScreen(

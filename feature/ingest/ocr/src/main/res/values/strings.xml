@@ -33,4 +33,15 @@
     <string name="import_unreadable">No text could be read from that image. A screenshot of the payment confirmation usually works better than a photo of a screen.</string>
     <string name="import_pick_again">Pick another image</string>
     <string name="preview_nothing_read">Kosha could not find an amount in this image. Fill in what it should say — the photo is kept as evidence either way.</string>
+
+    <string name="warranty_title">Warranties</string>
+    <string name="warranty_empty">Nothing tracked yet. Scan a bill and Kosha offers to track its warranty.</string>
+    <string name="warranty_expired_days">Expired %1$d days ago</string>
+    <string name="warranty_expires_today">Expires today</string>
+    <string name="warranty_expires_in_days">Expires in %1$d days</string>
+    <string name="warranty_expiry_date">Until %1$s</string>
+    <string name="warranty_reminder_title">%1$s\'s warranty is ending</string>
+    <string name="warranty_reminder_body">Expires in %1$d days.</string>
+    <string name="warranty_channel_name">Warranty reminders</string>
+    <string name="warranty_channel_desc">A heads-up 30 and 7 days before a tracked warranty expires.</string>
 </resources>
