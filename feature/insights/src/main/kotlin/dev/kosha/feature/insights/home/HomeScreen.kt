@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,13 +53,13 @@ fun HomeScreen(
     /** Opens the ledger showing exactly the rows behind this period's figures. */
     onOpenLedger: (fromIso: String?, toIso: String?) -> Unit,
     onOpenBudgets: () -> Unit,
+    /** Straight to the Income screen — income drives the Pulse, so it earns a direct tap. */
     onOpenIncome: () -> Unit,
+    onOpenSettings: () -> Unit,
     onQuickAdd: (categoryId: Long) -> Unit,
     onOpenReview: () -> Unit,
     onOpenRecurring: () -> Unit = {},
-    onOpenExport: () -> Unit = {},
     onOpenGoals: () -> Unit = {},
-    onOpenPermissions: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -92,7 +93,16 @@ fun HomeScreen(
                 color = KoshaColors.OffWhiteFaint,
                 modifier = Modifier.weight(1f),
             )
+            // Income drives the Pulse directly, so it gets its own icon
+            // instead of being three taps deep inside Settings.
             IconButton(onClick = onOpenIncome) {
+                Icon(
+                    Icons.Outlined.Payments,
+                    contentDescription = stringResource(R.string.home_income),
+                    tint = KoshaColors.OffWhiteFaint,
+                )
+            }
+            IconButton(onClick = onOpenSettings) {
                 Icon(
                     Icons.Outlined.Settings,
                     contentDescription = stringResource(R.string.home_settings),
@@ -148,6 +158,11 @@ fun HomeScreen(
         Spacer(Modifier.height(KoshaSpacing.l))
         ForecastStrip(state.forecast)
         Spacer(Modifier.height(KoshaSpacing.s))
+        // Only the two planning tools someone actually opens often enough to
+        // want one tap from Home. Export, backup and permissions are
+        // one-time-ish actions and live in Settings instead — a flat row
+        // that mixed "check my goals" with "review app permissions" made
+        // neither easy to find at a glance.
         Row(horizontalArrangement = Arrangement.spacedBy(KoshaSpacing.xs)) {
             KoshaChip(
                 label = stringResource(R.string.home_recurring),
@@ -156,14 +171,6 @@ fun HomeScreen(
             KoshaChip(
                 label = stringResource(R.string.home_goals),
                 onClick = onOpenGoals,
-            )
-            KoshaChip(
-                label = stringResource(R.string.home_export),
-                onClick = onOpenExport,
-            )
-            KoshaChip(
-                label = stringResource(R.string.home_permissions),
-                onClick = onOpenPermissions,
             )
         }
         Spacer(Modifier.height(KoshaSpacing.xxl))

@@ -880,3 +880,21 @@ worth → Vault → Recurring/Export/Backup. Skippable from any page but the
 last; each dot in the header is a page, not a click target — Back/Next are
 the only navigation, since the app doesn't have a gesture-driven pager
 component yet and this isn't the place to add the first one.
+
+## Phase 3: Income gets a direct tap; Home's bottom row stops being a junk drawer
+
+Two IA fixes from the design review, both on Home:
+
+- **Income was three taps deep** (Home's gear icon actually opened Settings,
+  and Income was a row inside Settings) despite being the number the Pulse is
+  computed from. `HomeScreen`'s gear-icon callback was even named
+  `onOpenIncome` while actually navigating to Settings — fixed the wiring,
+  not just the name: the top-right row now has two icons, an income one
+  (`Icons.Outlined.Payments`) that goes straight to `ROUTE_INCOME`, and a
+  separate gear for `ROUTE_SETTINGS`.
+- **Home's bottom chip row mixed usage frequency** — Recurring and Goals
+  (things worth checking often) sat next to Export and Permissions (things
+  you touch once and forget) in one flat row with no hierarchy. Export and
+  Permissions are already full rows inside Settings, so they're removed from
+  Home rather than duplicated with a second access pattern; the row now holds
+  only the two planning shortcuts worth one tap from the dashboard.

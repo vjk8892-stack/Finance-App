@@ -172,11 +172,10 @@ fun KoshaAppScaffold(
                         )
                     },
                     onOpenBudgets = { navController.navigate(ROUTE_BUDGETS) },
-                    onOpenIncome = { navController.navigate(ROUTE_SETTINGS) },
+                    onOpenIncome = { navController.navigate(ROUTE_INCOME) },
+                    onOpenSettings = { navController.navigate(ROUTE_SETTINGS) },
                     onOpenRecurring = { navController.navigate(ROUTE_RECURRING) },
-                    onOpenExport = { navController.navigate(ROUTE_EXPORT) },
                     onOpenGoals = { navController.navigate(ROUTE_GOALS) },
-                    onOpenPermissions = { navController.navigate(ROUTE_PERMISSIONS) },
                     onQuickAdd = { categoryId ->
                         navController.navigate("${KoshaDestination.ADD.route}?$ARG_QUICK_CATEGORY=$categoryId")
                     },
